@@ -9,7 +9,9 @@ COLORS = {
     'error': '#CF6679',        # Soft red
     'success': '#03DAC6',      # Teal
     'text': '#FFFFFF',         # White text
-    'text_secondary': '#B3B3B3'  # Light gray text
+    'text_secondary': '#B3B3B3',  # Light gray text
+    'bullying': '#FF1744',     # Red
+    'normal': '#00E676'        # Green
 }
 
 # Fonts

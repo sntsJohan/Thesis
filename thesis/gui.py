@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import (QMainWindow, QVBoxLayout, QHBoxLayout, QLabel,
                            QFileDialog, QTableWidget, QTableWidgetItem, 
                            QHeaderView, QSplitter, QFrame, QGridLayout, QComboBox, QSizePolicy)
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QColor  # Import QColor for color coding
 from scraper import scrape_comments
 from model import classify_comment
 import pandas as pd
@@ -87,14 +88,15 @@ class MainWindow(QMainWindow):
         self.layout.addWidget(input_container)
 
         # Create a horizontal splitter for table and details
-        splitter = QSplitter(Qt.Horizontal)  # Changed to Horizontal
-        
+        splitter = QSplitter(Qt.Horizontal)  # Horizontal splitter
+
         # Table Container
         table_container = QWidget()
-        table_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)  # set vertical expanding
+        table_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)  # Set size policy
         table_layout = QVBoxLayout(table_container)
         table_layout.setContentsMargins(0, 0, 0, 0)
         
+
         # Header layout with table title and sort dropdown
         sort_layout = QHBoxLayout()
         table_title = QLabel("Comments")
@@ -112,50 +114,49 @@ class MainWindow(QMainWindow):
         self.sort_combo.currentIndexChanged.connect(self.sort_table)
         sort_layout.addWidget(self.sort_combo)
         table_layout.addLayout(sort_layout)
-        
+
         # Output Table
         self.output_table = QTableWidget()
         self.output_table.setSortingEnabled(True)
         self.output_table.setStyleSheet(TABLE_STYLE)
         self.output_table.setColumnCount(3)
         self.output_table.setHorizontalHeaderLabels(["Comment", "Prediction", "Confidence"])
-        
+
         # Adjust column sizes to fill entire width
         header = self.output_table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.Stretch)  # Comment column stretches
         header.setSectionResizeMode(1, QHeaderView.Fixed)    # Prediction column fixed
         header.setSectionResizeMode(2, QHeaderView.Fixed)    # Confidence column fixed
-        
+
         # Set fixed widths for the non-stretching columns
         self.output_table.setColumnWidth(1, 120)  # Prediction column
         self.output_table.setColumnWidth(2, 100)  # Confidence column
-        
+
         self.output_table.setWordWrap(True)
         self.output_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.output_table.setSelectionMode(QTableWidget.SingleSelection)
-        
         self.output_table.itemSelectionChanged.connect(self.update_details_panel)
         table_layout.addWidget(self.output_table)
         splitter.addWidget(table_container)
 
         # Details Panel
         details_container = QWidget()
-        details_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)  # set vertical expanding
+        details_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)  # Set size policy
         details_layout = QVBoxLayout(details_container)
         details_layout.setContentsMargins(10, 0, 0, 0)  # Add left margin
-        
-        # Comment Details
+
+        # Create a container for title + details
+        details_section = QWidget()
+        details_section_layout = QVBoxLayout(details_section)
+        details_section_layout.setSpacing(5)  # Reduce spacing between title & details
+        details_section_layout.setContentsMargins(10, 10, 10, 10)
+
+        # Add title inside the same section
         details_title = QLabel("Comment Details")
         details_title.setFont(FONTS['header'])
-        details_layout.addWidget(details_title)
-        
-        # Details content container
-        details_content = QWidget()
-        details_content_layout = QVBoxLayout(details_content)
-        details_content_layout.setSpacing(15)
-        details_content_layout.setContentsMargins(10, 10, 10, 10)
-        
-        # Replace QTextEdit with a details widget
+        details_section_layout.addWidget(details_title)
+
+        # Details content (kept inside same layout)
         details_widget = QWidget()
         details_widget.setStyleSheet(f"""
             QWidget {{
@@ -167,28 +168,38 @@ class MainWindow(QMainWindow):
         """)
         details_widget_layout = QVBoxLayout(details_widget)
         details_widget_layout.setSpacing(10)
-        
-        # Text labels for details
+
+        # Add text labels for details
         self.comment_label = QLabel()
         self.comment_label.setWordWrap(True)
         self.comment_label.setStyleSheet(f"color: {COLORS['text']};")
-        
+
         self.info_label = QLabel()
         self.info_label.setWordWrap(True)
         self.info_label.setStyleSheet(f"color: {COLORS['text']};")
-        
+
+        # Add labels inside details_widget
+        details_widget_layout.addWidget(self.comment_label)
+        details_widget_layout.addWidget(self.info_label)
+
+        # Add details_widget inside details_section
+        details_section_layout.addWidget(details_widget)
+
+        # Add the combined section to the details panel
+        details_layout.addWidget(details_section)
+
         # Operations Buttons inside details
         self.flag_button = QPushButton("🚩 Flag Comment")
         self.add_button = QPushButton("➕ Add to List")
         self.remove_button = QPushButton("➖ Remove from List")
         self.export_selected_button = QPushButton("💾 Export List")
         self.export_all_button = QPushButton("📤 Export All Results")
-        
+
         # Add buttons to a flow layout
         buttons_widget = QWidget()
         buttons_layout = QHBoxLayout(buttons_widget)
         buttons_layout.setSpacing(5)
-        
+
         for btn in [self.flag_button, self.add_button, self.remove_button, 
                    self.export_selected_button, self.export_all_button]:
             btn.setStyleSheet(BUTTON_STYLE)
@@ -196,32 +207,32 @@ class MainWindow(QMainWindow):
             buttons_layout.addWidget(btn)
             if btn != self.export_all_button:
                 btn.hide()  # Hide all buttons except export_all initially
-        
+
         # Connect buttons
         self.flag_button.clicked.connect(self.flag_comment)
         self.add_button.clicked.connect(self.add_to_list)
         self.remove_button.clicked.connect(self.remove_from_list)
         self.export_selected_button.clicked.connect(self.export_selected)
         self.export_all_button.clicked.connect(self.export_all)
-        
+
         # Add everything to details widget
         details_widget_layout.addWidget(self.comment_label)
         details_widget_layout.addWidget(self.info_label)
         details_widget_layout.addWidget(buttons_widget)
-        
-        details_content_layout.addWidget(details_widget)
-        details_layout.addWidget(details_content)
+
+        details_layout.addWidget(details_widget)
+        details_layout.addWidget(details_section)
         splitter.addWidget(details_container)
 
-        # Set initial sizes for the splitter (previously 60% table, 40% details)
-        # splitter.setSizes([700, 500])
-        splitter.setStretchFactor(0, 1)
+        # Set initial sizes for the splitter to make them equal
+        splitter.setSizes([self.width() // 2, self.width() // 2])  # Equal sizes
+        splitter.setStretchFactor(0, 1)  # Both sides stretch equally
         splitter.setStretchFactor(1, 1)
-        
+
         # Add splitter to main layout
         self.layout.addWidget(splitter)
-        
-        # Set layout stretch factors (remove previous stretch factors)
+
+        # Set layout stretch factors
         self.layout.setStretch(0, 0)  # Input container doesn't stretch
         self.layout.setStretch(1, 1)  # Splitter takes remaining space
 
@@ -264,26 +275,31 @@ class MainWindow(QMainWindow):
         # Only clear rows if not classifying a single comment
         if len(comments) > 1:
             self.output_table.setRowCount(0)
-        
+
         for comment in comments:
             prediction, confidence = classify_comment(comment)
             row_position = self.output_table.rowCount()
             self.output_table.insertRow(row_position)
-            
+
             # Create and set items with word wrap
             comment_item = QTableWidgetItem(comment)
             comment_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-            
+
             prediction_item = QTableWidgetItem(prediction)
             prediction_item.setTextAlignment(Qt.AlignCenter)
-            
+            # Apply color coding based on prediction
+            if prediction == "Cyberbullying":
+                prediction_item.setBackground(QColor(COLORS['bullying']))
+            else:
+                prediction_item.setBackground(QColor(COLORS['normal']))
+
             confidence_item = QTableWidgetItem(f"{confidence:.2%}")
             confidence_item.setTextAlignment(Qt.AlignCenter)
-            
+
             self.output_table.setItem(row_position, 0, comment_item)
             self.output_table.setItem(row_position, 1, prediction_item)
             self.output_table.setItem(row_position, 2, confidence_item)
-            
+
             # Adjust row height to content
             self.output_table.resizeRowToContents(row_position)
 
@@ -302,7 +318,7 @@ class MainWindow(QMainWindow):
         comment = self.output_table.item(row, 0).text()
         prediction = self.output_table.item(row, 1).text()
         confidence = self.output_table.item(row, 2).text()
-        
+
         # Show all operation buttons
         for btn in [self.flag_button, self.add_button, 
                    self.remove_button, self.export_selected_button]:
@@ -314,7 +330,7 @@ class MainWindow(QMainWindow):
 
         # Rules text
         rules_broken = "• Harassment\n• Hate Speech\n• Threatening Language" if prediction == "Cyberbullying" else "None"
-        
+
         # Set text contents
         self.comment_label.setText(f"Comment:\n{comment}")
         self.info_label.setText(
@@ -337,7 +353,7 @@ class MainWindow(QMainWindow):
         if not selected_items:
             display_message(self, "Error", "Please select a comment to add")
             return
-            
+
         comment = self.output_table.item(selected_items[0].row(), 0).text()
         if comment not in self.selected_comments:
             self.selected_comments.append(comment)
@@ -349,7 +365,7 @@ class MainWindow(QMainWindow):
         if not selected_items:
             display_message(self, "Error", "Please select a comment to remove")
             return
-            
+
         comment = self.output_table.item(selected_items[0].row(), 0).text()
         if comment in self.selected_comments:
             self.selected_comments.remove(comment)
@@ -360,7 +376,7 @@ class MainWindow(QMainWindow):
         if not self.selected_comments:
             display_message(self, "Error", "No comments selected for export")
             return
-            
+
         file_path, _ = QFileDialog.getSaveFileName(
             self, "Export Selected Comments", "", "CSV Files (*.csv)"
         )
@@ -376,7 +392,7 @@ class MainWindow(QMainWindow):
         if self.output_table.rowCount() == 0:
             display_message(self, "Error", "No comments to export")
             return
-            
+
         file_path, _ = QFileDialog.getSaveFileName(
             self, "Export All Comments", "", "CSV Files (*.csv)"
         )
@@ -385,12 +401,12 @@ class MainWindow(QMainWindow):
                 comments = []
                 predictions = []
                 confidences = []
-                
+
                 for row in range(self.output_table.rowCount()):
                     comments.append(self.output_table.item(row, 0).text())
                     predictions.append(self.output_table.item(row, 1).text())
                     confidences.append(self.output_table.item(row, 2).text())
-                
+
                 df = pd.DataFrame({
                     'Comment': comments,
                     'Prediction': predictions,
