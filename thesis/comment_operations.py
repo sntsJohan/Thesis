@@ -6,30 +6,43 @@ from utils import display_message
 def update_details_panel(window):
     selected_items = window.output_table.selectedItems()
     if not selected_items:
-        window.comment_label.setText("")
-        window.info_label.setText("")
-        for btn in [window.flag_button, window.add_button, 
-                    window.remove_button, window.export_selected_button]:
+        window.details_text_edit.clear()
+        for btn in [window.flag_button, window.add_remove_button, window.export_selected_button, window.export_all_button]:
             btn.hide()
         return
+
     row = selected_items[0].row()
     comment = window.output_table.item(row, 0).text()
     prediction = window.output_table.item(row, 1).text()
     confidence = window.output_table.item(row, 2).text()
-    for btn in [window.flag_button, window.add_button, 
-                window.remove_button, window.export_selected_button]:
+    commenter = "Placeholder Commenter"  # Placeholder for commenter
+
+    # Show all operation buttons
+    for btn in [window.flag_button, window.add_remove_button, window.export_selected_button, window.export_all_button]:
         btn.show()
-    window.add_button.setVisible(comment not in window.selected_comments)
-    window.remove_button.setVisible(comment in window.selected_comments)
-    rules_broken = ("• Harassment\n• Hate Speech\n• Threatening Language" 
-                    if prediction == "Cyberbullying" else "None")
-    window.comment_label.setText(f"Comment:\n{comment}")
-    window.info_label.setText(
-        f"Classification: {prediction}\n"
-        f"Confidence: {confidence}\n"
-        f"Status: {'In List' if comment in window.selected_comments else 'Not in List'}\n"
-        f"Rules Broken: {rules_broken}"
-    )
+
+    # Update add/remove button text based on list status
+    if comment in window.selected_comments:
+        window.add_remove_button.setText("➖ Remove from List")
+    else:
+        window.add_remove_button.setText("➕ Add to List")
+
+    # Rules text
+    rules_broken = ["Harassment", "Hate Speech", "Threatening Language"] if prediction == "Cyberbullying" else []
+
+    # Set text contents
+    window.details_text_edit.clear()
+    window.details_text_edit.append(f"<b>Comment:</b>\n{comment}\n")
+    window.details_text_edit.append(f"<b>Commenter:</b> {commenter}\n")
+    window.details_text_edit.append(f"<b>Classification:</b> {prediction}\n")
+    window.details_text_edit.append(f"<b>Confidence:</b> {confidence}\n")
+    window.details_text_edit.append(f"<b>Status:</b> {'In List' if comment in window.selected_comments else 'Not in List'}\n")
+    window.details_text_edit.append("<b>Rules Broken:</b>")
+
+    cursor = window.details_text_edit.textCursor()
+    for rule in rules_broken:
+        cursor.insertHtml(f'<span style="background-color: {COLORS["secondary"]}; border-radius: 4px; padding: 2px 4px; margin: 2px; display: inline-block;">{rule}</span> ')
+    window.details_text_edit.setTextCursor(cursor)
 
 def flag_comment(window):
     selected_items = window.output_table.selectedItems()
@@ -38,32 +51,26 @@ def flag_comment(window):
         return
     display_message(window, "Success", "Comment has been flagged")
 
-def add_to_list(window):
+def toggle_list_status(window):
     selected_items = window.output_table.selectedItems()
     if not selected_items:
-        display_message(window, "Error", "Please select a comment to add")
+        display_message(window, "Error", "Please select a comment to add or remove")
         return
-    comment = window.output_table.item(selected_items[0].row(), 0).text()
-    if comment not in window.selected_comments:
-        window.selected_comments.append(comment)
-        update_details_panel(window)
-        display_message(window, "Success", "Comment added to list")
 
-def remove_from_list(window):
-    selected_items = window.output_table.selectedItems()
-    if not selected_items:
-        display_message(window, "Error", "Please select a comment to remove")
-        return
     comment = window.output_table.item(selected_items[0].row(), 0).text()
     if comment in window.selected_comments:
         window.selected_comments.remove(comment)
-        update_details_panel(window)
         display_message(window, "Success", "Comment removed from list")
+    else:
+        window.selected_comments.append(comment)
+        display_message(window, "Success", "Comment added to list")
+    update_details_panel(window)
 
 def export_selected(window):
     if not window.selected_comments:
         display_message(window, "Error", "No comments selected for export")
         return
+
     file_path, _ = QFileDialog.getSaveFileName(window, "Export Selected Comments", "", "CSV Files (*.csv)")
     if file_path:
         try:
@@ -77,16 +84,19 @@ def export_all(window):
     if window.output_table.rowCount() == 0:
         display_message(window, "Error", "No comments to export")
         return
+
     file_path, _ = QFileDialog.getSaveFileName(window, "Export All Comments", "", "CSV Files (*.csv)")
     if file_path:
         try:
             comments = []
             predictions = []
             confidences = []
+
             for row in range(window.output_table.rowCount()):
                 comments.append(window.output_table.item(row, 0).text())
                 predictions.append(window.output_table.item(row, 1).text())
                 confidences.append(window.output_table.item(row, 2).text())
+
             df = pd.DataFrame({
                 'Comment': comments,
                 'Prediction': predictions,
