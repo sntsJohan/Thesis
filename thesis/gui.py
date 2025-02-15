@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import (QMainWindow, QVBoxLayout, QHBoxLayout, QLabel, 
                            QLineEdit, QPushButton, QTextEdit, QWidget, 
                            QFileDialog, QTableWidget, QTableWidgetItem, 
-                           QHeaderView, QSplitter, QFrame, QGridLayout, QComboBox, QSizePolicy)
+                           QHeaderView, QSplitter, QGridLayout, QComboBox, QSizePolicy)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor, QTextCursor  # Import QColor for color coding and QTextCursor for text formatting
 from scraper import scrape_comments
@@ -287,6 +287,11 @@ class MainWindow(QMainWindow):
             # Adjust row height to content
             self.output_table.resizeRowToContents(row_position)
 
+            # Change row color if comment is in the list
+            if comment in self.selected_comments:
+                for col in range(self.output_table.columnCount()):
+                    self.output_table.item(row_position, col).setBackground(QColor(COLORS['highlight']))
+
     def update_details_panel(self):
         selected_items = self.output_table.selectedItems()
         if not selected_items:
@@ -344,12 +349,19 @@ class MainWindow(QMainWindow):
             return
 
         comment = self.output_table.item(selected_items[0].row(), 0).text()
+        row = selected_items[0].row()
         if comment in self.selected_comments:
             self.selected_comments.remove(comment)
             display_message(self, "Success", "Comment removed from list")
+            # Reset row color
+            for col in range(self.output_table.columnCount()):
+                self.output_table.item(row, col).setBackground(QColor(COLORS['normal']))
         else:
             self.selected_comments.append(comment)
             display_message(self, "Success", "Comment added to list")
+            # Highlight row color
+            for col in range(self.output_table.columnCount()):
+                self.output_table.item(row, col).setBackground(QColor(COLORS['highlight']))
         self.update_details_panel()
 
     def export_selected(self):

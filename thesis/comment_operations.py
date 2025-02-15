@@ -41,7 +41,7 @@ def update_details_panel(window):
 
     cursor = window.details_text_edit.textCursor()
     for rule in rules_broken:
-        cursor.insertHtml(f'<span style="background-color: {COLORS["secondary"]}; border-radius: 4px; padding: 2px 4px; margin: 2px; display: inline-block;">{rule}</span> ')
+        cursor.insertHtml(f'<span style="background-color: ["secondary"]; border-radius: 4px; padding: 2px 4px; margin: 2px; display: inline-block;">{rule}</span> ')
     window.details_text_edit.setTextCursor(cursor)
 
 def flag_comment(window):

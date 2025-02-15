@@ -11,7 +11,8 @@ COLORS = {
     'text': '#FFFFFF',         # White text
     'text_secondary': '#B3B3B3',  # Light gray text
     'bullying': '#FF1744',     # Red
-    'normal': '#00E676'        # Green
+    'normal': '#00E676',       # Green
+    'highlight': '#C90076'     # New color for highlighting rows
 }
 
 # Fonts
