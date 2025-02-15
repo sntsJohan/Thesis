@@ -320,15 +320,15 @@ class MainWindow(QMainWindow):
 
         # Set text contents
         self.details_text_edit.clear()
-        self.details_text_edit.append(f"Comment:\n{comment}")
-        self.details_text_edit.append(f"Classification: {prediction}")
-        self.details_text_edit.append(f"Confidence: {confidence}")
-        self.details_text_edit.append(f"Status: {'In List' if comment in self.selected_comments else 'Not in List'}")
-        self.details_text_edit.append("Rules Broken:")
+        self.details_text_edit.append(f"<b>Comment:</b>\n{comment}\n")
+        self.details_text_edit.append(f"<b>Classification:</b> {prediction}\n")
+        self.details_text_edit.append(f"<b>Confidence:</b> {confidence}\n")
+        self.details_text_edit.append(f"<b>Status:</b> {'In List' if comment in self.selected_comments else 'Not in List'}\n")
+        self.details_text_edit.append("<b>Rules Broken:</b>")
 
         cursor = self.details_text_edit.textCursor()
         for rule in rules_broken:
-            cursor.insertHtml(f'<span style="background-color: {COLORS["secondary"]}; border-radius: 4px; padding: 2px 4px; margin: 2px;">{rule}</span> ')
+            cursor.insertHtml(f'<span style="background-color: {COLORS["secondary"]}; border-radius: 4px; padding: 2px 4px; margin: 2px; display: inline-block;">{rule}</span> ')
         self.details_text_edit.setTextCursor(cursor)
 
     def flag_comment(self):
