@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import (QMainWindow, QVBoxLayout, QHBoxLayout, QLabel,
                            QFileDialog, QTableWidget, QTableWidgetItem, 
                            QHeaderView, QSplitter, QFrame, QGridLayout, QComboBox, QSizePolicy)
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor  # Import QColor for color coding
+from PyQt5.QtGui import QColor, QTextCursor  # Import QColor for color coding and QTextCursor for text formatting
 from scraper import scrape_comments
 from model import classify_comment
 import pandas as pd
@@ -169,18 +169,11 @@ class MainWindow(QMainWindow):
         details_widget_layout = QVBoxLayout(details_widget)
         details_widget_layout.setSpacing(10)
 
-        # Add text labels for details
-        self.comment_label = QLabel()
-        self.comment_label.setWordWrap(True)
-        self.comment_label.setStyleSheet(f"color: {COLORS['text']};")
-
-        self.info_label = QLabel()
-        self.info_label.setWordWrap(True)
-        self.info_label.setStyleSheet(f"color: {COLORS['text']};")
-
-        # Add labels inside details_widget
-        details_widget_layout.addWidget(self.comment_label)
-        details_widget_layout.addWidget(self.info_label)
+        # Add text edit for details
+        self.details_text_edit = QTextEdit()
+        self.details_text_edit.setReadOnly(True)
+        self.details_text_edit.setStyleSheet(f"color: {COLORS['text']};")
+        details_widget_layout.addWidget(self.details_text_edit)
 
         # Add details_widget inside details_section
         details_section_layout.addWidget(details_widget)
@@ -215,13 +208,8 @@ class MainWindow(QMainWindow):
         self.export_selected_button.clicked.connect(self.export_selected)
         self.export_all_button.clicked.connect(self.export_all)
 
-        # Add everything to details widget
-        details_widget_layout.addWidget(self.comment_label)
-        details_widget_layout.addWidget(self.info_label)
-        details_widget_layout.addWidget(buttons_widget)
-
-        details_layout.addWidget(details_widget)
-        details_layout.addWidget(details_section)
+        # Add buttons widget to details layout
+        details_layout.addWidget(buttons_widget)
         splitter.addWidget(details_container)
 
         # Set initial sizes for the splitter to make them equal
@@ -306,8 +294,7 @@ class MainWindow(QMainWindow):
     def update_details_panel(self):
         selected_items = self.output_table.selectedItems()
         if not selected_items:
-            self.comment_label.setText("")
-            self.info_label.setText("")
+            self.details_text_edit.clear()
             # Hide operation buttons except export_all
             for btn in [self.flag_button, self.add_button, 
                        self.remove_button, self.export_selected_button]:
@@ -329,16 +316,20 @@ class MainWindow(QMainWindow):
         self.remove_button.setVisible(comment in self.selected_comments)
 
         # Rules text
-        rules_broken = "• Harassment\n• Hate Speech\n• Threatening Language" if prediction == "Cyberbullying" else "None"
+        rules_broken = ["Harassment", "Hate Speech", "Threatening Language"] if prediction == "Cyberbullying" else []
 
         # Set text contents
-        self.comment_label.setText(f"Comment:\n{comment}")
-        self.info_label.setText(
-            f"Classification: {prediction}\n"
-            f"Confidence: {confidence}\n"
-            f"Status: {'In List' if comment in self.selected_comments else 'Not in List'}\n"
-            f"Rules Broken: {rules_broken}"
-        )
+        self.details_text_edit.clear()
+        self.details_text_edit.append(f"Comment:\n{comment}")
+        self.details_text_edit.append(f"Classification: {prediction}")
+        self.details_text_edit.append(f"Confidence: {confidence}")
+        self.details_text_edit.append(f"Status: {'In List' if comment in self.selected_comments else 'Not in List'}")
+        self.details_text_edit.append("Rules Broken:")
+
+        cursor = self.details_text_edit.textCursor()
+        for rule in rules_broken:
+            cursor.insertHtml(f'<span style="background-color: {COLORS["secondary"]}; border-radius: 4px; padding: 2px 4px; margin: 2px;">{rule}</span> ')
+        self.details_text_edit.setTextCursor(cursor)
 
     def flag_comment(self):
         selected_items = self.output_table.selectedItems()
