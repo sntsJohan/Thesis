@@ -172,7 +172,7 @@ class MainWindow(QMainWindow):
         # Add text edit for details
         self.details_text_edit = QTextEdit()
         self.details_text_edit.setReadOnly(True)
-        self.details_text_edit.setStyleSheet(f"color: {COLORS['text']};")
+        self.details_text_edit.setStyleSheet(f"color: {COLORS['text']}; font-size: 14px;")  # Increase font size
         details_widget_layout.addWidget(self.details_text_edit)
 
         # Add details_widget inside details_section
@@ -183,28 +183,24 @@ class MainWindow(QMainWindow):
 
         # Operations Buttons inside details
         self.flag_button = QPushButton("🚩 Flag Comment")
-        self.add_button = QPushButton("➕ Add to List")
-        self.remove_button = QPushButton("➖ Remove from List")
+        self.add_remove_button = QPushButton("➕ Add to List")
         self.export_selected_button = QPushButton("💾 Export List")
         self.export_all_button = QPushButton("📤 Export All Results")
 
-        # Add buttons to a flow layout
+        # Add buttons to a grid layout
         buttons_widget = QWidget()
-        buttons_layout = QHBoxLayout(buttons_widget)
-        buttons_layout.setSpacing(5)
+        buttons_layout = QGridLayout(buttons_widget)
+        buttons_layout.setSpacing(10)  # Increase spacing between buttons
 
-        for btn in [self.flag_button, self.add_button, self.remove_button, 
-                   self.export_selected_button, self.export_all_button]:
+        for i, btn in enumerate([self.flag_button, self.add_remove_button, self.export_selected_button, self.export_all_button]):
             btn.setStyleSheet(BUTTON_STYLE)
             btn.setFont(FONTS['button'])
-            buttons_layout.addWidget(btn)
-            if btn != self.export_all_button:
-                btn.hide()  # Hide all buttons except export_all initially
+            buttons_layout.addWidget(btn, i // 2, i % 2)  # Arrange buttons in a 2x2 grid
+            btn.hide()  # Hide all buttons initially
 
         # Connect buttons
         self.flag_button.clicked.connect(self.flag_comment)
-        self.add_button.clicked.connect(self.add_to_list)
-        self.remove_button.clicked.connect(self.remove_from_list)
+        self.add_remove_button.clicked.connect(self.toggle_list_status)
         self.export_selected_button.clicked.connect(self.export_selected)
         self.export_all_button.clicked.connect(self.export_all)
 
@@ -295,9 +291,8 @@ class MainWindow(QMainWindow):
         selected_items = self.output_table.selectedItems()
         if not selected_items:
             self.details_text_edit.clear()
-            # Hide operation buttons except export_all
-            for btn in [self.flag_button, self.add_button, 
-                       self.remove_button, self.export_selected_button]:
+            # Hide operation buttons
+            for btn in [self.flag_button, self.add_remove_button, self.export_selected_button, self.export_all_button]:
                 btn.hide()
             return
 
@@ -305,15 +300,17 @@ class MainWindow(QMainWindow):
         comment = self.output_table.item(row, 0).text()
         prediction = self.output_table.item(row, 1).text()
         confidence = self.output_table.item(row, 2).text()
+        commenter = "Placeholder Commenter"  # Placeholder for commenter
 
         # Show all operation buttons
-        for btn in [self.flag_button, self.add_button, 
-                   self.remove_button, self.export_selected_button]:
+        for btn in [self.flag_button, self.add_remove_button, self.export_selected_button, self.export_all_button]:
             btn.show()
 
-        # Update add/remove button visibility based on list status
-        self.add_button.setVisible(comment not in self.selected_comments)
-        self.remove_button.setVisible(comment in self.selected_comments)
+        # Update add/remove button text based on list status
+        if comment in self.selected_comments:
+            self.add_remove_button.setText("➖ Remove from List")
+        else:
+            self.add_remove_button.setText("➕ Add to List")
 
         # Rules text
         rules_broken = ["Harassment", "Hate Speech", "Threatening Language"] if prediction == "Cyberbullying" else []
@@ -321,6 +318,7 @@ class MainWindow(QMainWindow):
         # Set text contents
         self.details_text_edit.clear()
         self.details_text_edit.append(f"<b>Comment:</b>\n{comment}\n")
+        self.details_text_edit.append(f"<b>Commenter:</b> {commenter}\n")
         self.details_text_edit.append(f"<b>Classification:</b> {prediction}\n")
         self.details_text_edit.append(f"<b>Confidence:</b> {confidence}\n")
         self.details_text_edit.append(f"<b>Status:</b> {'In List' if comment in self.selected_comments else 'Not in List'}\n")
@@ -339,29 +337,20 @@ class MainWindow(QMainWindow):
         # Implement flagging logic here
         display_message(self, "Success", "Comment has been flagged")
 
-    def add_to_list(self):
+    def toggle_list_status(self):
         selected_items = self.output_table.selectedItems()
         if not selected_items:
-            display_message(self, "Error", "Please select a comment to add")
-            return
-
-        comment = self.output_table.item(selected_items[0].row(), 0).text()
-        if comment not in self.selected_comments:
-            self.selected_comments.append(comment)
-            self.update_details_panel()
-            display_message(self, "Success", "Comment added to list")
-
-    def remove_from_list(self):
-        selected_items = self.output_table.selectedItems()
-        if not selected_items:
-            display_message(self, "Error", "Please select a comment to remove")
+            display_message(self, "Error", "Please select a comment to add or remove")
             return
 
         comment = self.output_table.item(selected_items[0].row(), 0).text()
         if comment in self.selected_comments:
             self.selected_comments.remove(comment)
-            self.update_details_panel()
             display_message(self, "Success", "Comment removed from list")
+        else:
+            self.selected_comments.append(comment)
+            display_message(self, "Success", "Comment added to list")
+        self.update_details_panel()
 
     def export_selected(self):
         if not self.selected_comments:
