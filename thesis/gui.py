@@ -38,8 +38,9 @@ class MainWindow(QMainWindow):
         get_started_button = QPushButton("Get Started")
         get_started_button.setFont(FONTS['button'])
         get_started_button.setStyleSheet(BUTTON_STYLE)
+        get_started_button.setFixedWidth(150)  
         get_started_button.clicked.connect(self.show_main_ui)
-        welcome_layout.addWidget(get_started_button)
+        welcome_layout.addWidget(get_started_button, alignment=Qt.AlignCenter)  # Center the button
 
         self.central_widget.addWidget(welcome_widget)
 
