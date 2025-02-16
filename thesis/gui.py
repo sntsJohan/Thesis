@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import (QMainWindow, QVBoxLayout, QHBoxLayout, QLabel,
                            QFileDialog, QTableWidget, QTableWidgetItem, 
                            QHeaderView, QSplitter, QGridLayout, QComboBox, QSizePolicy, QStackedWidget)
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor, QTextCursor  # Import QColor for color coding and QTextCursor for text formatting
+from PyQt5.QtGui import QColor, QTextCursor  
 from scraper import scrape_comments
 from model import classify_comment
 import pandas as pd
@@ -13,12 +13,12 @@ from styles import COLORS, FONTS, BUTTON_STYLE, INPUT_STYLE, TABLE_STYLE
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.selected_comments = []  # Store selected comments
+        self.selected_comments = []  
         self.setWindowTitle("Cyber Boolean")
-        self.setGeometry(100, 100, 1200, 700)  # Made window wider
+        self.setGeometry(100, 100, 1200, 700) 
         self.setStyleSheet(f"background-color: {COLORS['background']}; color: {COLORS['text']};")
 
-        self.central_widget = QStackedWidget()  # Use QStackedWidget to switch between screens
+        self.central_widget = QStackedWidget()  
         self.setCentralWidget(self.central_widget)
 
         self.init_welcome_screen()
@@ -40,7 +40,7 @@ class MainWindow(QMainWindow):
         get_started_button.setStyleSheet(BUTTON_STYLE)
         get_started_button.setFixedWidth(150)  
         get_started_button.clicked.connect(self.show_main_ui)
-        welcome_layout.addWidget(get_started_button, alignment=Qt.AlignCenter)  # Center the button
+        welcome_layout.addWidget(get_started_button, alignment=Qt.AlignCenter) 
 
         self.central_widget.addWidget(welcome_widget)
 
@@ -117,11 +117,11 @@ class MainWindow(QMainWindow):
         self.layout.addWidget(input_container)
 
         # Create a horizontal splitter for table and details
-        splitter = QSplitter(Qt.Horizontal)  # Horizontal splitter
+        splitter = QSplitter(Qt.Horizontal) 
 
         # Table Container
         table_container = QWidget()
-        table_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)  # Set size policy
+        table_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding) 
         table_layout = QVBoxLayout(table_container)
         table_layout.setContentsMargins(0, 0, 0, 0)
         
@@ -153,11 +153,10 @@ class MainWindow(QMainWindow):
 
         # Adjust column sizes to fill entire width
         header = self.output_table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Stretch)  # Comment column stretches
-        header.setSectionResizeMode(1, QHeaderView.Fixed)    # Prediction column fixed
-        header.setSectionResizeMode(2, QHeaderView.Fixed)    # Confidence column fixed
+        header.setSectionResizeMode(0, QHeaderView.Stretch) 
+        header.setSectionResizeMode(1, QHeaderView.Fixed)    
+        header.setSectionResizeMode(2, QHeaderView.Fixed)   
 
-        # Set fixed widths for the non-stretching columns
         self.output_table.setColumnWidth(1, 120)  # Prediction column
         self.output_table.setColumnWidth(2, 100)  # Confidence column
 
@@ -170,14 +169,14 @@ class MainWindow(QMainWindow):
 
         # Details Panel
         details_container = QWidget()
-        details_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)  # Set size policy
+        details_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)  
         details_layout = QVBoxLayout(details_container)
-        details_layout.setContentsMargins(10, 0, 0, 0)  # Add left margin
+        details_layout.setContentsMargins(10, 0, 0, 0) 
 
         # Create a container for title + details
         details_section = QWidget()
         details_section_layout = QVBoxLayout(details_section)
-        details_section_layout.setSpacing(5)  # Reduce spacing between title & details
+        details_section_layout.setSpacing(5) 
         details_section_layout.setContentsMargins(10, 10, 10, 10)
 
         # Add title inside the same section
@@ -201,7 +200,7 @@ class MainWindow(QMainWindow):
         # Add text edit for details
         self.details_text_edit = QTextEdit()
         self.details_text_edit.setReadOnly(True)
-        self.details_text_edit.setStyleSheet(f"color: {COLORS['text']}; font-size: 14px;")  # Increase font size
+        self.details_text_edit.setStyleSheet(f"color: {COLORS['text']}; font-size: 14px;") 
         details_widget_layout.addWidget(self.details_text_edit)
 
         # Add details_widget inside details_section
@@ -219,13 +218,13 @@ class MainWindow(QMainWindow):
         # Add buttons to a grid layout
         buttons_widget = QWidget()
         buttons_layout = QGridLayout(buttons_widget)
-        buttons_layout.setSpacing(10)  # Increase spacing between buttons
+        buttons_layout.setSpacing(10) 
 
         for i, btn in enumerate([self.flag_button, self.add_remove_button, self.export_selected_button, self.export_all_button]):
             btn.setStyleSheet(BUTTON_STYLE)
             btn.setFont(FONTS['button'])
-            buttons_layout.addWidget(btn, i // 2, i % 2)  # Arrange buttons in a 2x2 grid
-            btn.hide()  # Hide all buttons initially
+            buttons_layout.addWidget(btn, i // 2, i % 2)  
+            btn.hide()  
 
         # Connect buttons
         self.flag_button.clicked.connect(self.flag_comment)
@@ -238,16 +237,16 @@ class MainWindow(QMainWindow):
         splitter.addWidget(details_container)
 
         # Set initial sizes for the splitter to make them equal
-        splitter.setSizes([self.width() // 2, self.width() // 2])  # Equal sizes
-        splitter.setStretchFactor(0, 1)  # Both sides stretch equally
+        splitter.setSizes([self.width() // 2, self.width() // 2]) 
+        splitter.setStretchFactor(0, 1) 
         splitter.setStretchFactor(1, 1)
 
         # Add splitter to main layout
         self.layout.addWidget(splitter)
 
         # Set layout stretch factors
-        self.layout.setStretch(0, 0)  # Input container doesn't stretch
-        self.layout.setStretch(1, 1)  # Splitter takes remaining space
+        self.layout.setStretch(0, 0)  
+        self.layout.setStretch(1, 1) 
 
     def scrape_comments(self):
         url = self.url_input.text()
@@ -274,7 +273,7 @@ class MainWindow(QMainWindow):
             file_path = self.file_input.text()
             try:
                 df = pd.read_csv(file_path)
-                comments = df.iloc[:, 0].tolist()  # Assuming first column contains comments
+                comments = df.iloc[:, 0].tolist()
                 self.populate_table(comments)
             except Exception as e:
                 display_message(self, "Error", f"Error reading CSV file: {e}")
