@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import (QMainWindow, QVBoxLayout, QHBoxLayout, QLabel, 
                            QLineEdit, QPushButton, QTextEdit, QWidget, 
                            QFileDialog, QTableWidget, QTableWidgetItem, 
-                           QHeaderView, QSplitter, QGridLayout, QComboBox, QSizePolicy)
+                           QHeaderView, QSplitter, QGridLayout, QComboBox, QSizePolicy, QStackedWidget)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor, QTextCursor  # Import QColor for color coding and QTextCursor for text formatting
 from scraper import scrape_comments
@@ -18,10 +18,38 @@ class MainWindow(QMainWindow):
         self.setGeometry(100, 100, 1200, 700)  # Made window wider
         self.setStyleSheet(f"background-color: {COLORS['background']}; color: {COLORS['text']};")
 
-        self.central_widget = QWidget()
+        self.central_widget = QStackedWidget()  # Use QStackedWidget to switch between screens
         self.setCentralWidget(self.central_widget)
 
-        self.layout = QVBoxLayout(self.central_widget)
+        self.init_welcome_screen()
+        self.init_main_ui()
+
+    def init_welcome_screen(self):
+        welcome_widget = QWidget()
+        welcome_layout = QVBoxLayout(welcome_widget)
+        welcome_layout.setSpacing(20)
+        welcome_layout.setContentsMargins(20, 20, 20, 20)
+
+        welcome_label = QLabel("Welcome to Cyber Boolean")
+        welcome_label.setFont(FONTS['header'])
+        welcome_label.setAlignment(Qt.AlignCenter)
+        welcome_layout.addWidget(welcome_label)
+
+        get_started_button = QPushButton("Get Started")
+        get_started_button.setFont(FONTS['button'])
+        get_started_button.setStyleSheet(BUTTON_STYLE)
+        get_started_button.clicked.connect(self.show_main_ui)
+        welcome_layout.addWidget(get_started_button)
+
+        self.central_widget.addWidget(welcome_widget)
+
+    def show_main_ui(self):
+        self.central_widget.setCurrentIndex(1)
+
+    def init_main_ui(self):
+        main_widget = QWidget()
+        self.central_widget.addWidget(main_widget)
+        self.layout = QVBoxLayout(main_widget)
         self.layout.setSpacing(20)
         self.layout.setContentsMargins(20, 20, 20, 20)
         self.init_ui()
@@ -273,9 +301,9 @@ class MainWindow(QMainWindow):
             prediction_item.setTextAlignment(Qt.AlignCenter)
             # Apply color coding based on prediction
             if prediction == "Cyberbullying":
-                prediction_item.setBackground(QColor(COLORS['bullying']))
+                prediction_item.setForeground(QColor(COLORS['bullying']))
             else:
-                prediction_item.setBackground(QColor(COLORS['normal']))
+                prediction_item.setForeground(QColor(COLORS['normal']))
 
             confidence_item = QTableWidgetItem(f"{confidence:.2%}")
             confidence_item.setTextAlignment(Qt.AlignCenter)
