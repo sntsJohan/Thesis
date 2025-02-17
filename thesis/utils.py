@@ -6,3 +6,6 @@ def display_message(parent, title, message):
     msg_box.setText(message)
     msg_box.setIcon(QMessageBox.Information)
     msg_box.exec_()
+
+def classify_comments():
+    pass

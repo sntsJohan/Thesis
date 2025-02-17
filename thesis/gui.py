@@ -13,12 +13,12 @@ from styles import COLORS, FONTS, BUTTON_STYLE, INPUT_STYLE, TABLE_STYLE
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.selected_comments = []  # Store selected comments
+        self.selected_comments = [] 
         self.setWindowTitle("Cyber Boolean")
-        self.setGeometry(100, 100, 1200, 700)  # Made window wider
+        self.setGeometry(100, 100, 1200, 700)  
         self.setStyleSheet(f"background-color: {COLORS['background']}; color: {COLORS['text']};")
 
-        self.central_widget = QStackedWidget()  # Use QStackedWidget to switch between screens
+        self.central_widget = QStackedWidget()  
         self.setCentralWidget(self.central_widget)
 
         self.init_welcome_screen()
@@ -40,7 +40,7 @@ class MainWindow(QMainWindow):
         get_started_button.setStyleSheet(BUTTON_STYLE)
         get_started_button.setFixedWidth(150)  
         get_started_button.clicked.connect(self.show_main_ui)
-        welcome_layout.addWidget(get_started_button, alignment=Qt.AlignCenter)  # Center the button
+        welcome_layout.addWidget(get_started_button, alignment=Qt.AlignCenter) 
 
         self.central_widget.addWidget(welcome_widget)
 
@@ -72,11 +72,14 @@ class MainWindow(QMainWindow):
         url_layout = QHBoxLayout()
         self.url_label = QLabel("URL (Facebook Post):")
         self.url_label.setFont(FONTS['body'])
+        self.url_label.setFixedWidth(150)  
+        self.url_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)  
         self.url_input = QLineEdit()
         self.url_input.setStyleSheet(INPUT_STYLE)
-        self.scrape_button = QPushButton("Scrape Comments")
+        self.scrape_button = QPushButton("Scrape")  # Shortened text
         self.scrape_button.setFont(FONTS['button'])
         self.scrape_button.setStyleSheet(BUTTON_STYLE)
+        self.scrape_button.setFixedWidth(120)  # Smaller fixed width
         self.scrape_button.clicked.connect(self.scrape_comments)
         url_layout.addWidget(self.url_label)
         url_layout.addWidget(self.url_input)
@@ -87,6 +90,8 @@ class MainWindow(QMainWindow):
         file_layout = QHBoxLayout()
         self.file_label = QLabel("CSV File:")
         self.file_label.setFont(FONTS['body'])
+        self.file_label.setFixedWidth(150)  
+        self.file_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter) 
         self.file_input = QLineEdit()
         self.file_input.setStyleSheet(INPUT_STYLE)
         self.browse_button = QPushButton("Browse")
@@ -121,7 +126,7 @@ class MainWindow(QMainWindow):
 
         # Table Container
         table_container = QWidget()
-        table_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)  # Set size policy
+        table_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding) 
         table_layout = QVBoxLayout(table_container)
         table_layout.setContentsMargins(0, 0, 0, 0)
         
