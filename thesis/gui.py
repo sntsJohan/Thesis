@@ -274,11 +274,19 @@ class MainWindow(QMainWindow):
         buttons_layout = QGridLayout(buttons_widget)
         buttons_layout.setSpacing(10) 
 
+        disabled_style = BUTTON_STYLE + """
+            QPushButton:disabled {
+                opacity: 0.5;  /* Reduce opacity when disabled */
+                background-color: #555555;  /* Darker background when disabled */
+                color: #888888;  /* Lighter text when disabled */
+            }
+        """
+
         for i, btn in enumerate([self.flag_button, self.add_remove_button, self.export_selected_button, self.export_all_button]):
-            btn.setStyleSheet(BUTTON_STYLE)
+            btn.setStyleSheet(disabled_style)
             btn.setFont(FONTS['button'])
             buttons_layout.addWidget(btn, i // 2, i % 2)  
-            btn.hide()  
+            btn.setEnabled(False)  # Initially disabled
 
         # Connect buttons
         self.flag_button.clicked.connect(self.flag_comment)
@@ -377,10 +385,37 @@ class MainWindow(QMainWindow):
         selected_items = self.output_table.selectedItems()
         if not selected_items:
             self.details_text_edit.clear()
-            # Hide operation buttons
+            guidance_text = """
+                <div style='text-align: center; margin: 20px; padding: 20px; background-color: #2a2a2a; border-radius: 8px;'>
+                    <h3 style='color: #ffffff; margin-bottom: 10px;'>No Comment Selected</h3>
+                    <p style='color: #cccccc;'>Select a comment from the table above to:</p>
+                    <ul style='color: #cccccc; text-align: left;'>
+                        <li>View detailed information</li>
+                        <li>Flag inappropriate content</li>
+                        <li>Add to your export list</li>
+                        <li>Export analysis results</li>
+                    </ul>
+                </div>
+            """
+            self.details_text_edit.setHtml(guidance_text)
+            # Disable operation buttons
             for btn in [self.flag_button, self.add_remove_button, self.export_selected_button, self.export_all_button]:
-                btn.hide()
+                btn.setEnabled(False)
             return
+
+        # Enable buttons when a comment is selected
+        for btn in [self.flag_button, self.add_remove_button]:
+            btn.setEnabled(True)
+
+        # Enable export buttons based on conditions
+        self.export_selected_button.setEnabled(bool(self.selected_comments))
+        self.export_all_button.setEnabled(self.output_table.rowCount() > 0)
+
+        # Add hints if export buttons are disabled
+        if not self.selected_comments:
+            self.export_selected_button.setToolTip("Add comments to your list first")
+        else:
+            self.export_selected_button.setToolTip("")
 
         row = selected_items[0].row()
         comment = self.output_table.item(row, 0).text()
