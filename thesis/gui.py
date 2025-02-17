@@ -68,57 +68,106 @@ class MainWindow(QMainWindow):
         title.setAlignment(Qt.AlignCenter)
         input_layout.addWidget(title)
 
-        # URL Input
-        url_layout = QHBoxLayout()
-        self.url_label = QLabel("URL (Facebook Post):")
-        self.url_label.setFont(FONTS['body'])
-        self.url_label.setFixedWidth(150)  
-        self.url_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)  
+        # Create horizontal layout for input sections
+        input_sections = QHBoxLayout()
+        input_sections.setSpacing(20)  # Space between sections
+
+        # Facebook Post Section
+        fb_section = QWidget()
+        fb_section.setStyleSheet(f"""
+            QWidget {{
+                background-color: {COLORS['surface']};
+                border: 1px solid {COLORS['secondary']};
+                border-radius: 4px;
+                padding: 10px;
+            }}
+        """)
+        fb_layout = QVBoxLayout(fb_section)
+        fb_layout.setSpacing(10)
+        
+        fb_title = QLabel("Facebook Post")
+        fb_title.setFont(FONTS['header'])
+        fb_title.setAlignment(Qt.AlignCenter)
         self.url_input = QLineEdit()
         self.url_input.setStyleSheet(INPUT_STYLE)
-        self.scrape_button = QPushButton("Scrape")  # Shortened text
+        self.url_input.setPlaceholderText("Enter Facebook Post URL")
+        self.scrape_button = QPushButton("Scrape and Classify Comments")
         self.scrape_button.setFont(FONTS['button'])
         self.scrape_button.setStyleSheet(BUTTON_STYLE)
-        self.scrape_button.setFixedWidth(120)  # Smaller fixed width
         self.scrape_button.clicked.connect(self.scrape_comments)
-        url_layout.addWidget(self.url_label)
-        url_layout.addWidget(self.url_input)
-        url_layout.addWidget(self.scrape_button)
-        input_layout.addLayout(url_layout)
+        
+        fb_layout.addWidget(fb_title)
+        fb_layout.addWidget(self.url_input)
+        fb_layout.addWidget(self.scrape_button)
+        input_sections.addWidget(fb_section)
 
-        # File Input
-        file_layout = QHBoxLayout()
-        self.file_label = QLabel("CSV File:")
-        self.file_label.setFont(FONTS['body'])
-        self.file_label.setFixedWidth(150)  
-        self.file_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter) 
+        # CSV File Section
+        csv_section = QWidget()
+        csv_section.setStyleSheet(f"""
+            QWidget {{
+                background-color: {COLORS['surface']};
+                border: 1px solid {COLORS['secondary']};
+                border-radius: 4px;
+                padding: 10px;
+            }}
+        """)
+        csv_layout = QVBoxLayout(csv_section)
+        csv_layout.setSpacing(10)
+        
+        csv_title = QLabel("CSV File")
+        csv_title.setFont(FONTS['header'])
+        csv_title.setAlignment(Qt.AlignCenter)
         self.file_input = QLineEdit()
         self.file_input.setStyleSheet(INPUT_STYLE)
+        self.file_input.setPlaceholderText("Select CSV file")
+        browse_layout = QHBoxLayout()
         self.browse_button = QPushButton("Browse")
         self.browse_button.setFont(FONTS['button'])
         self.browse_button.setStyleSheet(BUTTON_STYLE)
         self.browse_button.clicked.connect(self.browse_file)
-        file_layout.addWidget(self.file_label)
-        file_layout.addWidget(self.file_input)
-        file_layout.addWidget(self.browse_button)
-        input_layout.addLayout(file_layout)
+        self.process_csv_button = QPushButton("Process CSV")
+        self.process_csv_button.setFont(FONTS['button'])
+        self.process_csv_button.setStyleSheet(BUTTON_STYLE)
+        self.process_csv_button.clicked.connect(self.process_csv)
+        browse_layout.addWidget(self.browse_button)
+        browse_layout.addWidget(self.process_csv_button)
+        
+        csv_layout.addWidget(csv_title)
+        csv_layout.addWidget(self.file_input)
+        csv_layout.addLayout(browse_layout)
+        input_sections.addWidget(csv_section)
 
-        # Text Input
-        self.text_label = QLabel("Enter Comment:")
-        self.text_label.setFont(FONTS['body'])
+        # Direct Input Section
+        direct_section = QWidget()
+        direct_section.setStyleSheet(f"""
+            QWidget {{
+                background-color: {COLORS['surface']};
+                border: 1px solid {COLORS['secondary']};
+                border-radius: 4px;
+                padding: 10px;
+            }}
+        """)
+        direct_layout = QVBoxLayout(direct_section)
+        direct_layout.setSpacing(10)
+        
+        direct_title = QLabel("Direct Input")
+        direct_title.setFont(FONTS['header'])
+        direct_title.setAlignment(Qt.AlignCenter)
         self.text_input = QLineEdit()
         self.text_input.setStyleSheet(INPUT_STYLE)
-        input_layout.addWidget(self.text_label)
-        input_layout.addWidget(self.text_input)
+        self.text_input.setPlaceholderText("Enter comment to analyze")
+        self.analyze_button = QPushButton("Analyze Comment")
+        self.analyze_button.setFont(FONTS['button'])
+        self.analyze_button.setStyleSheet(BUTTON_STYLE)
+        self.analyze_button.clicked.connect(self.analyze_single)
+        
+        direct_layout.addWidget(direct_title)
+        direct_layout.addWidget(self.text_input)
+        direct_layout.addWidget(self.analyze_button)
+        input_sections.addWidget(direct_section)
 
-        # Classify Button
-        self.classify_button = QPushButton("Classify Comment")
-        self.classify_button.setFont(FONTS['button'])
-        self.classify_button.setStyleSheet(BUTTON_STYLE)
-        self.classify_button.clicked.connect(self.classify_comments)
-        input_layout.addWidget(self.classify_button)
-
-        # Add input container to main layout
+        # Add input sections to main layout
+        input_layout.addLayout(input_sections)
         self.layout.addWidget(input_container)
 
         # Create a horizontal splitter for table and details
@@ -270,23 +319,22 @@ class MainWindow(QMainWindow):
         if file_path:
             self.file_input.setText(file_path)
 
-    def classify_comments(self):
-        # Prioritize URL input, then CSV file, then text input
-        if self.url_input.text():
-            self.scrape_comments()  # Reuse scrape_comments to populate table
-        elif self.file_input.text():
-            file_path = self.file_input.text()
-            try:
-                df = pd.read_csv(file_path)
-                comments = df.iloc[:, 0].tolist()
-                self.populate_table(comments)
-            except Exception as e:
-                display_message(self, "Error", f"Error reading CSV file: {e}")
-        elif self.text_input.text():
-            comment = self.text_input.text()
-            self.populate_table([comment])
-        else:
-            display_message(self, "Error", "Please enter a URL, select a CSV file, or enter a comment.")
+    def process_csv(self):
+        if not self.file_input.text():
+            display_message(self, "Error", "Please select a CSV file first")
+            return
+        try:
+            df = pd.read_csv(self.file_input.text())
+            comments = df.iloc[:, 0].tolist()
+            self.populate_table(comments)
+        except Exception as e:
+            display_message(self, "Error", f"Error reading CSV file: {e}")
+
+    def analyze_single(self):
+        if not self.text_input.text():
+            display_message(self, "Error", "Please enter a comment to analyze")
+            return
+        self.populate_table([self.text_input.text()])
 
     def populate_table(self, comments):
         # Only clear rows if not classifying a single comment
