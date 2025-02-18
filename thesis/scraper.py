@@ -3,7 +3,7 @@ import csv
 import time
 
 def scrape_comments(fb_url, save_path):
-    client = ApifyClient("apify_api_m239xguUYBUdLFaH8PgYlldVNG2hFh0q9kH2")
+    client = ApifyClient("apify_api_nOj5UhPGTgVo3VuHB3Udm0HVPZeMaM3Sl5sS")
     run_input = {
         "startUrls": [{"url": fb_url}],
         "resultsLimit": 100,
