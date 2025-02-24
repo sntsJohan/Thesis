@@ -28,20 +28,65 @@ class MainWindow(QMainWindow):
     def init_welcome_screen(self):
         welcome_widget = QWidget()
         welcome_layout = QVBoxLayout(welcome_widget)
-        welcome_layout.setSpacing(20)
-        welcome_layout.setContentsMargins(20, 20, 20, 20)
+        welcome_layout.setSpacing(30)
+        welcome_layout.setContentsMargins(40, 40, 40, 40)
 
+        # Add stretch at the top to push content down
+        welcome_layout.addStretch()
+
+        # Logo placeholder
+        logo_label = QLabel("🛡️")  # Placeholder emoji, replace with actual logo
+        logo_label.setFont(FONTS['header'])
+        logo_label.setStyleSheet("font-size: 64px;")
+        logo_label.setAlignment(Qt.AlignCenter)
+        welcome_layout.addWidget(logo_label)
+
+        # Welcome text
         welcome_label = QLabel("Welcome to Cyber Boolean")
         welcome_label.setFont(FONTS['header'])
+        welcome_label.setStyleSheet("font-size: 32px;")
         welcome_label.setAlignment(Qt.AlignCenter)
         welcome_layout.addWidget(welcome_label)
 
-        get_started_button = QPushButton("Get Started")
+        # Description
+        description = QLabel(
+            "Your advanced cyberbullying detection system.\n"
+            "Upload comments, analyze text, and identify potential cyberbullying content."
+        )
+        description.setFont(FONTS['body'])
+        description.setStyleSheet(f"color: {COLORS['text']}; font-size: 16px;")
+        description.setAlignment(Qt.AlignCenter)
+        description.setWordWrap(True)
+        welcome_layout.addWidget(description)
+
+        # Container for the button with custom styling
+        button_container = QWidget()
+        button_container.setStyleSheet(f"""
+            QWidget {{
+                background-color: {COLORS['surface']};
+                border-radius: 8px;
+                padding: 20px;
+            }}
+        """)
+        button_layout = QVBoxLayout(button_container)
+
+        get_started_button = QPushButton("Get Started →")
         get_started_button.setFont(FONTS['button'])
-        get_started_button.setStyleSheet(BUTTON_STYLE)
-        get_started_button.setFixedWidth(150)  
+        get_started_button.setStyleSheet(f"""
+            {BUTTON_STYLE}
+            QPushButton {{
+                padding: 15px 30px;
+                font-size: 16px;
+                min-width: 200px;
+            }}
+        """)
         get_started_button.clicked.connect(self.show_main_ui)
-        welcome_layout.addWidget(get_started_button, alignment=Qt.AlignCenter) 
+        button_layout.addWidget(get_started_button, alignment=Qt.AlignCenter)
+
+        welcome_layout.addWidget(button_container, alignment=Qt.AlignCenter)
+
+        # Add stretch at the bottom to balance the top stretch
+        welcome_layout.addStretch()
 
         self.central_widget.addWidget(welcome_widget)
 
