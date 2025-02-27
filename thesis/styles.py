@@ -77,48 +77,60 @@ TABLE_STYLE = f"""
         padding: 5px;
     }}
     QHeaderView::section {{
-        background-color: {COLORS['background']};
-        color: {COLORS['text']};
-        padding: 12px;
+        background-color: {COLORS['surface']};
+        color: {COLORS['text_secondary']};
+        padding: 14px;
         border: none;
         border-bottom: 2px solid {COLORS['border']};
         font-weight: bold;
-        font-size: 14px;
+        font-size: 13px;
     }}
     QTableWidget::item {{
-        padding: 8px;
+        padding: 12px;
+        border: none;
         border-bottom: 1px solid {COLORS['border']};
     }}
     QTableWidget::item:selected {{
         background-color: {COLORS['primary']};
         color: {COLORS['text']};
     }}
+    QTableWidget QTableCornerButton::section {{
+        background-color: {COLORS['surface']};
+        border: none;
+    }}
     QScrollBar:vertical {{
-        background: {COLORS['background']};
-        width: 14px;
-        margin: 0px;
-        border-radius: 7px;
+        background: transparent;
+        width: 8px;
+        margin: 2px;
     }}
     QScrollBar::handle:vertical {{
         background: {COLORS['secondary']};
-        border-radius: 7px;
+        border-radius: 4px;
         min-height: 30px;
     }}
     QScrollBar::handle:vertical:hover {{
         background: {COLORS['primary']};
     }}
     QScrollBar:horizontal {{
-        background: {COLORS['background']};
-        height: 14px;
-        margin: 0px;
-        border-radius: 7px;
+        background: transparent;
+        height: 8px;
+        margin: 2px;
     }}
     QScrollBar::handle:horizontal {{
         background: {COLORS['secondary']};
-        border-radius: 7px;
+        border-radius: 4px;
         min-width: 30px;
     }}
     QScrollBar::handle:horizontal:hover {{
         background: {COLORS['primary']};
+    }}
+    QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical,
+    QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
+        border: none;
+        background: none;
+    }}
+    QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical,
+    QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {{
+        background: none;
     }}
 """
