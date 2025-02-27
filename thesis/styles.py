@@ -2,17 +2,19 @@ from PyQt5.QtGui import QColor, QFont
 
 # Color scheme (Dark Mode)
 COLORS = {
-    'primary': '#2962FF',      # Blue
+    'primary': '#6200EE',      # More modern purple
     'secondary': '#424242',    # Dark gray
-    'background': '#1E1E1E',   # Dark background
-    'surface': '#2D2D2D',      # Slightly lighter dark
+    'background': '#121212',   # Darker background for better contrast
+    'surface': '#1E1E1E',      # Slightly lighter than background
     'error': '#CF6679',        # Soft red
     'success': '#03DAC6',      # Teal
     'text': '#FFFFFF',         # White text
     'text_secondary': '#B3B3B3',  # Light gray text
     'bullying': '#FF1744',     # Red
     'normal': '#00E676',       # Green
-    'highlight': '#C90076'     # New color for highlighting rows
+    'highlight': '#311B92',    # Deeper purple for highlighting
+    'border': '#303030',       # New color for borders
+    'hover': '#7B1FA2',        # New hover color for buttons
 }
 
 # Fonts
@@ -28,79 +30,95 @@ BUTTON_STYLE = f"""
         background-color: {COLORS['primary']};
         color: {COLORS['text']};
         border: none;
-        padding: 8px 16px;
-        border-radius: 4px;
-        min-width: 100px;
+        padding: 10px 20px;
+        border-radius: 6px;
+        min-width: 120px;
+        font-weight: 600;
+        transition: background-color 0.3s;
     }}
     QPushButton:hover {{
-        background-color: #3D74FF;
+        background-color: {COLORS['hover']};
     }}
     QPushButton:pressed {{
-        background-color: #2255D8;
+        background-color: {COLORS['secondary']};
+    }}
+    QPushButton:disabled {{
+        background-color: {COLORS['secondary']};
+        color: {COLORS['text_secondary']};
     }}
 """
 
 INPUT_STYLE = f"""
     QLineEdit {{
-        padding: 8px;
-        border: 1px solid {COLORS['secondary']};
-        border-radius: 4px;
+        padding: 12px;
+        border: 2px solid {COLORS['border']};
+        border-radius: 6px;
         background-color: {COLORS['surface']};
         color: {COLORS['text']};
+        font-size: 14px;
     }}
     QLineEdit:focus {{
         border: 2px solid {COLORS['primary']};
+        background-color: {COLORS['background']};
+    }}
+    QLineEdit::placeholder {{
+        color: {COLORS['text_secondary']};
     }}
 """
 
 TABLE_STYLE = f"""
     QTableWidget {{
-        border: 1px solid {COLORS['secondary']};
-        border-radius: 4px;
+        border: 1px solid {COLORS['border']};
+        border-radius: 8px;
         background-color: {COLORS['surface']};
         color: {COLORS['text']};
-        gridline-color: {COLORS['secondary']};
+        gridline-color: {COLORS['border']};
         outline: none;
+        padding: 5px;
     }}
     QHeaderView::section {{
         background-color: {COLORS['background']};
         color: {COLORS['text']};
-        padding: 8px;
+        padding: 12px;
         border: none;
-        border-right: 1px solid {COLORS['secondary']};
-        border-bottom: 1px solid {COLORS['secondary']};
+        border-bottom: 2px solid {COLORS['border']};
         font-weight: bold;
+        font-size: 14px;
     }}
     QTableWidget::item {{
-        padding: 5px;
+        padding: 8px;
+        border-bottom: 1px solid {COLORS['border']};
     }}
     QTableWidget::item:selected {{
         background-color: {COLORS['primary']};
+        color: {COLORS['text']};
     }}
     QScrollBar:vertical {{
-        background: {COLORS['surface']};
-        width: 12px;
+        background: {COLORS['background']};
+        width: 14px;
         margin: 0px;
+        border-radius: 7px;
     }}
     QScrollBar::handle:vertical {{
         background: {COLORS['secondary']};
-        border-radius: 6px;
-        min-height: 20px;
+        border-radius: 7px;
+        min-height: 30px;
     }}
-    QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
-        background: none;
+    QScrollBar::handle:vertical:hover {{
+        background: {COLORS['primary']};
     }}
     QScrollBar:horizontal {{
-        background: {COLORS['surface']};
-        height: 12px;
+        background: {COLORS['background']};
+        height: 14px;
         margin: 0px;
+        border-radius: 7px;
     }}
     QScrollBar::handle:horizontal {{
         background: {COLORS['secondary']};
-        border-radius: 6px;
-        min-width: 20px;
+        border-radius: 7px;
+        min-width: 30px;
     }}
-    QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
-        background: none;
+    QScrollBar::handle:horizontal:hover {{
+        background: {COLORS['primary']};
     }}
 """
