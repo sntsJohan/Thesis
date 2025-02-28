@@ -315,6 +315,18 @@ class MainWindow(QMainWindow):
                 temp_path = temp_file.name
             scrape_comments(url, temp_path)
             df = pd.read_csv(temp_path)
+            
+            # Store additional comment metadata as instance variables
+            self.comment_metadata = {}
+            for _, row in df.iterrows():
+                self.comment_metadata[row['Text']] = {
+                    'profile_name': row['Profile Name'],
+                    'profile_picture': row['Profile Picture'],
+                    'date': row['Date'],
+                    'likes_count': row['Likes Count'],
+                    'profile_id': row['Profile ID']
+                }
+            
             comments = df['Text'].tolist()
             self.populate_table(comments)
         except Exception as e:
@@ -392,7 +404,12 @@ class MainWindow(QMainWindow):
         comment = self.output_table.item(row, 0).text()
         prediction = self.output_table.item(row, 1).text()
         confidence = self.output_table.item(row, 2).text()
-        commenter = "Placeholder Commenter"  # Placeholder for commenter
+        
+        # Get metadata for the comment if available
+        metadata = self.comment_metadata.get(comment, {})
+        commenter = metadata.get('profile_name', 'Unknown')
+        date = metadata.get('date', 'Unknown')
+        likes = metadata.get('likes_count', 'Unknown')
 
         # Show all operation buttons
         for btn in [self.flag_button, self.add_remove_button, self.export_selected_button, self.export_all_button]:
@@ -407,10 +424,12 @@ class MainWindow(QMainWindow):
         # Rules text
         rules_broken = ["Harassment", "Hate Speech", "Threatening Language"] if prediction == "Cyberbullying" else []
 
-        # Set text contents
+        # Set text contents with additional metadata
         self.details_text_edit.clear()
         self.details_text_edit.append(f"<b>Comment:</b>\n{comment}\n")
         self.details_text_edit.append(f"<b>Commenter:</b> {commenter}\n")
+        self.details_text_edit.append(f"<b>Date:</b> {date}\n")
+        self.details_text_edit.append(f"<b>Likes:</b> {likes}\n")
         self.details_text_edit.append(f"<b>Classification:</b> {prediction}\n")
         self.details_text_edit.append(f"<b>Confidence:</b> {confidence}\n")
         self.details_text_edit.append(f"<b>Status:</b> {'In List' if comment in self.selected_comments else 'Not in List'}\n")

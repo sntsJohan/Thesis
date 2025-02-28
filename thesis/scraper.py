@@ -14,10 +14,15 @@ def scrape_comments(fb_url, save_path):
 
     with open(save_path, mode='w', newline='', encoding='utf-8') as file:
         writer = csv.writer(file)
-        writer.writerow(['Text', 'Profile Name'])
+        writer.writerow(['Text', 'Profile Name', 'Profile Picture', 'Date', 'Likes Count', 'Profile ID'])
         for item in client.dataset(run["defaultDatasetId"]).iterate_items():
-            text = item.get("text", "No text")
-            profile_name = item.get("profileName", "No profileName")
-            writer.writerow([text, profile_name])
+            writer.writerow([
+                item.get("text", "No text"),
+                item.get("profileName", "No profileName"),
+                item.get("profilePicture", ""),
+                item.get("date", ""),
+                item.get("likesCount", 0),
+                item.get("profileId", "")
+            ])
     return save_path
 
