@@ -3,14 +3,14 @@ import csv
 import time
 
 def scrape_comments(fb_url, save_path):
-    client = ApifyClient("apify_api_nOj5UhPGTgVo3VuHB3Udm0HVPZeMaM3Sl5sS")
+    client = ApifyClient("apify_api_KOPcEZ8wzyIM4n9c7MEkub7mz0HbHn1iV3Df")
     run_input = {
         "startUrls": [{"url": fb_url}],
         "resultsLimit": 1000,
         "includeNestedComments": False,
         "viewOption": "RANKED_UNFILTERED",
     }
-    run = client.actor("KoJrdxJCTtpon81KY").call(run_input=run_input)
+    run = client.actor("us5srxAYnsrkgUv2v").call(run_input=run_input)
 
     with open(save_path, mode='w', newline='', encoding='utf-8') as file:
         writer = csv.writer(file)
