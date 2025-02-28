@@ -78,10 +78,9 @@ TABLE_STYLE = f"""
     }}
     QHeaderView::section {{
         background-color: {COLORS['surface']};
-        color: {COLORS['text_secondary']};
+        color: {COLORS['text']};
+        border: 1px solid {COLORS['border']};
         padding: 14px;
-        border: none;
-        border-bottom: 2px solid {COLORS['border']};
         font-weight: bold;
         font-size: 13px;
     }}
@@ -96,7 +95,7 @@ TABLE_STYLE = f"""
     }}
     QTableWidget QTableCornerButton::section {{
         background-color: {COLORS['surface']};
-        border: none;
+        border: 1px solid {COLORS['border']};
     }}
     QScrollBar:vertical {{
         background: transparent;

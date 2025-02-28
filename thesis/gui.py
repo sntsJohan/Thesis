@@ -10,6 +10,7 @@ import pandas as pd
 from utils import display_message
 from styles import COLORS, FONTS, BUTTON_STYLE, INPUT_STYLE, TABLE_STYLE
 import tempfile
+import time
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -212,7 +213,7 @@ class MainWindow(QMainWindow):
         header.setSectionResizeMode(1, QHeaderView.Fixed)    
         header.setSectionResizeMode(2, QHeaderView.Fixed)   
 
-        self.output_table.setColumnWidth(1, 120)  # Prediction column
+        self.output_table.setColumnWidth(1, 150)  # Increased width for Prediction column
         self.output_table.setColumnWidth(2, 100)  # Confidence column
 
         self.output_table.setWordWrap(True)
@@ -352,7 +353,20 @@ class MainWindow(QMainWindow):
         if not self.text_input.text():
             display_message(self, "Error", "Please enter a comment to analyze")
             return
-        self.populate_table([self.text_input.text()])
+        
+        # Create metadata for the direct input comment
+        comment = self.text_input.text()
+        self.comment_metadata = {
+            comment: {
+                'profile_name': 'Direct Input',
+                'profile_picture': '',
+                'date': time.strftime('%Y-%m-%d %H:%M:%S'),  # Current time
+                'likes_count': 'N/A',
+                'profile_id': 'N/A'
+            }
+        }
+        
+        self.populate_table([comment])
 
     def populate_table(self, comments):
         # Only clear rows if not classifying a single comment
@@ -406,10 +420,17 @@ class MainWindow(QMainWindow):
         confidence = self.output_table.item(row, 2).text()
         
         # Get metadata for the comment if available
-        metadata = self.comment_metadata.get(comment, {})
-        commenter = metadata.get('profile_name', 'Unknown')
-        date = metadata.get('date', 'Unknown')
-        likes = metadata.get('likes_count', 'Unknown')
+        metadata = self.comment_metadata.get(comment, {
+            'profile_name': 'N/A',
+            'profile_picture': '',
+            'date': 'N/A',
+            'likes_count': 'N/A',
+            'profile_id': 'N/A'
+        })
+        
+        commenter = metadata.get('profile_name', 'N/A')
+        date = metadata.get('date', 'N/A')
+        likes = metadata.get('likes_count', 'N/A')
 
         # Show all operation buttons
         for btn in [self.flag_button, self.add_remove_button, self.export_selected_button, self.export_all_button]:
