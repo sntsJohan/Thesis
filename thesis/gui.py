@@ -1,8 +1,8 @@
 from PyQt5.QtWidgets import (QMainWindow, QVBoxLayout, QHBoxLayout, QLabel, 
                            QLineEdit, QPushButton, QTextEdit, QWidget, 
                            QFileDialog, QTableWidget, QTableWidgetItem, 
-                           QHeaderView, QSplitter, QGridLayout, QComboBox, QSizePolicy, QStackedWidget)
-from PyQt5.QtCore import Qt
+                           QHeaderView, QSplitter, QGridLayout, QComboBox, QSizePolicy, QStackedWidget, QFrame)
+from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QColor, QTextCursor  
 from scraper import scrape_comments
 from model import classify_comment
@@ -11,6 +11,54 @@ from utils import display_message
 from styles import COLORS, FONTS, BUTTON_STYLE, INPUT_STYLE, TABLE_STYLE
 import tempfile
 import time
+from PyQt5.QtWidgets import QApplication
+
+class LoadingOverlay(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedSize(parent.size())
+        self.setAttribute(Qt.WA_TransparentForMouseEvents)
+        
+        layout = QVBoxLayout(self)
+        layout.setAlignment(Qt.AlignCenter)
+        
+        # Create loading label with custom styling
+        self.loading_label = QLabel("Loading...")
+        self.loading_label.setStyleSheet(f"""
+            QLabel {{
+                color: {COLORS['text']};
+                background-color: {COLORS['surface']};
+                border: 2px solid {COLORS['primary']};
+                border-radius: 10px;
+                padding: 20px 40px;
+                font: {FONTS['header'].family()};
+                font-size: 16px;
+            }}
+        """)
+        layout.addWidget(self.loading_label)
+        
+        # Create animation dots
+        self.dots = 0
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.animate_dots)
+        self.timer.start(500)  # Update every 500ms
+        
+        # Semi-transparent background
+        self.setStyleSheet(f"""
+            LoadingOverlay {{
+                background-color: rgba(0, 0, 0, 150);
+            }}
+        """)
+        
+        self.hide()
+
+    def animate_dots(self):
+        self.dots = (self.dots + 1) % 4
+        self.loading_label.setText("Loading" + "." * self.dots)
+
+    def resizeEvent(self, event):
+        self.setFixedSize(self.parent().size())
+        super().resizeEvent(event)
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -25,6 +73,9 @@ class MainWindow(QMainWindow):
 
         self.init_welcome_screen()
         self.init_main_ui()
+
+        # Create loading overlay
+        self.loading_overlay = LoadingOverlay(self)
 
     def init_welcome_screen(self):
         welcome_widget = QWidget()
@@ -304,6 +355,12 @@ class MainWindow(QMainWindow):
         self.layout.setStretch(0, 0)  
         self.layout.setStretch(1, 1) 
 
+    def show_loading(self, show=True):
+        if show:
+            self.loading_overlay.show()
+        else:
+            self.loading_overlay.hide()
+
     def scrape_comments(self):
         url = self.url_input.text()
         if not url:
@@ -311,13 +368,16 @@ class MainWindow(QMainWindow):
             return
 
         try:
+            self.show_loading(True)  # Show loading overlay
+            QApplication.processEvents()  # Ensure the UI updates
+            
             from scraper import scrape_comments
             with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as temp_file:
                 temp_path = temp_file.name
             scrape_comments(url, temp_path)
             df = pd.read_csv(temp_path)
             
-            # Store additional comment metadata as instance variables
+            # Store additional comment metadata
             self.comment_metadata = {}
             for _, row in df.iterrows():
                 self.comment_metadata[row['Text']] = {
@@ -332,6 +392,8 @@ class MainWindow(QMainWindow):
             self.populate_table(comments)
         except Exception as e:
             display_message(self, "Error", f"Error scraping comments: {e}")
+        finally:
+            self.show_loading(False)  # Hide loading overlay
 
     def browse_file(self):
         file_path, _ = QFileDialog.getOpenFileName(self, "Open CSV File", "", "CSV Files (*.csv)")
@@ -343,30 +405,41 @@ class MainWindow(QMainWindow):
             display_message(self, "Error", "Please select a CSV file first")
             return
         try:
+            self.show_loading(True)  # Show loading overlay
+            QApplication.processEvents()  # Ensure the UI updates
+            
             df = pd.read_csv(self.file_input.text())
             comments = df.iloc[:, 0].tolist()
             self.populate_table(comments)
         except Exception as e:
             display_message(self, "Error", f"Error reading CSV file: {e}")
+        finally:
+            self.show_loading(False)  # Hide loading overlay
 
     def analyze_single(self):
         if not self.text_input.text():
             display_message(self, "Error", "Please enter a comment to analyze")
             return
         
-        # Create metadata for the direct input comment
-        comment = self.text_input.text()
-        self.comment_metadata = {
-            comment: {
-                'profile_name': 'Direct Input',
-                'profile_picture': '',
-                'date': time.strftime('%Y-%m-%d %H:%M:%S'),  # Current time
-                'likes_count': 'N/A',
-                'profile_id': 'N/A'
+        try:
+            self.show_loading(True)  # Show loading overlay
+            QApplication.processEvents()  # Ensure the UI updates
+            
+            # Create metadata for the direct input comment
+            comment = self.text_input.text()
+            self.comment_metadata = {
+                comment: {
+                    'profile_name': 'Direct Input',
+                    'profile_picture': '',
+                    'date': time.strftime('%Y-%m-%d %H:%M:%S'),
+                    'likes_count': 'N/A',
+                    'profile_id': 'N/A'
+                }
             }
-        }
-        
-        self.populate_table([comment])
+            
+            self.populate_table([comment])
+        finally:
+            self.show_loading(False)  # Hide loading overlay
 
     def populate_table(self, comments):
         # Only clear rows if not classifying a single comment
