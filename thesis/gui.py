@@ -80,20 +80,83 @@ class MainWindow(QMainWindow):
     def init_welcome_screen(self):
         welcome_widget = QWidget()
         welcome_layout = QVBoxLayout(welcome_widget)
-        welcome_layout.setSpacing(20)
-        welcome_layout.setContentsMargins(20, 20, 20, 20)
+        welcome_layout.setSpacing(0)  # We'll control spacing manually for better hierarchy
+        welcome_layout.setContentsMargins(40, 0, 40, 0)  # Remove top/bottom margins
 
-        welcome_label = QLabel("Welcome to Cyber Boolean")
-        welcome_label.setFont(FONTS['header'])
-        welcome_label.setAlignment(Qt.AlignCenter)
-        welcome_layout.addWidget(welcome_label)
+        # Add stretch to push content down from top
+        welcome_layout.addStretch(1)
 
+        # Header container for visual grouping
+        header_container = QWidget()
+        header_layout = QVBoxLayout(header_container)
+        header_layout.setSpacing(15)  # Consistent spacing between header elements
+        header_layout.setContentsMargins(0, 0, 0, 0)
+
+        # App title - largest and most prominent
+        title_label = QLabel("Cyber Boolean")
+        title_label.setFont(FONTS['header'])
+        title_label.setStyleSheet(f"""
+            font-size: 42px; 
+            color: {COLORS['primary']};
+            letter-spacing: 1px;
+        """)
+        title_label.setAlignment(Qt.AlignCenter)
+        header_layout.addWidget(title_label)
+
+        # Subtitle - secondary emphasis
+        subtitle_label = QLabel("Cyberbullying Detection System")
+        subtitle_label.setFont(FONTS['header'])
+        subtitle_label.setStyleSheet(f"""
+            font-size: 18px; 
+            color: {COLORS['text']};
+            letter-spacing: 0.5px;
+        """)
+        subtitle_label.setAlignment(Qt.AlignCenter)
+        header_layout.addWidget(subtitle_label)
+
+        welcome_layout.addWidget(header_container)
+        welcome_layout.addSpacing(40)  # Significant space between header and description
+
+        # Description - tertiary emphasis
+        description = QLabel(
+            "Detect and analyze cyberbullying in online comments"
+        )
+        description.setWordWrap(True)
+        description.setAlignment(Qt.AlignCenter)
+        description.setStyleSheet(f"""
+            font-size: 15px; 
+            color: {COLORS['secondary']};
+            letter-spacing: 0.2px;
+        """)
+        welcome_layout.addWidget(description)
+        
+        welcome_layout.addSpacing(50)  # Large space before call to action
+
+        # Get started button - clear call to action
         get_started_button = QPushButton("Get Started")
         get_started_button.setFont(FONTS['button'])
-        get_started_button.setStyleSheet(BUTTON_STYLE)
-        get_started_button.setFixedWidth(150)  
+        get_started_button.setStyleSheet(f"""
+            {BUTTON_STYLE}
+            padding: 12px 30px;
+            font-size: 16px;
+            border-radius: 6px;
+        """)
+        get_started_button.setFixedWidth(200)
         get_started_button.clicked.connect(self.show_main_ui)
-        welcome_layout.addWidget(get_started_button, alignment=Qt.AlignCenter) 
+        welcome_layout.addWidget(get_started_button, alignment=Qt.AlignCenter)
+
+        # Add stretch to push content up from bottom
+        welcome_layout.addStretch(1)
+        
+        # Version info - smallest emphasis
+        version_label = QLabel("Version 1.0")
+        version_label.setAlignment(Qt.AlignRight)
+        version_label.setStyleSheet(f"""
+            color: {COLORS['secondary']}; 
+            font-size: 12px;
+            opacity: 0.8;
+        """)
+        welcome_layout.addWidget(version_label)
 
         self.central_widget.addWidget(welcome_widget)
 
