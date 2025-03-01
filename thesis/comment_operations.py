@@ -7,7 +7,7 @@ def update_details_panel(window):
     selected_items = window.output_table.selectedItems()
     if not selected_items:
         window.details_text_edit.clear()
-        for btn in [window.flag_button, window.add_remove_button, window.export_selected_button, window.export_all_button]:
+        for btn in [window.show_summary_button, window.add_remove_button, window.export_selected_button, window.export_all_button]:
             btn.hide()
         return
 
@@ -18,7 +18,7 @@ def update_details_panel(window):
     commenter = "Placeholder Commenter"  # Placeholder for commenter
 
     # Show all operation buttons
-    for btn in [window.flag_button, window.add_remove_button, window.export_selected_button, window.export_all_button]:
+    for btn in [window.show_summary_button, window.add_remove_button, window.export_selected_button, window.export_all_button]:
         btn.show()
 
     # Update add/remove button text based on list status
@@ -44,12 +44,38 @@ def update_details_panel(window):
         cursor.insertHtml(f'<span style="background-color: ["secondary"]; border-radius: 4px; padding: 2px 4px; margin: 2px; display: inline-block;">{rule}</span> ')
     window.details_text_edit.setTextCursor(cursor)
 
-def flag_comment(window):
-    selected_items = window.output_table.selectedItems()
-    if not selected_items:
-        display_message(window, "Error", "Please select a comment to flag")
+def show_summary(window):
+    total_comments = window.output_table.rowCount()
+    if total_comments == 0:
+        display_message(window, "Error", "No comments to summarize")
         return
-    display_message(window, "Success", "Comment has been flagged")
+
+    cyberbullying_count = 0
+    normal_count = 0
+    high_confidence_count = 0  # Comments with confidence > 90%
+
+    for row in range(total_comments):
+        prediction = window.output_table.item(row, 1).text()
+        confidence = float(window.output_table.item(row, 2).text().strip('%')) / 100
+
+        if prediction == "Cyberbullying":
+            cyberbullying_count += 1
+        else:
+            normal_count += 1
+
+        if confidence > 0.9:
+            high_confidence_count += 1
+
+    summary_text = (
+        f"Analysis Summary:\n\n"
+        f"Total Comments Analyzed: {total_comments}\n"
+        f"Cyberbullying Comments: {cyberbullying_count} ({(cyberbullying_count/total_comments)*100:.1f}%)\n"
+        f"Normal Comments: {normal_count} ({(normal_count/total_comments)*100:.1f}%)\n"
+        f"High Confidence Predictions: {high_confidence_count} ({(high_confidence_count/total_comments)*100:.1f}%)\n"
+        f"Comments in Selection List: {len(window.selected_comments)}"
+    )
+
+    display_message(window, "Results Summary", summary_text)
 
 def toggle_list_status(window):
     selected_items = window.output_table.selectedItems()

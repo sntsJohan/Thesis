@@ -317,7 +317,7 @@ class MainWindow(QMainWindow):
         details_layout.addWidget(details_section)
 
         # Operations Buttons inside details
-        self.flag_button = QPushButton("🚩 Flag Comment")
+        self.show_summary_button = QPushButton("📊 Show Summary")
         self.add_remove_button = QPushButton("➕ Add to List")
         self.export_selected_button = QPushButton("💾 Export List")
         self.export_all_button = QPushButton("📤 Export All Results")
@@ -327,14 +327,14 @@ class MainWindow(QMainWindow):
         buttons_layout = QGridLayout(buttons_widget)
         buttons_layout.setSpacing(10) 
 
-        for i, btn in enumerate([self.flag_button, self.add_remove_button, self.export_selected_button, self.export_all_button]):
+        for i, btn in enumerate([self.show_summary_button, self.add_remove_button, self.export_selected_button, self.export_all_button]):
             btn.setStyleSheet(BUTTON_STYLE)
             btn.setFont(FONTS['button'])
             buttons_layout.addWidget(btn, i // 2, i % 2)  
             btn.hide()  
 
         # Connect buttons
-        self.flag_button.clicked.connect(self.flag_comment)
+        self.show_summary_button.clicked.connect(self.show_summary)
         self.add_remove_button.clicked.connect(self.toggle_list_status)
         self.export_selected_button.clicked.connect(self.export_selected)
         self.export_all_button.clicked.connect(self.export_all)
@@ -410,6 +410,18 @@ class MainWindow(QMainWindow):
             
             df = pd.read_csv(self.file_input.text())
             comments = df.iloc[:, 0].tolist()
+            
+            # Create metadata for CSV comments
+            self.comment_metadata = {}
+            for comment in comments:
+                self.comment_metadata[comment] = {
+                    'profile_name': 'CSV Input',
+                    'profile_picture': '',
+                    'date': time.strftime('%Y-%m-%d %H:%M:%S'),
+                    'likes_count': 'N/A',
+                    'profile_id': 'N/A'
+                }
+            
             self.populate_table(comments)
         except Exception as e:
             display_message(self, "Error", f"Error reading CSV file: {e}")
@@ -483,7 +495,7 @@ class MainWindow(QMainWindow):
         if not selected_items:
             self.details_text_edit.clear()
             # Hide operation buttons
-            for btn in [self.flag_button, self.add_remove_button, self.export_selected_button, self.export_all_button]:
+            for btn in [self.show_summary_button, self.add_remove_button, self.export_selected_button, self.export_all_button]:
                 btn.hide()
             return
 
@@ -506,7 +518,7 @@ class MainWindow(QMainWindow):
         likes = metadata.get('likes_count', 'N/A')
 
         # Show all operation buttons
-        for btn in [self.flag_button, self.add_remove_button, self.export_selected_button, self.export_all_button]:
+        for btn in [self.show_summary_button, self.add_remove_button, self.export_selected_button, self.export_all_button]:
             btn.show()
 
         # Update add/remove button text based on list status
@@ -534,13 +546,38 @@ class MainWindow(QMainWindow):
             cursor.insertHtml(f'<span style="background-color: {COLORS["secondary"]}; border-radius: 4px; padding: 2px 4px; margin: 2px; display: inline-block;">{rule}</span> ')
         self.details_text_edit.setTextCursor(cursor)
 
-    def flag_comment(self):
-        selected_items = self.output_table.selectedItems()
-        if not selected_items:
-            display_message(self, "Error", "Please select a comment to flag")
+    def show_summary(self):
+        total_comments = self.output_table.rowCount()
+        if total_comments == 0:
+            display_message(self, "Error", "No comments to summarize")
             return
-        # Implement flagging logic here
-        display_message(self, "Success", "Comment has been flagged")
+
+        cyberbullying_count = 0
+        normal_count = 0
+        high_confidence_count = 0  # Comments with confidence > 90%
+
+        for row in range(total_comments):
+            prediction = self.output_table.item(row, 1).text()
+            confidence = float(self.output_table.item(row, 2).text().strip('%')) / 100
+
+            if prediction == "Cyberbullying":
+                cyberbullying_count += 1
+            else:
+                normal_count += 1
+
+            if confidence > 0.9:
+                high_confidence_count += 1
+
+        summary_text = (
+            f"Analysis Summary:\n\n"
+            f"Total Comments Analyzed: {total_comments}\n"
+            f"Cyberbullying Comments: {cyberbullying_count} ({(cyberbullying_count/total_comments)*100:.1f}%)\n"
+            f"Normal Comments: {normal_count} ({(normal_count/total_comments)*100:.1f}%)\n"
+            f"High Confidence Predictions: {high_confidence_count} ({(high_confidence_count/total_comments)*100:.1f}%)\n"
+            f"Comments in Selection List: {len(self.selected_comments)}"
+        )
+
+        display_message(self, "Results Summary", summary_text)
 
     def toggle_list_status(self):
         selected_items = self.output_table.selectedItems()
