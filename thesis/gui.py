@@ -585,14 +585,31 @@ class MainWindow(QMainWindow):
 
     def populate_table(self, comments):
         """Create new tab and populate it based on input type"""
+        # Store the input source before clearing
+        file_path = self.file_input.text()
+        has_url = bool(self.url_input.text())
+
+        # Clear inputs after checking
+        self.file_input.clear()
+        self.url_input.clear()
+
         if len(comments) == 1:  # Direct input
             tab_name = "Direct Input"
-        elif self.file_input.text():  # CSV input
-            tab_name = f"CSV Input {self.csv_tab_count}"
-            self.csv_tab_count += 1
-        else:  # URL input
+        elif file_path:  # CSV input
+            # Get filename without path and extension
+            file_name = file_path.split('/')[-1].split('\\')[-1]  # Handle both Unix and Windows paths
+            file_name = file_name.rsplit('.', 1)[0]  # Remove extension
+            
+            # Truncate if longer than 20 characters
+            if len(file_name) > 20:
+                file_name = file_name[:17] + "..."
+            
+            tab_name = file_name
+        elif has_url:  # URL input
             tab_name = f"URL Input {self.url_tab_count}"
             self.url_tab_count += 1
+        else:  # Fallback case
+            tab_name = f"Analysis {self.csv_tab_count + self.url_tab_count}"
 
         # Create new tab and get its table
         table = self.create_empty_tab(tab_name)
