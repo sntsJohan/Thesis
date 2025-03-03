@@ -3,6 +3,10 @@ from PyQt5.QtCore import Qt
 import pandas as pd
 from utils import display_message
 import reportlab
+import matplotlib.pyplot as plt
+import io
+import datetime
+import os
 
 def update_details_panel(window):
     selected_items = window.output_table.selectedItems()
@@ -157,40 +161,77 @@ def generate_report(window):
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         from reportlab.lib.units import inch
         from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
-        from reportlab.pdfgen import canvas
+        import matplotlib.pyplot as plt
+        import io
         import datetime
         import os
 
-        # Ask user where to save the report
-        file_path, _ = QFileDialog.getSaveFileName(
-            window, "Save Report", "", "PDF Files (*.pdf)"
-        )
-        if not file_path:
-            return
-
-        # Collect data from table
-        data = []
+        # Collect data for charts
         total_rows = window.get_current_table().rowCount()
         cyberbullying_count = 0
         normal_count = 0
-        high_confidence_count = 0
+        confidence_ranges = {'90-100%': 0, '80-89%': 0, '70-79%': 0, '<70%': 0}
 
         for row in range(total_rows):
-            comment = window.get_current_table().item(row, 0).text()
             prediction = window.get_current_table().item(row, 1).text()
-            confidence = window.get_current_table().item(row, 2).text()
-            
-            data.append([comment, prediction, confidence])
+            confidence = float(window.get_current_table().item(row, 2).text().strip('%'))
             
             if prediction == "Cyberbullying":
                 cyberbullying_count += 1
             else:
                 normal_count += 1
                 
-            if float(confidence.strip('%')) > 90:
-                high_confidence_count += 1
+            # Categorize confidence
+            if confidence >= 90:
+                confidence_ranges['90-100%'] += 1
+            elif confidence >= 80:
+                confidence_ranges['80-89%'] += 1
+            elif confidence >= 70:
+                confidence_ranges['70-79%'] += 1
+            else:
+                confidence_ranges['<70%'] += 1
+
+        # Create classification distribution pie chart
+        plt.figure(figsize=(6, 4))
+        plt.pie([cyberbullying_count, normal_count], 
+                labels=['Cyberbullying', 'Normal'],
+                autopct='%1.1f%%',
+                colors=['#ff9999', '#66b3ff'])
+        plt.title('Comment Classification Distribution')
+        
+        # Save pie chart to memory
+        pie_chart_data = io.BytesIO()
+        plt.savefig(pie_chart_data, format='png', bbox_inches='tight')
+        pie_chart_data.seek(0)
+        plt.close()
+
+        # Create confidence distribution bar chart
+        plt.figure(figsize=(6, 4))
+        bars = plt.bar(confidence_ranges.keys(), confidence_ranges.values())
+        plt.title('Confidence Level Distribution')
+        plt.xlabel('Confidence Range')
+        plt.ylabel('Number of Comments')
+        
+        # Add value labels on top of bars
+        for bar in bars:
+            height = bar.get_height()
+            plt.text(bar.get_x() + bar.get_width()/2., height,
+                    f'{int(height)}',
+                    ha='center', va='bottom')
+        
+        # Save bar chart to memory
+        bar_chart_data = io.BytesIO()
+        plt.savefig(bar_chart_data, format='png', bbox_inches='tight')
+        bar_chart_data.seek(0)
+        plt.close()
 
         # Create the PDF document
+        file_path, _ = QFileDialog.getSaveFileName(
+            window, "Save Report", "", "PDF Files (*.pdf)"
+        )
+        if not file_path:
+            return
+
         doc = SimpleDocTemplate(
             file_path,
             pagesize=letter,
@@ -221,17 +262,36 @@ def generate_report(window):
         # Content elements
         elements = []
 
-        # Add logo
+        # Create header table for logo and title
         logo_path = "assets/logo.png"
         if os.path.exists(logo_path):
             img = Image(logo_path)
-            img.drawHeight = 1.2*inch
-            img.drawWidth = 1.2*inch
-            elements.append(img)
+            img.drawHeight = 0.8*inch
+            img.drawWidth = 0.8*inch
+            
+            header_data = [[img, Paragraph("Cyberbullying Detection Report", title_style)]]
+            header_table = Table(header_data, colWidths=[1*inch, 6*inch])
+            header_table.setStyle(TableStyle([
+                ('ALIGN', (0, 0), (0, 0), 'LEFT'),
+                ('ALIGN', (1, 0), (1, 0), 'CENTER'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE')
+            ]))
+            elements.append(header_table)
+        else:
+            elements.append(Paragraph("Cyberbullying Detection Report", title_style))
 
-        # Add title and date
-        elements.append(Paragraph("Cyberbullying Detection Report", title_style))
         elements.append(Paragraph(f"Generated on: {datetime.datetime.now().strftime('%B %d, %Y %H:%M:%S')}", styles['Normal']))
+        elements.append(Spacer(1, 20))
+
+        # Add charts section
+        elements.append(Paragraph("Visual Analysis", subtitle_style))
+        
+        # Add pie chart
+        elements.append(Image(pie_chart_data, width=4*inch, height=3*inch))
+        elements.append(Spacer(1, 10))
+        
+        # Add bar chart
+        elements.append(Image(bar_chart_data, width=4*inch, height=3*inch))
         elements.append(Spacer(1, 20))
 
         # Add summary section
@@ -240,7 +300,7 @@ def generate_report(window):
             ["Total Comments Analyzed:", str(total_rows)],
             ["Cyberbullying Comments:", f"{cyberbullying_count} ({(cyberbullying_count/total_rows)*100:.1f}%)"],
             ["Normal Comments:", f"{normal_count} ({(normal_count/total_rows)*100:.1f}%)"],
-            ["High Confidence Predictions:", f"{high_confidence_count} ({(high_confidence_count/total_rows)*100:.1f}%)"],
+            ["High Confidence Predictions:", f"{cyberbullying_count} ({(cyberbullying_count/total_rows)*100:.1f}%)"],
             ["Comments in Selection List:", str(len(window.selected_comments))]
         ]
         
@@ -260,7 +320,10 @@ def generate_report(window):
         elements.append(Paragraph("Detailed Analysis Results", subtitle_style))
         
         # Prepare table data with headers
-        table_data = [['Comment', 'Classification', 'Confidence']] + data
+        table_data = [['Comment', 'Classification', 'Confidence']] + [
+            [window.get_current_table().item(row, 0).text(), window.get_current_table().item(row, 1).text(), window.get_current_table().item(row, 2).text()]
+            for row in range(total_rows)
+        ]
         
         # Create the main results table
         results_table = Table(table_data, colWidths=[300, 100, 100])
