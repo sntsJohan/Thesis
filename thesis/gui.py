@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import (QMainWindow, QVBoxLayout, QHBoxLayout, QLabel, 
                            QLineEdit, QPushButton, QTextEdit, QWidget, 
                            QFileDialog, QTableWidget, QTableWidgetItem, 
-                           QHeaderView, QSplitter, QGridLayout, QComboBox, QSizePolicy, QStackedWidget, QFrame)
+                           QHeaderView, QSplitter, QGridLayout, QComboBox, QSizePolicy, QStackedWidget, QFrame, QTabWidget)
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QColor, QTextCursor  
 from scraper import scrape_comments
@@ -295,46 +295,44 @@ class MainWindow(QMainWindow):
         table_layout = QVBoxLayout(table_container)
         table_layout.setContentsMargins(0, 0, 0, 0)
         
+        # Add tab widget
+        self.tab_widget = QTabWidget()
+        self.tab_widget.setStyleSheet(f"""
+            QTabWidget::pane {{
+                border: 1px solid {COLORS['secondary']};
+                background: {COLORS['surface']};
+            }}
+            QTabBar::tab {{
+                background: {COLORS['surface']};
+                color: {COLORS['text']};
+                padding: 8px 12px;
+                border: 1px solid {COLORS['secondary']};
+                border-bottom: none;
+                border-top-left-radius: 4px;
+                border-top-right-radius: 4px;
+            }}
+            QTabBar::tab:selected {{
+                background: {COLORS['primary']};
+                color: {COLORS['text']};
+            }}
+        """)
 
-        # Header layout with table title and sort dropdown
-        sort_layout = QHBoxLayout()
-        table_title = QLabel("Comments")
-        table_title.setFont(FONTS['header'])
-        sort_layout.addWidget(table_title)
-        sort_layout.addStretch()
-        self.sort_combo = QComboBox()
-        self.sort_combo.addItems([
-            "Sort by Comments (A-Z)",
-            "Sort by Comments (Z-A)",
-            "Sort by Prediction (A-Z)",
-            "Sort by Confidence (High to Low)",
-            "Sort by Confidence (Low to High)"
-        ])
-        self.sort_combo.currentIndexChanged.connect(self.sort_table)
-        sort_layout.addWidget(self.sort_combo)
-        table_layout.addLayout(sort_layout)
+        # Initial message widget
+        self.initial_message = QLabel("No analysis performed yet.\nResults will appear here.")
+        self.initial_message.setAlignment(Qt.AlignCenter)
+        self.initial_message.setStyleSheet(f"color: {COLORS['text']}; font-size: 14px;")
+        table_layout.addWidget(self.initial_message)
+        
+        table_layout.addWidget(self.tab_widget)
+        self.tab_widget.hide()  # Hide tab widget initially
 
-        # Output Table
-        self.output_table = QTableWidget()
-        self.output_table.setSortingEnabled(True)
-        self.output_table.setStyleSheet(TABLE_STYLE)
-        self.output_table.setColumnCount(3)
-        self.output_table.setHorizontalHeaderLabels(["Comment", "Prediction", "Confidence"])
+        # Initialize tab counters
+        self.csv_tab_count = 1
+        self.url_tab_count = 1
+        
+        # Dictionary to store tab references
+        self.tabs = {}
 
-        # Adjust column sizes to fill entire width
-        header = self.output_table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Stretch) 
-        header.setSectionResizeMode(1, QHeaderView.Fixed)    
-        header.setSectionResizeMode(2, QHeaderView.Fixed)   
-
-        self.output_table.setColumnWidth(1, 150)  # Increased width for Prediction column
-        self.output_table.setColumnWidth(2, 100)  # Confidence column
-
-        self.output_table.setWordWrap(True)
-        self.output_table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.output_table.setSelectionMode(QTableWidget.SingleSelection)
-        self.output_table.itemSelectionChanged.connect(self.update_details_panel)
-        table_layout.addWidget(self.output_table)
         splitter.addWidget(table_container)
 
         # Details Panel
@@ -516,23 +514,99 @@ class MainWindow(QMainWindow):
         finally:
             self.show_loading(False)  # Hide loading overlay
 
-    def populate_table(self, comments):
-        # Only clear rows if not classifying a single comment
-        if len(comments) > 1:
-            self.output_table.setRowCount(0)
+    def create_empty_tab(self, tab_type):
+        """Create a new empty tab with table"""
+        if tab_type == "Direct Input" and "Direct Input" in self.tabs:
+            # Return existing Direct Input table
+            return self.tabs["Direct Input"].findChild(QTableWidget)
 
+        tab = QWidget()
+        tab_layout = QVBoxLayout(tab)
+        
+        # Header layout with table title and sort dropdown
+        sort_layout = QHBoxLayout()
+        table_title = QLabel("Comments")
+        table_title.setFont(FONTS['header'])
+        sort_layout.addWidget(table_title)
+        sort_layout.addStretch()
+        
+        sort_combo = QComboBox()
+        sort_combo.addItems([
+            "Sort by Comments (A-Z)",
+            "Sort by Comments (Z-A)",
+            "Sort by Prediction (A-Z)",
+            "Sort by Confidence (High to Low)",
+            "Sort by Confidence (Low to High)"
+        ])
+        sort_layout.addWidget(sort_combo)
+        tab_layout.addLayout(sort_layout)
+
+        # Create table
+        table = QTableWidget()
+        table.setSortingEnabled(True)
+        table.setStyleSheet(TABLE_STYLE)
+        table.setColumnCount(3)
+        table.setHorizontalHeaderLabels(["Comment", "Prediction", "Confidence"])
+
+        # Adjust column sizes
+        header = table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.Fixed)
+        header.setSectionResizeMode(2, QHeaderView.Fixed)
+        table.setColumnWidth(1, 150)
+        table.setColumnWidth(2, 100)
+
+        table.setWordWrap(True)
+        table.setSelectionBehavior(QTableWidget.SelectRows)
+        table.setSelectionMode(QTableWidget.SingleSelection)
+        table.itemSelectionChanged.connect(self.update_details_panel)
+        
+        # Store sort combo and connect it
+        table.sort_combo = sort_combo
+        sort_combo.currentIndexChanged.connect(lambda: self.sort_table(table))
+        
+        tab_layout.addWidget(table)
+        
+        # Add tab to widget and store reference
+        self.tab_widget.addTab(tab, tab_type)
+        self.tabs[tab_type] = tab
+        
+        # Show tab widget and hide initial message when first tab is created
+        if self.tab_widget.isHidden():
+            self.initial_message.hide()
+            self.tab_widget.show()
+            
+        return table
+
+    def get_current_table(self):
+        """Get the table widget from the current tab"""
+        current_tab = self.tab_widget.currentWidget()
+        return current_tab.findChild(QTableWidget)
+
+    def populate_table(self, comments):
+        """Create new tab and populate it based on input type"""
+        if len(comments) == 1:  # Direct input
+            tab_name = "Direct Input"
+        elif self.file_input.text():  # CSV input
+            tab_name = f"CSV Input {self.csv_tab_count}"
+            self.csv_tab_count += 1
+        else:  # URL input
+            tab_name = f"URL Input {self.url_tab_count}"
+            self.url_tab_count += 1
+
+        # Create new tab and get its table
+        table = self.create_empty_tab(tab_name)
+        
         for comment in comments:
             prediction, confidence = classify_comment(comment)
-            row_position = self.output_table.rowCount()
-            self.output_table.insertRow(row_position)
+            row_position = table.rowCount()
+            table.insertRow(row_position)
 
-            # Create and set items with word wrap
             comment_item = QTableWidgetItem(comment)
             comment_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
             prediction_item = QTableWidgetItem(prediction)
             prediction_item.setTextAlignment(Qt.AlignCenter)
-            # Apply color coding based on prediction
             if prediction == "Cyberbullying":
                 prediction_item.setForeground(QColor(COLORS['bullying']))
             else:
@@ -541,20 +615,37 @@ class MainWindow(QMainWindow):
             confidence_item = QTableWidgetItem(f"{confidence:.2%}")
             confidence_item.setTextAlignment(Qt.AlignCenter)
 
-            self.output_table.setItem(row_position, 0, comment_item)
-            self.output_table.setItem(row_position, 1, prediction_item)
-            self.output_table.setItem(row_position, 2, confidence_item)
+            table.setItem(row_position, 0, comment_item)
+            table.setItem(row_position, 1, prediction_item)
+            table.setItem(row_position, 2, confidence_item)
 
-            # Adjust row height to content
-            self.output_table.resizeRowToContents(row_position)
+            table.resizeRowToContents(row_position)
 
-            # Change row color if comment is in the list
             if comment in self.selected_comments:
-                for col in range(self.output_table.columnCount()):
-                    self.output_table.item(row_position, col).setBackground(QColor(COLORS['highlight']))
+                for col in range(table.columnCount()):
+                    table.item(row_position, col).setBackground(QColor(COLORS['highlight']))
+
+        # Switch to the new tab
+        tab_index = self.tab_widget.indexOf(self.tabs[tab_name])
+        self.tab_widget.setCurrentIndex(tab_index)
+
+    def sort_table(self, table):
+        """Sort the specified table based on its combo box selection"""
+        sort_combo = table.sort_combo
+        index = sort_combo.currentIndex()
+        if index == 0:
+            table.sortItems(0, Qt.AscendingOrder)
+        elif index == 1:
+            table.sortItems(0, Qt.DescendingOrder)
+        elif index == 2:
+            table.sortItems(1, Qt.AscendingOrder)
+        elif index == 3:
+            table.sortItems(2, Qt.DescendingOrder)
+        elif index == 4:
+            table.sortItems(2, Qt.AscendingOrder)
 
     def update_details_panel(self):
-        selected_items = self.output_table.selectedItems()
+        selected_items = self.get_current_table().selectedItems()
         if not selected_items:
             self.details_text_edit.clear()
             # Hide operation buttons
@@ -563,9 +654,9 @@ class MainWindow(QMainWindow):
             return
 
         row = selected_items[0].row()
-        comment = self.output_table.item(row, 0).text()
-        prediction = self.output_table.item(row, 1).text()
-        confidence = self.output_table.item(row, 2).text()
+        comment = self.get_current_table().item(row, 0).text()
+        prediction = self.get_current_table().item(row, 1).text()
+        confidence = self.get_current_table().item(row, 2).text()
         
         # Get metadata for the comment if available
         metadata = self.comment_metadata.get(comment, {
@@ -610,7 +701,7 @@ class MainWindow(QMainWindow):
         self.details_text_edit.setTextCursor(cursor)
 
     def show_summary(self):
-        total_comments = self.output_table.rowCount()
+        total_comments = self.get_current_table().rowCount()
         if total_comments == 0:
             display_message(self, "Error", "No comments to summarize")
             return
@@ -620,8 +711,8 @@ class MainWindow(QMainWindow):
         high_confidence_count = 0  # Comments with confidence > 90%
 
         for row in range(total_comments):
-            prediction = self.output_table.item(row, 1).text()
-            confidence = float(self.output_table.item(row, 2).text().strip('%')) / 100
+            prediction = self.get_current_table().item(row, 1).text()
+            confidence = float(self.get_current_table().item(row, 2).text().strip('%')) / 100
 
             if prediction == "Cyberbullying":
                 cyberbullying_count += 1
@@ -643,25 +734,25 @@ class MainWindow(QMainWindow):
         display_message(self, "Results Summary", summary_text)
 
     def toggle_list_status(self):
-        selected_items = self.output_table.selectedItems()
+        selected_items = self.get_current_table().selectedItems()
         if not selected_items:
             display_message(self, "Error", "Please select a comment to add or remove")
             return
 
-        comment = self.output_table.item(selected_items[0].row(), 0).text()
+        comment = self.get_current_table().item(selected_items[0].row(), 0).text()
         row = selected_items[0].row()
         if comment in self.selected_comments:
             self.selected_comments.remove(comment)
             display_message(self, "Success", "Comment removed from list")
             # Reset row color
-            for col in range(self.output_table.columnCount()):
-                self.output_table.item(row, col).setBackground(QColor(COLORS['normal']))
+            for col in range(self.get_current_table().columnCount()):
+                self.get_current_table().item(row, col).setBackground(QColor(COLORS['normal']))
         else:
             self.selected_comments.append(comment)
             display_message(self, "Success", "Comment added to list")
             # Highlight row color
-            for col in range(self.output_table.columnCount()):
-                self.output_table.item(row, col).setBackground(QColor(COLORS['highlight']))
+            for col in range(self.get_current_table().columnCount()):
+                self.get_current_table().item(row, col).setBackground(QColor(COLORS['highlight']))
         self.update_details_panel()
 
     def export_selected(self):
@@ -681,7 +772,7 @@ class MainWindow(QMainWindow):
                 display_message(self, "Error", f"Error exporting comments: {e}")
 
     def export_all(self):
-        if self.output_table.rowCount() == 0:
+        if self.get_current_table().rowCount() == 0:
             display_message(self, "Error", "No comments to export")
             return
 
@@ -694,10 +785,10 @@ class MainWindow(QMainWindow):
                 predictions = []
                 confidences = []
 
-                for row in range(self.output_table.rowCount()):
-                    comments.append(self.output_table.item(row, 0).text())
-                    predictions.append(self.output_table.item(row, 1).text())
-                    confidences.append(self.output_table.item(row, 2).text())
+                for row in range(self.get_current_table().rowCount()):
+                    comments.append(self.get_current_table().item(row, 0).text())
+                    predictions.append(self.get_current_table().item(row, 1).text())
+                    confidences.append(self.get_current_table().item(row, 2).text())
 
                 df = pd.DataFrame({
                     'Comment': comments,
@@ -709,15 +800,3 @@ class MainWindow(QMainWindow):
             except Exception as e:
                 display_message(self, "Error", f"Error exporting comments: {e}")
 
-    def sort_table(self):
-        index = self.sort_combo.currentIndex()
-        if index == 0:
-            self.output_table.sortItems(0, Qt.AscendingOrder)
-        elif index == 1:
-            self.output_table.sortItems(0, Qt.DescendingOrder)
-        elif index == 2:
-            self.output_table.sortItems(1, Qt.AscendingOrder)
-        elif index == 3:
-            self.output_table.sortItems(2, Qt.DescendingOrder)
-        elif index == 4:
-            self.output_table.sortItems(2, Qt.AscendingOrder)
