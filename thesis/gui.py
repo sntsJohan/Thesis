@@ -65,7 +65,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.selected_comments = [] 
         self.setWindowTitle("Cyber Boolean")
-        self.setGeometry(100, 100, 1200, 700)  
+        self.showFullScreen()  # Makes the window fullscreen
         self.setStyleSheet(f"background-color: {COLORS['background']}; color: {COLORS['text']};")
 
         self.central_widget = QStackedWidget()  
@@ -382,23 +382,33 @@ class MainWindow(QMainWindow):
         self.add_remove_button = QPushButton("➕ Add to List")
         self.export_selected_button = QPushButton("💾 Export List")
         self.export_all_button = QPushButton("📤 Export All Results")
+        self.generate_report_button = QPushButton("📝 Generate Report")
 
         # Add buttons to a grid layout
         buttons_widget = QWidget()
         buttons_layout = QGridLayout(buttons_widget)
         buttons_layout.setSpacing(10) 
 
-        for i, btn in enumerate([self.show_summary_button, self.add_remove_button, self.export_selected_button, self.export_all_button]):
+        buttons = [
+            self.show_summary_button, 
+            self.add_remove_button, 
+            self.export_selected_button, 
+            self.export_all_button,
+            self.generate_report_button
+        ]
+        
+        for i, btn in enumerate(buttons):
             btn.setStyleSheet(BUTTON_STYLE)
             btn.setFont(FONTS['button'])
-            buttons_layout.addWidget(btn, i // 2, i % 2)  
-            btn.hide()  
+            buttons_layout.addWidget(btn, i // 2, i % 2)
+            btn.hide()
 
         # Connect buttons
         self.show_summary_button.clicked.connect(self.show_summary)
         self.add_remove_button.clicked.connect(self.toggle_list_status)
         self.export_selected_button.clicked.connect(self.export_selected)
         self.export_all_button.clicked.connect(self.export_all)
+        self.generate_report_button.clicked.connect(self.generate_report)
 
         # Add buttons widget to details layout
         details_layout.addWidget(buttons_widget)
@@ -696,7 +706,7 @@ class MainWindow(QMainWindow):
         if not selected_items:
             self.details_text_edit.clear()
             # Hide operation buttons
-            for btn in [self.show_summary_button, self.add_remove_button, self.export_selected_button, self.export_all_button]:
+            for btn in [self.show_summary_button, self.add_remove_button, self.export_selected_button, self.export_all_button, self.generate_report_button]:
                 btn.hide()
             return
 
@@ -719,7 +729,9 @@ class MainWindow(QMainWindow):
         likes = metadata.get('likes_count', 'N/A')
 
         # Show all operation buttons
-        for btn in [self.show_summary_button, self.add_remove_button, self.export_selected_button, self.export_all_button]:
+        for btn in [self.show_summary_button, self.add_remove_button, 
+                   self.export_selected_button, self.export_all_button,
+                   self.generate_report_button]:
             btn.show()
 
         # Update add/remove button text based on list status
@@ -846,4 +858,8 @@ class MainWindow(QMainWindow):
                 display_message(self, "Success", "All comments exported successfully")
             except Exception as e:
                 display_message(self, "Error", f"Error exporting comments: {e}")
+
+    def generate_report(self):
+        # Implementation of generate_report method
+        pass
 
