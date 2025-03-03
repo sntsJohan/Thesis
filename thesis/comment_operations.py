@@ -166,15 +166,21 @@ def generate_report(window):
         import datetime
         import os
 
-        # Collect data for charts
+        # Collect data for charts and table
+        data = []
         total_rows = window.get_current_table().rowCount()
         cyberbullying_count = 0
         normal_count = 0
         confidence_ranges = {'90-100%': 0, '80-89%': 0, '70-79%': 0, '<70%': 0}
 
         for row in range(total_rows):
+            comment = window.get_current_table().item(row, 0).text()
             prediction = window.get_current_table().item(row, 1).text()
-            confidence = float(window.get_current_table().item(row, 2).text().strip('%'))
+            confidence = window.get_current_table().item(row, 2).text()
+            confidence_value = float(confidence.strip('%'))
+            
+            # Store data for table
+            data.append([comment, prediction, confidence])
             
             if prediction == "Cyberbullying":
                 cyberbullying_count += 1
@@ -182,11 +188,11 @@ def generate_report(window):
                 normal_count += 1
                 
             # Categorize confidence
-            if confidence >= 90:
+            if confidence_value >= 90:
                 confidence_ranges['90-100%'] += 1
-            elif confidence >= 80:
+            elif confidence_value >= 80:
                 confidence_ranges['80-89%'] += 1
-            elif confidence >= 70:
+            elif confidence_value >= 70:
                 confidence_ranges['70-79%'] += 1
             else:
                 confidence_ranges['<70%'] += 1
@@ -321,12 +327,12 @@ def generate_report(window):
         
         # Prepare table data with headers
         table_data = [['Comment', 'Classification', 'Confidence']] + [
-            [window.get_current_table().item(row, 0).text(), window.get_current_table().item(row, 1).text(), window.get_current_table().item(row, 2).text()]
-            for row in range(total_rows)
+            [Paragraph(comment, styles['Normal']), prediction, confidence]  # Wrap comments in Paragraph
+            for comment, prediction, confidence in data
         ]
         
-        # Create the main results table
-        results_table = Table(table_data, colWidths=[300, 100, 100])
+        # Create the main results table with adjusted widths
+        results_table = Table(table_data, colWidths=[400, 80, 80])  # Wider comment column
         results_table.setStyle(TableStyle([
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),  # Header row
             ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),      # Data rows
@@ -334,8 +340,10 @@ def generate_report(window):
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#e8eaf6')),  # Header background
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#1a237e')),   # Header text
             ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),  # Align text to top
             ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),
             ('PADDING', (0, 0), (-1, -1), 6),
+            ('WORDWRAP', (0, 0), (-1, -1), True),  # Enable word wrapping
         ]))
         elements.append(results_table)
 
