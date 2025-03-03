@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import (QMainWindow, QVBoxLayout, QHBoxLayout, QLabel, 
                            QLineEdit, QPushButton, QTextEdit, QWidget, 
                            QFileDialog, QTableWidget, QTableWidgetItem, 
-                           QHeaderView, QSplitter, QGridLayout, QComboBox, QSizePolicy, QStackedWidget, QFrame, QTabWidget)
+                           QHeaderView, QSplitter, QGridLayout, QComboBox, QSizePolicy, QStackedWidget, QFrame, QTabWidget, QMessageBox)
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QColor, QTextCursor  
 from scraper import scrape_comments
@@ -516,9 +516,9 @@ class MainWindow(QMainWindow):
 
     def create_empty_tab(self, tab_type):
         """Create a new empty tab with table"""
-        if tab_type == "Direct Input" and "Direct Input" in self.tabs:
-            # Return existing Direct Input table
-            return self.tabs["Direct Input"].findChild(QTableWidget)
+        if tab_type == "Direct Inputs" and "Direct Inputs" in self.tabs:
+            # Return existing Direct Inputs table
+            return self.tabs["Direct Inputs"].findChild(QTableWidget)
 
         tab = QWidget()
         tab_layout = QVBoxLayout(tab)
@@ -587,14 +587,14 @@ class MainWindow(QMainWindow):
         """Create new tab and populate it based on input type"""
         # Store the input source before clearing
         file_path = self.file_input.text()
-        has_url = bool(self.url_input.text())
+        url = self.url_input.text()
 
         # Clear inputs after checking
         self.file_input.clear()
         self.url_input.clear()
 
         if len(comments) == 1:  # Direct input
-            tab_name = "Direct Input"
+            tab_name = "Direct Inputs"
         elif file_path:  # CSV input
             # Get filename without path and extension
             file_name = file_path.split('/')[-1].split('\\')[-1]  # Handle both Unix and Windows paths
@@ -604,9 +604,39 @@ class MainWindow(QMainWindow):
             if len(file_name) > 20:
                 file_name = file_name[:17] + "..."
             
-            tab_name = file_name
-        elif has_url:  # URL input
-            tab_name = f"URL Input {self.url_tab_count}"
+            # Check if tab with this name already exists
+            if file_name in self.tabs:
+                msg = QMessageBox()
+                msg.setIcon(QMessageBox.Question)
+                msg.setWindowTitle("Duplicate File Name")
+                msg.setText(f"A tab with name '{file_name}' already exists.")
+                msg.setInformativeText("Do you want to replace the existing tab or create a new one?")
+                replace_button = msg.addButton("Replace", QMessageBox.YesRole)
+                new_tab_button = msg.addButton("Create New", QMessageBox.NoRole)
+                msg.addButton("Cancel", QMessageBox.RejectRole)
+                
+                msg.exec_()
+                
+                if msg.clickedButton() == replace_button:
+                    # Remove existing tab
+                    old_tab_index = self.tab_widget.indexOf(self.tabs[file_name])
+                    self.tab_widget.removeTab(old_tab_index)
+                    del self.tabs[file_name]
+                    tab_name = file_name
+                elif msg.clickedButton() == new_tab_button:
+                    # Find next available number
+                    counter = 2
+                    while f"{file_name} ({counter})" in self.tabs:
+                        counter += 1
+                    tab_name = f"{file_name} ({counter})"
+                else:
+                    # User clicked Cancel
+                    return
+            else:
+                tab_name = file_name
+                
+        elif url:  # Facebook post
+            tab_name = f"Facebook Post {self.url_tab_count}"
             self.url_tab_count += 1
         else:  # Fallback case
             tab_name = f"Analysis {self.csv_tab_count + self.url_tab_count}"
