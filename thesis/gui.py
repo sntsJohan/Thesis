@@ -12,6 +12,7 @@ from styles import COLORS, FONTS, BUTTON_STYLE, INPUT_STYLE, TABLE_STYLE
 import tempfile
 import time
 from PyQt5.QtWidgets import QApplication
+from comment_operations import generate_report
 
 class LoadingOverlay(QWidget):
     def __init__(self, parent=None):
@@ -408,7 +409,7 @@ class MainWindow(QMainWindow):
         self.add_remove_button.clicked.connect(self.toggle_list_status)
         self.export_selected_button.clicked.connect(self.export_selected)
         self.export_all_button.clicked.connect(self.export_all)
-        self.generate_report_button.clicked.connect(self.generate_report)
+        self.generate_report_button.clicked.connect(lambda: generate_report(self))
 
         # Add buttons widget to details layout
         details_layout.addWidget(buttons_widget)
@@ -858,8 +859,4 @@ class MainWindow(QMainWindow):
                 display_message(self, "Success", "All comments exported successfully")
             except Exception as e:
                 display_message(self, "Error", f"Error exporting comments: {e}")
-
-    def generate_report(self):
-        # Implementation of generate_report method
-        pass
 

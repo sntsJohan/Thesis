@@ -2,6 +2,7 @@ from PyQt5.QtWidgets import QFileDialog, QTableWidgetItem
 from PyQt5.QtCore import Qt
 import pandas as pd
 from utils import display_message
+import reportlab
 
 def update_details_panel(window):
     selected_items = window.output_table.selectedItems()
@@ -144,3 +145,141 @@ def sort_table(window, index):
         window.output_table.sortItems(2, Qt.DescendingOrder)
     elif index == 4:
         window.output_table.sortItems(2, Qt.AscendingOrder)
+
+def generate_report(window):
+    if window.get_current_table().rowCount() == 0:
+        display_message(window, "Error", "No data available to generate report")
+        return
+
+    try:
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import letter
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.units import inch
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+        from reportlab.pdfgen import canvas
+        import datetime
+        import os
+
+        # Ask user where to save the report
+        file_path, _ = QFileDialog.getSaveFileName(
+            window, "Save Report", "", "PDF Files (*.pdf)"
+        )
+        if not file_path:
+            return
+
+        # Collect data from table
+        data = []
+        total_rows = window.get_current_table().rowCount()
+        cyberbullying_count = 0
+        normal_count = 0
+        high_confidence_count = 0
+
+        for row in range(total_rows):
+            comment = window.get_current_table().item(row, 0).text()
+            prediction = window.get_current_table().item(row, 1).text()
+            confidence = window.get_current_table().item(row, 2).text()
+            
+            data.append([comment, prediction, confidence])
+            
+            if prediction == "Cyberbullying":
+                cyberbullying_count += 1
+            else:
+                normal_count += 1
+                
+            if float(confidence.strip('%')) > 90:
+                high_confidence_count += 1
+
+        # Create the PDF document
+        doc = SimpleDocTemplate(
+            file_path,
+            pagesize=letter,
+            rightMargin=72,
+            leftMargin=72,
+            topMargin=72,
+            bottomMargin=72
+        )
+
+        # Styles
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=24,
+            spaceAfter=30,
+            textColor=colors.HexColor('#1a237e')
+        )
+        
+        subtitle_style = ParagraphStyle(
+            'CustomSubtitle',
+            parent=styles['Heading2'],
+            fontSize=16,
+            spaceAfter=20,
+            textColor=colors.HexColor('#303f9f')
+        )
+
+        # Content elements
+        elements = []
+
+        # Add logo
+        logo_path = "assets/logo.png"
+        if os.path.exists(logo_path):
+            img = Image(logo_path)
+            img.drawHeight = 1.2*inch
+            img.drawWidth = 1.2*inch
+            elements.append(img)
+
+        # Add title and date
+        elements.append(Paragraph("Cyberbullying Detection Report", title_style))
+        elements.append(Paragraph(f"Generated on: {datetime.datetime.now().strftime('%B %d, %Y %H:%M:%S')}", styles['Normal']))
+        elements.append(Spacer(1, 20))
+
+        # Add summary section
+        elements.append(Paragraph("Analysis Summary", subtitle_style))
+        summary_data = [
+            ["Total Comments Analyzed:", str(total_rows)],
+            ["Cyberbullying Comments:", f"{cyberbullying_count} ({(cyberbullying_count/total_rows)*100:.1f}%)"],
+            ["Normal Comments:", f"{normal_count} ({(normal_count/total_rows)*100:.1f}%)"],
+            ["High Confidence Predictions:", f"{high_confidence_count} ({(high_confidence_count/total_rows)*100:.1f}%)"],
+            ["Comments in Selection List:", str(len(window.selected_comments))]
+        ]
+        
+        summary_table = Table(summary_data, colWidths=[200, 300])
+        summary_table.setStyle(TableStyle([
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#303f9f')),
+            ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('PADDING', (0, 0), (-1, -1), 6),
+        ]))
+        elements.append(summary_table)
+        elements.append(Spacer(1, 20))
+
+        # Add detailed results section
+        elements.append(Paragraph("Detailed Analysis Results", subtitle_style))
+        
+        # Prepare table data with headers
+        table_data = [['Comment', 'Classification', 'Confidence']] + data
+        
+        # Create the main results table
+        results_table = Table(table_data, colWidths=[300, 100, 100])
+        results_table.setStyle(TableStyle([
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),  # Header row
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),      # Data rows
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#e8eaf6')),  # Header background
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#1a237e')),   # Header text
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),
+            ('PADDING', (0, 0), (-1, -1), 6),
+        ]))
+        elements.append(results_table)
+
+        # Build the PDF
+        doc.build(elements)
+        
+        display_message(window, "Success", "Report generated successfully")
+        
+    except Exception as e:
+        display_message(window, "Error", f"Error generating report: {e}")
