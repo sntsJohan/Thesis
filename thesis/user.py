@@ -13,6 +13,7 @@ from styles import COLORS, FONTS, BUTTON_STYLE, INPUT_STYLE, TABLE_STYLE
 import tempfile
 import time
 from PyQt5.QtWidgets import QApplication
+from comment_operations import generate_report, generate_report_user
 
 # Reuse the LoadingOverlay from the main GUI
 from loading_overlay import LoadingOverlay
@@ -331,6 +332,14 @@ class UserMainWindow(QMainWindow):
             "Sort by Confidence (Low to High)"
         ])
         sort_layout.addWidget(sort_combo)
+        
+        # Add generate report button
+        self.generate_report_button = QPushButton("Generate Report")
+        self.generate_report_button.setFont(FONTS['button'])
+        self.generate_report_button.setStyleSheet(BUTTON_STYLE)
+        self.generate_report_button.clicked.connect(lambda: generate_report_user(self))
+        sort_layout.addWidget(self.generate_report_button)
+        
         tab_layout.addLayout(sort_layout)
 
         # Create table

@@ -306,7 +306,7 @@ def generate_report(window):
             ["Total Comments Analyzed:", str(total_rows)],
             ["Cyberbullying Comments:", f"{cyberbullying_count} ({(cyberbullying_count/total_rows)*100:.1f}%)"],
             ["Normal Comments:", f"{normal_count} ({(normal_count/total_rows)*100:.1f}%)"],
-            ["High Confidence Predictions:", f"{cyberbullying_count} ({(cyberbullying_count/total_rows)*100:.1f}%)"],
+            ["High Confidence Predictions: ", f"{cyberbullying_count} ({(cyberbullying_count/total_rows)*100:.1f}%)"],
             ["Comments in Selection List:", str(len(window.selected_comments))]
         ]
         
@@ -344,6 +344,197 @@ def generate_report(window):
             ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),
             ('PADDING', (0, 0), (-1, -1), 6),
             ('WORDWRAP', (0, 0), (-1, -1), True),  # Enable word wrapping
+        ]))
+        elements.append(results_table)
+
+        # Build the PDF
+        doc.build(elements)
+        
+        display_message(window, "Success", "Report generated successfully")
+        
+    except Exception as e:
+        display_message(window, "Error", f"Error generating report: {e}")
+
+def generate_report_user(window):
+    """Generate a simplified report for the user interface"""
+    current_table = window.get_current_table()
+    if current_table.rowCount() == 0:
+        display_message(window, "Error", "No data available to generate report")
+        return
+
+    try:
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import letter
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.units import inch
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+        import matplotlib.pyplot as plt
+        import io
+        import datetime
+        import os
+
+        # Collect data for charts and table
+        data = []
+        total_rows = current_table.rowCount()
+        cyberbullying_count = 0
+        normal_count = 0
+        confidence_ranges = {'90-100%': 0, '80-89%': 0, '70-79%': 0, '<70%': 0}
+
+        for row in range(total_rows):
+            comment = current_table.item(row, 0).text()
+            prediction = current_table.item(row, 1).text()
+            confidence = current_table.item(row, 2).text()
+            confidence_value = float(confidence.strip('%'))
+            
+            # Store data for table
+            data.append([comment, prediction, confidence])
+            
+            if prediction == "Cyberbullying":
+                cyberbullying_count += 1
+            else:
+                normal_count += 1
+                
+            # Categorize confidence
+            if confidence_value >= 90:
+                confidence_ranges['90-100%'] += 1
+            elif confidence_value >= 80:
+                confidence_ranges['80-89%'] += 1
+            elif confidence_value >= 70:
+                confidence_ranges['70-79%'] += 1
+            else:
+                confidence_ranges['<70%'] += 1
+
+        # Create classification distribution pie chart
+        plt.figure(figsize=(6, 4))
+        plt.pie([cyberbullying_count, normal_count], 
+                labels=['Cyberbullying', 'Normal'],
+                autopct='%1.1f%%',
+                colors=['#ff9999', '#66b3ff'])
+        plt.title('Comment Classification Distribution')
+        
+        # Save pie chart to memory
+        pie_chart_data = io.BytesIO()
+        plt.savefig(pie_chart_data, format='png', bbox_inches='tight')
+        pie_chart_data.seek(0)
+        plt.close()
+
+        # Create confidence distribution bar chart
+        plt.figure(figsize=(6, 4))
+        bars = plt.bar(confidence_ranges.keys(), confidence_ranges.values())
+        plt.title('Confidence Level Distribution')
+        plt.xlabel('Confidence Range')
+        plt.ylabel('Number of Comments')
+        plt.xticks(rotation=45)
+        
+        # Add value labels on top of bars
+        for bar in bars:
+            height = bar.get_height()
+            plt.text(bar.get_x() + bar.get_width()/2., height,
+                    f'{int(height)}',
+                    ha='center', va='bottom')
+        
+        # Save bar chart to memory
+        bar_chart_data = io.BytesIO()
+        plt.savefig(bar_chart_data, format='png', bbox_inches='tight')
+        bar_chart_data.seek(0)
+        plt.close()
+
+        # Create the PDF document
+        file_path, _ = QFileDialog.getSaveFileName(
+            window, "Save Report", "", "PDF Files (*.pdf)"
+        )
+        if not file_path:
+            return
+
+        doc = SimpleDocTemplate(
+            file_path,
+            pagesize=letter,
+            rightMargin=72,
+            leftMargin=72,
+            topMargin=72,
+            bottomMargin=72
+        )
+
+        # Styles
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=24,
+            spaceAfter=30,
+            textColor=colors.HexColor('#1a237e')
+        )
+        
+        subtitle_style = ParagraphStyle(
+            'CustomSubtitle',
+            parent=styles['Heading2'],
+            fontSize=16,
+            spaceAfter=20,
+            textColor=colors.HexColor('#303f9f')
+        )
+
+        # Content elements
+        elements = []
+
+        # Title
+        elements.append(Paragraph("Cyberbullying Detection Report", title_style))
+        elements.append(Paragraph(f"Generated on: {datetime.datetime.now().strftime('%B %d, %Y %H:%M:%S')}", styles['Normal']))
+        elements.append(Spacer(1, 20))
+
+        # Add charts section
+        elements.append(Paragraph("Visual Analysis", subtitle_style))
+        
+        # Add pie chart
+        elements.append(Image(pie_chart_data, width=4*inch, height=3*inch))
+        elements.append(Spacer(1, 10))
+        
+        # Add bar chart
+        elements.append(Image(bar_chart_data, width=4*inch, height=3*inch))
+        elements.append(Spacer(1, 20))
+
+        # Add summary section
+        elements.append(Paragraph("Analysis Summary", subtitle_style))
+        summary_data = [
+            ["Total Comments Analyzed:", str(total_rows)],
+            ["Cyberbullying Comments:", f"{cyberbullying_count} ({(cyberbullying_count/total_rows)*100:.1f}%)"],
+            ["Normal Comments:", f"{normal_count} ({(normal_count/total_rows)*100:.1f}%)"],
+            ["High Confidence Predictions (>90%):", f"{confidence_ranges['90-100%']} ({(confidence_ranges['90-100%']/total_rows)*100:.1f}%)"]
+        ]
+        
+        summary_table = Table(summary_data, colWidths=[200, 300])
+        summary_table.setStyle(TableStyle([
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#303f9f')),
+            ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('PADDING', (0, 0), (-1, -1), 6),
+        ]))
+        elements.append(summary_table)
+        elements.append(Spacer(1, 20))
+
+        # Add detailed results section
+        elements.append(Paragraph("Detailed Analysis Results", subtitle_style))
+        
+        # Prepare table data with headers
+        table_data = [['Comment', 'Classification', 'Confidence']] + [
+            [Paragraph(comment, styles['Normal']), prediction, confidence]
+            for comment, prediction, confidence in data
+        ]
+        
+        # Create the main results table with adjusted widths
+        results_table = Table(table_data, colWidths=[400, 80, 80])
+        results_table.setStyle(TableStyle([
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#e8eaf6')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#1a237e')),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),
+            ('PADDING', (0, 0), (-1, -1), 6),
+            ('WORDWRAP', (0, 0), (-1, -1), True),
         ]))
         elements.append(results_table)
 
