@@ -81,16 +81,15 @@ class MainWindow(QMainWindow):
     def init_welcome_screen(self):
         welcome_widget = QWidget()
         welcome_layout = QVBoxLayout(welcome_widget)
-        welcome_layout.setSpacing(0)  # We'll control spacing manually for better hierarchy
-        welcome_layout.setContentsMargins(40, 0, 40, 0)  # Remove top/bottom margins
+        welcome_layout.setSpacing(0)
+        welcome_layout.setContentsMargins(40, 0, 40, 0)
 
-        # Add stretch to push content down from top
         welcome_layout.addStretch(1)
 
         # Header container for visual grouping
         header_container = QWidget()
         header_layout = QVBoxLayout(header_container)
-        header_layout.setSpacing(15)  # Consistent spacing between header elements
+        header_layout.setSpacing(15)
         header_layout.setContentsMargins(0, 0, 0, 0)
 
         # App title - largest and most prominent
@@ -116,7 +115,7 @@ class MainWindow(QMainWindow):
         header_layout.addWidget(subtitle_label)
 
         welcome_layout.addWidget(header_container)
-        welcome_layout.addSpacing(40)  # Significant space between header and description
+        welcome_layout.addSpacing(40)
 
         # Description - tertiary emphasis
         description = QLabel(
@@ -131,25 +130,58 @@ class MainWindow(QMainWindow):
         """)
         welcome_layout.addWidget(description)
         
-        welcome_layout.addSpacing(50)  # Large space before call to action
+        welcome_layout.addSpacing(50)
 
-        # Get started button - clear call to action
-        get_started_button = QPushButton("Get Started")
-        get_started_button.setFont(FONTS['button'])
-        get_started_button.setStyleSheet(f"""
+        # Get started button - initially visible
+        self.get_started_button = QPushButton("Get Started")
+        self.get_started_button.setFont(FONTS['button'])
+        self.get_started_button.setStyleSheet(f"""
             {BUTTON_STYLE}
             padding: 12px 30px;
             font-size: 16px;
             border-radius: 6px;
         """)
-        get_started_button.setFixedWidth(200)
-        get_started_button.clicked.connect(self.show_main_ui)
-        welcome_layout.addWidget(get_started_button, alignment=Qt.AlignCenter)
+        self.get_started_button.setFixedWidth(200)
+        self.get_started_button.clicked.connect(self.show_role_buttons)
+        welcome_layout.addWidget(self.get_started_button, alignment=Qt.AlignCenter)
 
-        # Add stretch to push content up from bottom
+        # Role buttons container - initially hidden
+        self.role_buttons_container = QWidget()
+        role_buttons_layout = QHBoxLayout(self.role_buttons_container)
+        role_buttons_layout.setSpacing(20)
+
+        # Admin button
+        self.admin_button = QPushButton("Admin")
+        self.admin_button.setFont(FONTS['button'])
+        self.admin_button.setStyleSheet(f"""
+            {BUTTON_STYLE}
+            padding: 12px 30px;
+            font-size: 16px;
+            border-radius: 6px;
+        """)
+        self.admin_button.setFixedWidth(200)
+        self.admin_button.clicked.connect(self.show_main_ui)
+        role_buttons_layout.addWidget(self.admin_button)
+
+        # User button
+        self.user_button = QPushButton("User")
+        self.user_button.setFont(FONTS['button'])
+        self.user_button.setStyleSheet(f"""
+            {BUTTON_STYLE}
+            padding: 12px 30px;
+            font-size: 16px;
+            border-radius: 6px;
+        """)
+        self.user_button.setFixedWidth(200)
+        self.user_button.clicked.connect(self.show_user_ui)
+        role_buttons_layout.addWidget(self.user_button)
+
+        self.role_buttons_container.hide()
+        welcome_layout.addWidget(self.role_buttons_container, alignment=Qt.AlignCenter)
+
         welcome_layout.addStretch(1)
         
-        # Version info - smallest emphasis
+        # Version info
         version_label = QLabel("Version 1.0")
         version_label.setAlignment(Qt.AlignRight)
         version_label.setStyleSheet(f"""
@@ -160,6 +192,16 @@ class MainWindow(QMainWindow):
         welcome_layout.addWidget(version_label)
 
         self.central_widget.addWidget(welcome_widget)
+
+    def show_role_buttons(self):
+        """Hide get started button and show role selection buttons"""
+        self.get_started_button.hide()
+        self.role_buttons_container.show()
+
+    def show_user_ui(self):
+        """Show user interface (placeholder for now)"""
+        # This is a placeholder - you'll need to implement the user interface
+        display_message(self, "Info", "User interface coming soon!")
 
     def show_main_ui(self):
         self.central_widget.setCurrentIndex(1)
