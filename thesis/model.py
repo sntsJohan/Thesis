@@ -9,7 +9,7 @@ def classify_comment(comment):
     # First try to find an exact match in sample data
     for sample in SAMPLE_COMMENTS:
         if comment.lower() == sample["comment"].lower():
-            return sample["prediction"], sample["confidence"]
+            return sample["pred​iction"], sample["confidence"]
     
     # If no exact match, return random classification
     is_cyberbullying = random.random() < 0.3  # 30% chance of being classified as cyberbullying

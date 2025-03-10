@@ -459,7 +459,8 @@ class MainWindow(QMainWindow):
                     'profile_picture': row['Profile Picture'],
                     'date': row['Date'],
                     'likes_count': row['Likes Count'],
-                    'profile_id': row['Profile ID']
+                    'profile_id': row['Profile ID'],
+                    'is_reply': row['Is Reply']  # Add reply status
                 }
             
             comments = df['Text'].tolist()
@@ -493,7 +494,8 @@ class MainWindow(QMainWindow):
                     'profile_picture': '',
                     'date': time.strftime('%Y-%m-%d %H:%M:%S'),
                     'likes_count': 'N/A',
-                    'profile_id': 'N/A'
+                    'profile_id': 'N/A',
+                    'is_reply': False  # Default to False for CSV input
                 }
             
             self.populate_table(comments)
@@ -519,7 +521,8 @@ class MainWindow(QMainWindow):
                     'profile_picture': '',
                     'date': time.strftime('%Y-%m-%d %H:%M:%S'),
                     'likes_count': 'N/A',
-                    'profile_id': 'N/A'
+                    'profile_id': 'N/A',
+                    'is_reply': False  # Default to False for direct input
                 }
             }
             
@@ -662,7 +665,15 @@ class MainWindow(QMainWindow):
             row_position = table.rowCount()
             table.insertRow(row_position)
 
-            comment_item = QTableWidgetItem(comment)
+            # Get metadata for reply status
+            is_reply = False
+            reply_text = comment
+            if comment in self.comment_metadata:
+                is_reply = self.comment_metadata[comment].get('is_reply', False)
+                if is_reply:
+                    reply_text = "↪️ " + comment  # Add reply indicator
+                
+            comment_item = QTableWidgetItem(reply_text)
             comment_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
             prediction_item = QTableWidgetItem(prediction)
