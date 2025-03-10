@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import (QMainWindow, QVBoxLayout, QHBoxLayout, QLabel, 
                            QLineEdit, QPushButton, QTextEdit, QWidget, 
                            QFileDialog, QTableWidget, QTableWidgetItem, 
-                           QHeaderView, QSplitter, QGridLayout, QComboBox, QSizePolicy, QStackedWidget, QFrame, QTabWidget, QMessageBox)
+                           QHeaderView, QSplitter, QGridLayout, QComboBox, QSizePolicy, QStackedWidget, QFrame, QTabWidget, QMessageBox, QCheckBox)
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QColor, QTextCursor  
 from scraper import scrape_comments
@@ -210,6 +210,13 @@ class MainWindow(QMainWindow):
         self.url_input = QLineEdit()
         self.url_input.setStyleSheet(INPUT_STYLE)
         self.url_input.setPlaceholderText("Enter Facebook Post URL")
+
+        # Add checkbox for including replies
+        self.include_replies = QCheckBox("Include Replies")
+        self.include_replies.setStyleSheet(f"color: {COLORS['text']};")
+        self.include_replies.setFont(FONTS['button'])
+        self.include_replies.setChecked(True)  # Default to including replies
+
         self.scrape_button = QPushButton("Scrape and Classify Comments")
         self.scrape_button.setFont(FONTS['button'])
         self.scrape_button.setStyleSheet(BUTTON_STYLE)
@@ -217,6 +224,7 @@ class MainWindow(QMainWindow):
         
         fb_layout.addWidget(fb_title)
         fb_layout.addWidget(self.url_input)
+        fb_layout.addWidget(self.include_replies)
         fb_layout.addWidget(self.scrape_button)
         input_sections.addWidget(fb_section)
 
@@ -442,15 +450,20 @@ class MainWindow(QMainWindow):
             return
 
         try:
-            self.show_loading(True)  # Show loading overlay
-            QApplication.processEvents()  # Ensure the UI updates
+            self.show_loading(True)
+            QApplication.processEvents()
             
-            from scraper import scrape_comments
             with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as temp_file:
                 temp_path = temp_file.name
-            scrape_comments(url, temp_path)
+            
+            # Pass include_replies flag to scrape_comments
+            scrape_comments(url, temp_path, self.include_replies.isChecked())
             df = pd.read_csv(temp_path)
             
+            # Filter out replies if not included
+            if not self.include_replies.isChecked():
+                df = df[~df['Is Reply']]
+                
             # Store additional comment metadata
             self.comment_metadata = {}
             for _, row in df.iterrows():
@@ -460,7 +473,8 @@ class MainWindow(QMainWindow):
                     'date': row['Date'],
                     'likes_count': row['Likes Count'],
                     'profile_id': row['Profile ID'],
-                    'is_reply': row['Is Reply']  # Add reply status
+                    'is_reply': row['Is Reply'],
+                    'reply_to': row['Reply To']
                 }
             
             comments = df['Text'].tolist()
@@ -494,8 +508,7 @@ class MainWindow(QMainWindow):
                     'profile_picture': '',
                     'date': time.strftime('%Y-%m-%d %H:%M:%S'),
                     'likes_count': 'N/A',
-                    'profile_id': 'N/A',
-                    'is_reply': False  # Default to False for CSV input
+                    'profile_id': 'N/A'
                 }
             
             self.populate_table(comments)
@@ -521,8 +534,7 @@ class MainWindow(QMainWindow):
                     'profile_picture': '',
                     'date': time.strftime('%Y-%m-%d %H:%M:%S'),
                     'likes_count': 'N/A',
-                    'profile_id': 'N/A',
-                    'is_reply': False  # Default to False for direct input
+                    'profile_id': 'N/A'
                 }
             }
             
@@ -588,7 +600,7 @@ class MainWindow(QMainWindow):
         self.tabs[tab_type] = tab
         
         # Show tab widget and hide initial message when first tab is created
-        if self.tab_widget.isHidden():
+        if (self.tab_widget.isHidden()):
             self.initial_message.hide()
             self.tab_widget.show()
             
@@ -661,19 +673,21 @@ class MainWindow(QMainWindow):
         table = self.create_empty_tab(tab_name)
         
         for comment in comments:
+            metadata = self.comment_metadata.get(comment, {})
+            is_reply = metadata.get('is_reply', False)
+            
             prediction, confidence = classify_comment(comment)
             row_position = table.rowCount()
             table.insertRow(row_position)
 
-            # Get metadata for reply status
-            is_reply = False
-            reply_text = comment
-            if comment in self.comment_metadata:
-                is_reply = self.comment_metadata[comment].get('is_reply', False)
-                if is_reply:
-                    reply_text = "↪️ " + comment  # Add reply indicator
-                
-            comment_item = QTableWidgetItem(reply_text)
+            # Create display text with reply indicator
+            display_text = comment
+            if is_reply:
+                # Using a more visible reply indicator
+                display_text = "↳ " + display_text
+
+            comment_item = QTableWidgetItem(display_text)
+            comment_item.setData(Qt.UserRole, comment)  # Store original comment
             comment_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
             prediction_item = QTableWidgetItem(prediction)
