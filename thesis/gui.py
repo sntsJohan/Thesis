@@ -708,12 +708,36 @@ class MainWindow(QMainWindow):
             # Create display text with reply indicator
             display_text = comment
             if is_reply:
-                # Using a more visible reply indicator
-                display_text = "↳ " + display_text
+                reply_to = metadata.get('reply_to', '')
+                # Create the comment item directly instead of creating display_text first
+                comment_item = QTableWidgetItem(display_text)
+                comment_item.setData(Qt.UserRole, comment)  # Store original comment
+                comment_item.setData(Qt.DisplayRole, f" ↪ [Reply] {display_text}")  # Add reply tag
+                comment_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+                # Add custom styling for the reply tag using HTML
+                comment_item.setData(
+                    Qt.DecorationRole, 
+                    QColor(COLORS['secondary']).lighter(130)
+                )
+                # Add tooltip showing who this is replying to with row info
+                if reply_to:
+                    # Find row number of parent comment
+                    for i in range(row_position):
+                        parent_text = table.item(i, 0).data(Qt.UserRole)
+                        if parent_text == reply_to:
+                            comment_item.setToolTip(f"Reply to Row #{i+1}: {reply_to}")
+                            break
+                    else:
+                        comment_item.setToolTip(f"Reply to: {reply_to}")
+            else:
+                comment_item = QTableWidgetItem(display_text)
+                comment_item.setData(Qt.UserRole, comment)
+                comment_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
-            comment_item = QTableWidgetItem(display_text)
-            comment_item.setData(Qt.UserRole, comment)  # Store original comment
-            comment_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+            # Add subtle background color for reply comments
+            if is_reply:
+                lighter_surface = QColor(COLORS['surface']).lighter(105)
+                comment_item.setBackground(lighter_surface)
 
             prediction_item = QTableWidgetItem(prediction)
             prediction_item.setTextAlignment(Qt.AlignCenter)
@@ -774,12 +798,16 @@ class MainWindow(QMainWindow):
             'profile_picture': '',
             'date': 'N/A',
             'likes_count': 'N/A',
-            'profile_id': 'N/A'
+            'profile_id': 'N/A',
+            'is_reply': False,
+            'reply_to': ''
         })
         
         commenter = metadata.get('profile_name', 'N/A')
         date = metadata.get('date', 'N/A')
         likes = metadata.get('likes_count', 'N/A')
+        is_reply = metadata.get('is_reply', False)
+        reply_to = metadata.get('reply_to', '')
 
         # Show all operation buttons
         for btn in [self.show_summary_button, self.add_remove_button, 
@@ -802,6 +830,19 @@ class MainWindow(QMainWindow):
         self.details_text_edit.append(f"<b>Commenter:</b> {commenter}\n")
         self.details_text_edit.append(f"<b>Date:</b> {date}\n")
         self.details_text_edit.append(f"<b>Likes:</b> {likes}\n")
+        
+        # Add reply information if it's a reply
+        if is_reply and reply_to:
+            # Find row number of parent comment
+            current_table = self.get_current_table()
+            for i in range(current_table.rowCount()):
+                parent_text = current_table.item(i, 0).data(Qt.UserRole)
+                if parent_text == reply_to:
+                    self.details_text_edit.append(f"<b>Replying to:</b> Row #{i+1} - {reply_to}\n")
+                    break
+            else:
+                self.details_text_edit.append(f"<b>Replying to:</b> {reply_to}\n")
+
         self.details_text_edit.append(f"<b>Classification:</b> {prediction}\n")
         self.details_text_edit.append(f"<b>Confidence:</b> {confidence}\n")
         self.details_text_edit.append(f"<b>Status:</b> {'In List' if comment in self.selected_comments else 'Not in List'}\n")

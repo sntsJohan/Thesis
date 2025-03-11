@@ -21,6 +21,13 @@ def scrape_comments(fb_url, save_path, include_replies=True):
                         'Profile ID', 'Is Reply', 'Reply To'])
         
         for item in comments:
+            is_reply = item.get("threadingDepth", 0) == 1
+            reply_to = ""
+            
+            if is_reply and "parentComment" in item:
+                parent = item["parentComment"]["author"]
+                reply_to = f"{parent.get('name', '')} ({parent.get('id', '')})"
+            
             writer.writerow([
                 item.get("text", "No text"),
                 item.get("profileName", "No profileName"),
@@ -28,8 +35,8 @@ def scrape_comments(fb_url, save_path, include_replies=True):
                 item.get("date", ""),
                 item.get("likesCount", 0),
                 item.get("profileId", ""),
-                item.get("is_reply", False),
-                item.get("reply_to_id", "")
+                is_reply,
+                reply_to
             ])
     
     return save_path
