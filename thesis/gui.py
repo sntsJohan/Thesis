@@ -551,12 +551,25 @@ class MainWindow(QMainWindow):
         tab = QWidget()
         tab_layout = QVBoxLayout(tab)
         
-        # Header layout with table title and sort dropdown
-        sort_layout = QHBoxLayout()
+        # Header layout with table title, search bar, and sort dropdown
+        header_layout = QHBoxLayout()
         table_title = QLabel("Comments")
         table_title.setFont(FONTS['header'])
-        sort_layout.addWidget(table_title)
-        sort_layout.addStretch()
+        header_layout.addWidget(table_title)
+        
+        # Add search bar
+        search_container = QWidget()
+        search_layout = QHBoxLayout(search_container)
+        search_layout.setContentsMargins(0, 0, 0, 0)
+        
+        search_bar = QLineEdit()
+        search_bar.setPlaceholderText("Search comments...")
+        search_bar.setStyleSheet(INPUT_STYLE)
+        search_bar.setMaximumWidth(300)
+        search_layout.addWidget(search_bar)
+        
+        header_layout.addWidget(search_container)
+        header_layout.addStretch()
         
         sort_combo = QComboBox()
         sort_combo.addItems([
@@ -566,8 +579,8 @@ class MainWindow(QMainWindow):
             "Sort by Confidence (High to Low)",
             "Sort by Confidence (Low to High)"
         ])
-        sort_layout.addWidget(sort_combo)
-        tab_layout.addLayout(sort_layout)
+        header_layout.addWidget(sort_combo)
+        tab_layout.addLayout(header_layout)
 
         # Create table
         table = QTableWidget()
@@ -594,6 +607,18 @@ class MainWindow(QMainWindow):
         sort_combo.currentIndexChanged.connect(lambda: self.sort_table(table))
         
         tab_layout.addWidget(table)
+        
+        # Connect search functionality
+        def filter_table():
+            search_text = search_bar.text().lower()
+            for row in range(table.rowCount()):
+                comment = table.item(row, 0).text().lower()
+                table.setRowHidden(row, search_text not in comment)
+        
+        search_bar.textChanged.connect(filter_table)
+        
+        # Store search bar reference
+        table.search_bar = search_bar
         
         # Add tab to widget and store reference
         self.tab_widget.addTab(tab, tab_type)
