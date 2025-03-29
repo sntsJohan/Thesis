@@ -192,37 +192,56 @@ class UserMainWindow(QMainWindow):
         separator.setStyleSheet(f"background-color: {COLORS['border']};")
         self.layout.addWidget(separator)
         
-        # Results section with tab widget
+     # Results section with tab widget - Modified to match input containers
         results_container = QWidget()
+        results_container.setStyleSheet(f"""
+            QWidget {{
+                background-color: {COLORS['surface']};
+                border: 1px solid {COLORS['secondary']};
+                border-radius: 4px;
+            }}
+        """)
         results_layout = QVBoxLayout(results_container)
-        results_layout.setContentsMargins(0, 0, 0, 0)  # Remove margins to maximize space
+        results_layout.setContentsMargins(8, 8, 8, 8)  # Match input section padding
         
-        # Table controls in a compact horizontal layout
+        # Table controls in a compact horizontal layout with better alignment
         table_controls = QWidget()
+        table_controls.setStyleSheet("border: none;")  # Remove border for inner widget
         controls_layout = QHBoxLayout(table_controls)
         controls_layout.setContentsMargins(0, 0, 0, 5)  # Minimal margins
         
+        # Create a container for the title with proper alignment
+        title_container = QWidget()
+        title_container.setStyleSheet("border: none;")
+        title_layout = QHBoxLayout(title_container)
+        title_layout.setContentsMargins(0, 0, 0, 0)
+        
         table_title = QLabel("Results")
         table_title.setFont(FONTS['header'])
-        controls_layout.addWidget(table_title)
+        table_title.setAlignment(Qt.AlignLeft)
+        title_layout.addWidget(table_title)
+        title_layout.addStretch()
         
-        controls_layout.addStretch()
+        # Add the title container to the main controls layout
+        controls_layout.addWidget(title_container, 1)  # Give title container stretch priority
         
-        # Generate report button - moved to controls area
-        self.generate_report_button = QPushButton("Generate Report")
-        self.generate_report_button.setFont(FONTS['button'])
-        self.generate_report_button.setStyleSheet(BUTTON_STYLE)
-        self.generate_report_button.clicked.connect(lambda: generate_report_user(self))
-        controls_layout.addWidget(self.generate_report_button)
+        # Initial message widget with styled container
+        message_container = QWidget()
+        message_container.setStyleSheet("border: none;")  # Remove border for inner widget
+        message_layout = QVBoxLayout(message_container)
+        message_layout.setContentsMargins(5, 10, 5, 10)  # Better padding for message
         
-        results_layout.addWidget(table_controls)
+        self.initial_message = QLabel("No analysis performed yet.\nResults will appear here.")
+        self.initial_message.setAlignment(Qt.AlignCenter)
+        self.initial_message.setStyleSheet(f"color: {COLORS['text']}; font-size: 14px;")
+        message_layout.addWidget(self.initial_message)
         
-        # Tab widget - now takes most of the space
+        # Tab widget styling
         self.tab_widget = QTabWidget()
         self.tab_widget.setStyleSheet(f"""
             QTabWidget::pane {{
-                border: 1px solid {COLORS['secondary']};
-                background: {COLORS['surface']};
+                border: none;
+                background: transparent;
             }}
             QTabBar::tab {{
                 background: {COLORS['surface']};
@@ -238,14 +257,9 @@ class UserMainWindow(QMainWindow):
                 color: {COLORS['text']};
             }}
         """)
-
-        # Initial message widget
-        self.initial_message = QLabel("No analysis performed yet.\nResults will appear here.")
-        self.initial_message.setAlignment(Qt.AlignCenter)
-        self.initial_message.setStyleSheet(f"color: {COLORS['text']}; font-size: 14px;")
         
         # Add initial message to tab widget area
-        results_layout.addWidget(self.initial_message)
+        results_layout.addWidget(message_container)
         results_layout.addWidget(self.tab_widget)
         self.tab_widget.hide()  # Hide tab widget initially
 
@@ -258,15 +272,12 @@ class UserMainWindow(QMainWindow):
         
         # Add results container to main layout with stretch factor
         self.layout.addWidget(results_container, 1)  # Give it maximum stretch
-        
+            
         # Set stretch factors
         self.layout.setStretch(0, 0)  # Header
         self.layout.setStretch(1, 0)  # Input - minimal height
         self.layout.setStretch(2, 0)  # Separator - minimal height
         self.layout.setStretch(3, 1)  # Results - takes all remaining space
-        
-        # Store comment metadata
-        self.comment_metadata = {}
     
     def show_loading(self, show=True):
         if show:
@@ -425,7 +436,6 @@ class UserMainWindow(QMainWindow):
         table.setColumnCount(3)
         table.setHorizontalHeaderLabels(["Comment", "Prediction", "Confidence"])
         table.setAlternatingRowColors(True)  # Keep only one instance of this
-        table.verticalHeader().setVisible(False)  # Hide row numbers
 
         # Adjust column sizes
         header = table.horizontalHeader()
@@ -439,7 +449,6 @@ class UserMainWindow(QMainWindow):
         table.setWordWrap(True)
         table.setSelectionBehavior(QTableWidget.SelectRows)
         table.setSelectionMode(QTableWidget.SingleSelection)
-        table.verticalHeader().setVisible(False)  # Hide row numbers
         
         # Store sort combo and connect it
         table.sort_combo = sort_combo

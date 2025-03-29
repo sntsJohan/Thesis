@@ -60,7 +60,7 @@ class MainWindow(QMainWindow):
         header_layout.addWidget(title_label)
 
         # Subtitle - secondary emphasis
-        subtitle_label = QLabel("Cyberbullying Detection System")
+        subtitle_label = QLabel("Taglish Cyberbullying Detection System")
         subtitle_label.setFont(FONTS['header'])
         subtitle_label.setStyleSheet(f"""
             font-size: 18px; 
