@@ -196,7 +196,7 @@ class MainWindow(QMainWindow):
         back_button.clicked.connect(lambda: self.central_widget.setCurrentIndex(0))  # Return to welcome screen
         
         # Title
-        title = QLabel("Cyberbullying Detection System")
+        title = QLabel("Taglish Cyberbullying Detection System")
         title.setFont(FONTS['header'])
         title.setAlignment(Qt.AlignCenter)
         
