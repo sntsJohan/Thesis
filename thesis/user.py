@@ -21,7 +21,7 @@ from loading_overlay import LoadingOverlay
 class UserMainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Cyber Boolean - User")
+        self.setWindowTitle("Cyber Boolean - Simple View")
         self.showFullScreen()
         self.setStyleSheet(f"background-color: {COLORS['background']}; color: {COLORS['text']};")
         
@@ -31,7 +31,17 @@ class UserMainWindow(QMainWindow):
         
         # Create loading overlay
         self.loading_overlay = LoadingOverlay(self)
-    
+
+        # Store reference to main window
+        self.main_window = None
+
+    def set_main_window(self, main_window):
+        self.main_window = main_window
+
+    def return_to_main(self):
+        if self.main_window:
+            self.main_window.show()
+        self.close()
     
     def show_main_ui(self):
         self.central_widget.setCurrentIndex(1)
@@ -40,45 +50,59 @@ class UserMainWindow(QMainWindow):
         main_widget = QWidget()
         self.central_widget.addWidget(main_widget)
         self.layout = QVBoxLayout(main_widget)
-        self.layout.setSpacing(20)
-        self.layout.setContentsMargins(20, 20, 20, 20)
+        self.layout.setSpacing(10)  # Reduced spacing
+        self.layout.setContentsMargins(10, 10, 10, 10)  # Reduced margins
+
+        # Top header section with back button and title in one row
+        header_widget = QWidget()
+        header_layout = QHBoxLayout(header_widget)
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Add back button
+        back_button = QPushButton("← Back")
+        back_button.setFont(FONTS['button'])
+        back_button.setStyleSheet(BUTTON_STYLE)
+        back_button.setFixedWidth(100)  # Smaller width
+        back_button.clicked.connect(self.return_to_main)
         
         # Title
         title = QLabel("Cyberbullying Detection Tool")
         title.setFont(FONTS['header'])
         title.setAlignment(Qt.AlignCenter)
-        self.layout.addWidget(title)
         
-        # Input Container
+        header_layout.addWidget(back_button)
+        header_layout.addWidget(title, 1)  # Title takes remaining space
+        header_layout.addSpacing(100)  # Balance the layout
+        
+        self.layout.addWidget(header_widget)
+        
+        # Collapsible input section
         input_container = QWidget()
-        input_layout = QVBoxLayout(input_container)
+        input_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)  # Limit vertical size
+        input_layout = QHBoxLayout(input_container)  # Changed to horizontal for space efficiency
         input_layout.setSpacing(10)
         input_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Create horizontal layout for input sections
-        input_sections = QHBoxLayout()
-        input_sections.setSpacing(20)  # Space between sections
-
-        # Facebook Post Section
+        # Facebook Post Section - Made more compact
         fb_section = QWidget()
         fb_section.setStyleSheet(f"""
             QWidget {{
                 background-color: {COLORS['surface']};
                 border: 1px solid {COLORS['secondary']};
                 border-radius: 4px;
-                padding: 10px;
             }}
         """)
         fb_layout = QVBoxLayout(fb_section)
-        fb_layout.setSpacing(10)
+        fb_layout.setSpacing(5)  # Reduced spacing
+        fb_layout.setContentsMargins(8, 8, 8, 8)  # Reduced padding
         
         fb_title = QLabel("Facebook Post")
-        fb_title.setFont(FONTS['header'])
+        fb_title.setFont(FONTS['button'])  # Smaller font
         fb_title.setAlignment(Qt.AlignCenter)
         self.url_input = QLineEdit()
         self.url_input.setStyleSheet(INPUT_STYLE)
         self.url_input.setPlaceholderText("Enter Facebook Post URL")
-        self.scrape_button = QPushButton("Scrape and Classify Comments")
+        self.scrape_button = QPushButton("Scrape Comments")
         self.scrape_button.setFont(FONTS['button'])
         self.scrape_button.setStyleSheet(BUTTON_STYLE)
         self.scrape_button.clicked.connect(self.scrape_comments)
@@ -86,59 +110,64 @@ class UserMainWindow(QMainWindow):
         fb_layout.addWidget(fb_title)
         fb_layout.addWidget(self.url_input)
         fb_layout.addWidget(self.scrape_button)
-        input_sections.addWidget(fb_section)
+        input_layout.addWidget(fb_section)
 
-        # CSV File Section
+        # CSV File Section - Made more compact
         csv_section = QWidget()
         csv_section.setStyleSheet(f"""
             QWidget {{
                 background-color: {COLORS['surface']};
                 border: 1px solid {COLORS['secondary']};
                 border-radius: 4px;
-                padding: 10px;
             }}
         """)
         csv_layout = QVBoxLayout(csv_section)
-        csv_layout.setSpacing(10)
+        csv_layout.setSpacing(5)  # Reduced spacing
+        csv_layout.setContentsMargins(8, 8, 8, 8)  # Reduced padding
         
         csv_title = QLabel("CSV File")
-        csv_title.setFont(FONTS['header'])
+        csv_title.setFont(FONTS['button'])  # Smaller font
         csv_title.setAlignment(Qt.AlignCenter)
+        
+        file_browse_layout = QHBoxLayout()
         self.file_input = QLineEdit()
         self.file_input.setStyleSheet(INPUT_STYLE)
         self.file_input.setPlaceholderText("Select CSV file")
-        browse_layout = QHBoxLayout()
+        
         self.browse_button = QPushButton("Browse")
         self.browse_button.setFont(FONTS['button'])
         self.browse_button.setStyleSheet(BUTTON_STYLE)
+        self.browse_button.setFixedWidth(80)  # Smaller button
         self.browse_button.clicked.connect(self.browse_file)
+        
+        file_browse_layout.addWidget(self.file_input)
+        file_browse_layout.addWidget(self.browse_button)
+        
         self.process_csv_button = QPushButton("Process CSV")
         self.process_csv_button.setFont(FONTS['button'])
         self.process_csv_button.setStyleSheet(BUTTON_STYLE)
         self.process_csv_button.clicked.connect(self.process_csv)
-        browse_layout.addWidget(self.browse_button)
-        browse_layout.addWidget(self.process_csv_button)
         
         csv_layout.addWidget(csv_title)
-        csv_layout.addWidget(self.file_input)
-        csv_layout.addLayout(browse_layout)
-        input_sections.addWidget(csv_section)
+        csv_layout.addLayout(file_browse_layout)
+        csv_layout.addWidget(self.process_csv_button)
+        input_layout.addWidget(csv_section)
 
-        # Direct Input Section
+        # Direct Input Section - Made more compact
         direct_section = QWidget()
         direct_section.setStyleSheet(f"""
             QWidget {{
                 background-color: {COLORS['surface']};
                 border: 1px solid {COLORS['secondary']};
                 border-radius: 4px;
-                padding: 10px;
             }}
         """)
         direct_layout = QVBoxLayout(direct_section)
-        direct_layout.setSpacing(10)
+        direct_layout.setSpacing(5)  # Reduced spacing
+        direct_layout.setContentsMargins(8, 8, 8, 8)  # Reduced padding
         
         direct_title = QLabel("Direct Input")
-        direct_title.setFont(FONTS['header'])
+        direct_title.setFont(FONTS['button'])  # Smaller font
         direct_title.setAlignment(Qt.AlignCenter)
         self.text_input = QLineEdit()
         self.text_input.setStyleSheet(INPUT_STYLE)
@@ -151,17 +180,44 @@ class UserMainWindow(QMainWindow):
         direct_layout.addWidget(direct_title)
         direct_layout.addWidget(self.text_input)
         direct_layout.addWidget(self.analyze_button)
-        input_sections.addWidget(direct_section)
+        input_layout.addWidget(direct_section)
 
-        # Add input sections to main layout
-        input_layout.addLayout(input_sections)
+        # Add input container to main layout with fixed height
         self.layout.addWidget(input_container)
         
-        # Results section - Add tab widget
+        # Make a line separator
+        separator = QFrame()
+        separator.setFrameShape(QFrame.HLine)
+        separator.setFrameShadow(QFrame.Sunken)
+        separator.setStyleSheet(f"background-color: {COLORS['border']};")
+        self.layout.addWidget(separator)
+        
+        # Results section with tab widget
         results_container = QWidget()
         results_layout = QVBoxLayout(results_container)
+        results_layout.setContentsMargins(0, 0, 0, 0)  # Remove margins to maximize space
         
-        # Add tab widget
+        # Table controls in a compact horizontal layout
+        table_controls = QWidget()
+        controls_layout = QHBoxLayout(table_controls)
+        controls_layout.setContentsMargins(0, 0, 0, 5)  # Minimal margins
+        
+        table_title = QLabel("Results")
+        table_title.setFont(FONTS['header'])
+        controls_layout.addWidget(table_title)
+        
+        controls_layout.addStretch()
+        
+        # Generate report button - moved to controls area
+        self.generate_report_button = QPushButton("Generate Report")
+        self.generate_report_button.setFont(FONTS['button'])
+        self.generate_report_button.setStyleSheet(BUTTON_STYLE)
+        self.generate_report_button.clicked.connect(lambda: generate_report_user(self))
+        controls_layout.addWidget(self.generate_report_button)
+        
+        results_layout.addWidget(table_controls)
+        
+        # Tab widget - now takes most of the space
         self.tab_widget = QTabWidget()
         self.tab_widget.setStyleSheet(f"""
             QTabWidget::pane {{
@@ -171,7 +227,7 @@ class UserMainWindow(QMainWindow):
             QTabBar::tab {{
                 background: {COLORS['surface']};
                 color: {COLORS['text']};
-                padding: 8px 12px;
+                padding: 6px 10px;
                 border: 1px solid {COLORS['secondary']};
                 border-bottom: none;
                 border-top-left-radius: 4px;
@@ -187,8 +243,9 @@ class UserMainWindow(QMainWindow):
         self.initial_message = QLabel("No analysis performed yet.\nResults will appear here.")
         self.initial_message.setAlignment(Qt.AlignCenter)
         self.initial_message.setStyleSheet(f"color: {COLORS['text']}; font-size: 14px;")
-        results_layout.addWidget(self.initial_message)
         
+        # Add initial message to tab widget area
+        results_layout.addWidget(self.initial_message)
         results_layout.addWidget(self.tab_widget)
         self.tab_widget.hide()  # Hide tab widget initially
 
@@ -199,12 +256,14 @@ class UserMainWindow(QMainWindow):
         # Dictionary to store tab references
         self.tabs = {}
         
-        self.layout.addWidget(results_container)
+        # Add results container to main layout with stretch factor
+        self.layout.addWidget(results_container, 1)  # Give it maximum stretch
         
         # Set stretch factors
-        self.layout.setStretch(0, 0)  # Title
-        self.layout.setStretch(1, 0)  # Input
-        self.layout.setStretch(2, 1)  # Results
+        self.layout.setStretch(0, 0)  # Header
+        self.layout.setStretch(1, 0)  # Input - minimal height
+        self.layout.setStretch(2, 0)  # Separator - minimal height
+        self.layout.setStretch(3, 1)  # Results - takes all remaining space
         
         # Store comment metadata
         self.comment_metadata = {}
@@ -317,11 +376,24 @@ class UserMainWindow(QMainWindow):
         tab_layout = QVBoxLayout(tab)
         
         # Header layout with table title and sort dropdown
-        sort_layout = QHBoxLayout()
+        header_layout = QHBoxLayout()
         table_title = QLabel("Comments")
         table_title.setFont(FONTS['header'])
-        sort_layout.addWidget(table_title)
-        sort_layout.addStretch()
+        header_layout.addWidget(table_title)
+        
+        # Add search bar
+        search_container = QWidget()
+        search_layout = QHBoxLayout(search_container)
+        search_layout.setContentsMargins(0, 0, 0, 0)
+        
+        search_bar = QLineEdit()
+        search_bar.setPlaceholderText("Search comments...")
+        search_bar.setStyleSheet(INPUT_STYLE)
+        search_bar.setMaximumWidth(300)
+        search_layout.addWidget(search_bar)
+        
+        header_layout.addWidget(search_container)
+        header_layout.addStretch()
         
         sort_combo = QComboBox()
         sort_combo.addItems([
@@ -331,23 +403,29 @@ class UserMainWindow(QMainWindow):
             "Sort by Confidence (High to Low)",
             "Sort by Confidence (Low to High)"
         ])
-        sort_layout.addWidget(sort_combo)
-        
-        # Add generate report button
-        self.generate_report_button = QPushButton("Generate Report")
-        self.generate_report_button.setFont(FONTS['button'])
-        self.generate_report_button.setStyleSheet(BUTTON_STYLE)
-        self.generate_report_button.clicked.connect(lambda: generate_report_user(self))
-        sort_layout.addWidget(self.generate_report_button)
-        
-        tab_layout.addLayout(sort_layout)
+        header_layout.addWidget(sort_combo)
+        tab_layout.addLayout(header_layout)
 
         # Create table
         table = QTableWidget()
         table.setSortingEnabled(True)
-        table.setStyleSheet(TABLE_STYLE)
+        # Update the table style to include alternating row colors
+        table.setStyleSheet(f"""
+            {TABLE_STYLE}
+            QTableWidget::item:alternate {{
+                background-color: {COLORS['surface']};
+            }}
+            QTableWidget::item {{
+                background-color: {COLORS['background']};
+            }}
+            QTableWidget::item:selected {{
+                background-color: {COLORS['primary']};
+            }}
+        """)
         table.setColumnCount(3)
         table.setHorizontalHeaderLabels(["Comment", "Prediction", "Confidence"])
+        table.setAlternatingRowColors(True)  # Keep only one instance of this
+        table.verticalHeader().setVisible(False)  # Hide row numbers
 
         # Adjust column sizes
         header = table.horizontalHeader()
@@ -357,15 +435,29 @@ class UserMainWindow(QMainWindow):
         table.setColumnWidth(1, 150)
         table.setColumnWidth(2, 100)
 
+        # Enable better table behavior
         table.setWordWrap(True)
         table.setSelectionBehavior(QTableWidget.SelectRows)
         table.setSelectionMode(QTableWidget.SingleSelection)
+        table.verticalHeader().setVisible(False)  # Hide row numbers
         
         # Store sort combo and connect it
         table.sort_combo = sort_combo
         sort_combo.currentIndexChanged.connect(lambda: self.sort_table(table))
         
         tab_layout.addWidget(table)
+        
+        # Connect search functionality
+        def filter_table():
+            search_text = search_bar.text().lower()
+            for row in range(table.rowCount()):
+                comment = table.item(row, 0).text().lower()
+                table.setRowHidden(row, search_text not in comment)
+        
+        search_bar.textChanged.connect(filter_table)
+        
+        # Store search bar reference
+        table.search_bar = search_bar
         
         # Add tab to widget and store reference
         self.tab_widget.addTab(tab, tab_type)
@@ -407,6 +499,7 @@ class UserMainWindow(QMainWindow):
         # Clear inputs after checking
         self.file_input.clear()
         self.url_input.clear()
+        self.text_input.clear()  # Also clear the text input field
 
         if len(comments) == 1:  # Direct input
             tab_name = "Direct Inputs"
@@ -481,11 +574,16 @@ class UserMainWindow(QMainWindow):
             table.setItem(row_position, 1, prediction_item)
             table.setItem(row_position, 2, confidence_item)
 
-            table.resizeRowToContents(row_position)
-
+        # Resize rows after all data is added for better performance
+        table.resizeRowsToContents()
+        
         # Switch to the new tab
         tab_index = self.tab_widget.indexOf(self.tabs[tab_name])
         self.tab_widget.setCurrentIndex(tab_index)
+        
+        # Ensure we're focusing on the table part of the window
+        # by scrolling to top
+        table.scrollToTop()
     
     def update_details_panel(self):
         # This is a simplified version that doesn't show detailed information
@@ -493,7 +591,8 @@ class UserMainWindow(QMainWindow):
         pass
 
     def export_results(self):
-        if self.output_table.rowCount() == 0:
+        current_table = self.get_current_table()
+        if not current_table or current_table.rowCount() == 0:
             display_message(self, "Error", "No comments to export")
             return
 
@@ -506,10 +605,10 @@ class UserMainWindow(QMainWindow):
                 predictions = []
                 confidences = []
 
-                for row in range(self.output_table.rowCount()):
-                    comments.append(self.output_table.item(row, 0).text())
-                    predictions.append(self.output_table.item(row, 1).text())
-                    confidences.append(self.output_table.item(row, 2).text())
+                for row in range(current_table.rowCount()):
+                    comments.append(current_table.item(row, 0).text())
+                    predictions.append(current_table.item(row, 1).text())
+                    confidences.append(current_table.item(row, 2).text())
 
                 df = pd.DataFrame({
                     'Comment': comments,
@@ -520,4 +619,3 @@ class UserMainWindow(QMainWindow):
                 display_message(self, "Success", "Results exported successfully")
             except Exception as e:
                 display_message(self, "Error", f"Error exporting results: {e}")
- 

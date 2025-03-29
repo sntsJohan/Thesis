@@ -20,6 +20,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.selected_comments = [] 
+        self.comment_metadata = {}  # Initialize comment_metadata
         self.setWindowTitle("Cyber Boolean")
         self.showFullScreen()  # Makes the window fullscreen
         self.setStyleSheet(f"background-color: {COLORS['background']}; color: {COLORS['text']};")
@@ -106,7 +107,7 @@ class MainWindow(QMainWindow):
         role_buttons_layout.setSpacing(20)
 
         # Admin button
-        self.admin_button = QPushButton("Admin")
+        self.admin_button = QPushButton("Detailed View")
         self.admin_button.setFont(FONTS['button'])
         self.admin_button.setStyleSheet(f"""
             {BUTTON_STYLE}
@@ -119,7 +120,7 @@ class MainWindow(QMainWindow):
         role_buttons_layout.addWidget(self.admin_button)
 
         # User button
-        self.user_button = QPushButton("User")
+        self.user_button = QPushButton("Simple View")
         self.user_button.setFont(FONTS['button'])
         self.user_button.setStyleSheet(f"""
             {BUTTON_STYLE}
@@ -157,11 +158,12 @@ class MainWindow(QMainWindow):
         """Show user interface"""
         try:
             self.user_window = UserMainWindow()
+            self.user_window.set_main_window(self)
             self.user_window.show()
-            self.hide()  # Hide main window instead of closing it
+            self.hide()
         except Exception as e:
             display_message(self, "Error", f"Error opening user interface: {e}")
-            self.show()  # Show main window again if there's an error
+            self.show()
 
     def show_main_ui(self):
         self.central_widget.setCurrentIndex(1)
@@ -181,11 +183,28 @@ class MainWindow(QMainWindow):
         input_layout.setSpacing(10)
         input_layout.setContentsMargins(0, 0, 0, 0)
 
+        # Add header section with back button and title
+        header_widget = QWidget()
+        header_layout = QHBoxLayout(header_widget)
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Add back button
+        back_button = QPushButton("← Back")
+        back_button.setFont(FONTS['button'])
+        back_button.setStyleSheet(BUTTON_STYLE)
+        back_button.setFixedWidth(100)
+        back_button.clicked.connect(lambda: self.central_widget.setCurrentIndex(0))  # Return to welcome screen
+        
         # Title
         title = QLabel("Cyberbullying Detection System")
         title.setFont(FONTS['header'])
         title.setAlignment(Qt.AlignCenter)
-        input_layout.addWidget(title)
+        
+        header_layout.addWidget(back_button)
+        header_layout.addWidget(title, 1)  # Title takes remaining space
+        header_layout.addSpacing(100)  # Balance the layout
+        
+        input_layout.addWidget(header_widget)
 
         # Create horizontal layout for input sections
         input_sections = QHBoxLayout()
@@ -709,26 +728,15 @@ class MainWindow(QMainWindow):
             display_text = comment
             if is_reply:
                 reply_to = metadata.get('reply_to', '')
-                # Create the comment item directly instead of creating display_text first
                 comment_item = QTableWidgetItem(display_text)
                 comment_item.setData(Qt.UserRole, comment)  # Store original comment
-                comment_item.setData(Qt.DisplayRole, f" ↪ [Reply] {display_text}")  # Add reply tag
+                comment_item.setData(Qt.DisplayRole, f" ↪ Reply {display_text}")  # Remove square brackets
                 comment_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-                # Add custom styling for the reply tag using HTML
                 comment_item.setData(
                     Qt.DecorationRole, 
-                    QColor(COLORS['secondary']).lighter(130)
+                    QColor(COLORS['primary']).lighter(130)
                 )
-                # Add tooltip showing who this is replying to with row info
-                if reply_to:
-                    # Find row number of parent comment
-                    for i in range(row_position):
-                        parent_text = table.item(i, 0).data(Qt.UserRole)
-                        if parent_text == reply_to:
-                            comment_item.setToolTip(f"Reply to Row #{i+1}: {reply_to}")
-                            break
-                    else:
-                        comment_item.setToolTip(f"Reply to: {reply_to}")
+                # Remove tooltip as this info will be in details panel
             else:
                 comment_item = QTableWidgetItem(display_text)
                 comment_item.setData(Qt.UserRole, comment)
@@ -833,15 +841,24 @@ class MainWindow(QMainWindow):
         
         # Add reply information if it's a reply
         if is_reply and reply_to:
-            # Find row number of parent comment
+            # Find row number and parent comment details
             current_table = self.get_current_table()
             for i in range(current_table.rowCount()):
                 parent_text = current_table.item(i, 0).data(Qt.UserRole)
                 if parent_text == reply_to:
-                    self.details_text_edit.append(f"<b>Replying to:</b> Row #{i+1} - {reply_to}\n")
+                    parent_metadata = self.comment_metadata.get(reply_to, {})
+                    parent_name = parent_metadata.get('profile_name', 'Unknown')
+                    parent_date = parent_metadata.get('date', 'N/A')
+                    
+                    self.details_text_edit.append("\n<b>Reply Information:</b>")
+                    self.details_text_edit.append(f"Row #{i+1}")
+                    self.details_text_edit.append(f"Replying to: {parent_name}")
+                    self.details_text_edit.append(f"Original Comment: {reply_to}")
+                    self.details_text_edit.append(f"Date: {parent_date}\n")
                     break
             else:
-                self.details_text_edit.append(f"<b>Replying to:</b> {reply_to}\n")
+                self.details_text_edit.append("\n<b>Reply Information:</b>")
+                self.details_text_edit.append(f"Replying to: {reply_to}\n")
 
         self.details_text_edit.append(f"<b>Classification:</b> {prediction}\n")
         self.details_text_edit.append(f"<b>Confidence:</b> {confidence}\n")
