@@ -377,20 +377,9 @@ class MainWindow(QMainWindow):
         details_layout = QVBoxLayout(details_container)
         details_layout.setContentsMargins(10, 0, 0, 0) 
 
-        # Create a container for title + details
+        # Details section (for selected comment)
         details_section = QWidget()
-        details_section_layout = QVBoxLayout(details_section)
-        details_section_layout.setSpacing(5) 
-        details_section_layout.setContentsMargins(10, 10, 10, 10)
-
-        # Add title inside the same section
-        details_title = QLabel("Comment Details")
-        details_title.setFont(FONTS['header'])
-        details_section_layout.addWidget(details_title)
-
-        # Details content (kept inside same layout)
-        details_widget = QWidget()
-        details_widget.setStyleSheet(f"""
+        details_section.setStyleSheet(f"""
             QWidget {{
                 background-color: {COLORS['surface']};
                 color: {COLORS['text']};
@@ -398,44 +387,49 @@ class MainWindow(QMainWindow):
                 border-radius: 4px;
             }}
         """)
-        details_widget_layout = QVBoxLayout(details_widget)
-        details_widget_layout.setSpacing(10)
+        details_section_layout = QVBoxLayout(details_section)
+        details_section_layout.setSpacing(5) 
+        details_section_layout.setContentsMargins(10, 10, 10, 10)
 
-        # Add text edit for details
+        details_title = QLabel("Comment Details")
+        details_title.setFont(FONTS['header'])
+        details_section_layout.addWidget(details_title)
+
         self.details_text_edit = QTextEdit()
         self.details_text_edit.setReadOnly(True)
         self.details_text_edit.setStyleSheet(f"color: {COLORS['text']}; font-size: 14px;") 
-        details_widget_layout.addWidget(self.details_text_edit)
+        details_section_layout.addWidget(self.details_text_edit)
 
-        # Add details_widget inside details_section
-        details_section_layout.addWidget(details_widget)
+        # Row Operations Box
+        row_ops_section = QWidget()
+        row_ops_section.setStyleSheet(f"""
+            QWidget {{
+                background-color: {COLORS['surface']};
+                color: {COLORS['text']};
+                border: 1px solid {COLORS['secondary']};
+                border-radius: 4px;
+                margin-top: 10px;
+            }}
+        """)
+        row_ops_layout = QVBoxLayout(row_ops_section)
+        row_ops_layout.setSpacing(10)
+        row_ops_layout.setContentsMargins(10, 10, 10, 10)
 
-        # Add the combined section to the details panel
-        details_layout.addWidget(details_section)
+        row_ops_title = QLabel("Row Operations")
+        row_ops_title.setFont(FONTS['header'])
+        row_ops_layout.addWidget(row_ops_title)
 
-        # Operations Buttons inside details
-        self.show_summary_button = QPushButton("📊 Show Summary")
-        self.word_cloud_button = QPushButton("☁️ Word Cloud")  # New button
+        # Row operation buttons
         self.add_remove_button = QPushButton("➕ Add to List")
-        self.export_selected_button = QPushButton("💾 Export List")
-        self.export_all_button = QPushButton("📤 Export All Results")
-        self.generate_report_button = QPushButton("📝 Generate Report")
+        self.export_selected_button = QPushButton("💾 Export List")  # Moved here
 
-        # Add buttons to a grid layout
-        buttons_widget = QWidget()
-        buttons_layout = QGridLayout(buttons_widget)
-        buttons_layout.setSpacing(10) 
+        # Add row operation buttons to grid
+        row_buttons_widget = QWidget()
+        row_buttons_layout = QGridLayout(row_buttons_widget)
+        row_buttons_layout.setSpacing(10)
 
-        buttons = [
-            self.show_summary_button, 
-            self.word_cloud_button,  # Add to buttons list
-            self.add_remove_button, 
-            self.export_selected_button, 
-            self.export_all_button,
-            self.generate_report_button
-        ]
-        
-        for i, btn in enumerate(buttons):
+        row_buttons = [self.add_remove_button, self.export_selected_button]  # Updated order
+        for i, btn in enumerate(row_buttons):
             btn.setStyleSheet(f"""
                 {BUTTON_STYLE}
                 QPushButton:disabled {{
@@ -446,19 +440,77 @@ class MainWindow(QMainWindow):
                 }}
             """)
             btn.setFont(FONTS['button'])
-            buttons_layout.addWidget(btn, i // 2, i % 2)
-            btn.setEnabled(False)  # Initially disabled
+            row_buttons_layout.addWidget(btn, i // 2, i % 2)
+            btn.setEnabled(False)
+
+        row_ops_layout.addWidget(row_buttons_widget)
+
+        # Dataset Operations Box
+        dataset_ops_section = QWidget()
+        dataset_ops_section.setStyleSheet(f"""
+            QWidget {{
+                background-color: {COLORS['surface']};
+                color: {COLORS['text']};
+                border: 1px solid {COLORS['secondary']};
+                border-radius: 4px;
+                margin-top: 10px;
+            }}
+        """)
+        dataset_ops_layout = QVBoxLayout(dataset_ops_section)
+        dataset_ops_layout.setSpacing(10)
+        dataset_ops_layout.setContentsMargins(10, 10, 10, 10)
+
+        dataset_ops_title = QLabel("Dataset Operations")
+        dataset_ops_title.setFont(FONTS['header'])
+        dataset_ops_layout.addWidget(dataset_ops_title)
+
+        # Dataset operation buttons
+        self.show_summary_button = QPushButton("📊 Show Summary")
+        self.word_cloud_button = QPushButton("☁️ Word Cloud")  # Moved here
+        self.export_all_button = QPushButton("📤 Export All Results")
+        self.generate_report_button = QPushButton("📝 Generate Report")
+
+        # Add dataset operation buttons to grid
+        dataset_buttons_widget = QWidget()
+        dataset_buttons_layout = QGridLayout(dataset_buttons_widget)
+        dataset_buttons_layout.setSpacing(10)
+
+        dataset_buttons = [
+            self.show_summary_button,
+            self.word_cloud_button,  # Updated order
+            self.export_all_button,
+            self.generate_report_button
+        ]
+        
+        for i, btn in enumerate(dataset_buttons):
+            btn.setStyleSheet(f"""
+                {BUTTON_STYLE}
+                QPushButton:disabled {{
+                    background-color: {COLORS['surface']};
+                    color: {COLORS['secondary']};
+                    border: 1px solid {COLORS['secondary']};
+                    opacity: 0.7;
+                }}
+            """)
+            btn.setFont(FONTS['button'])
+            dataset_buttons_layout.addWidget(btn, i // 2, i % 2)
+            btn.setEnabled(False)
+
+        dataset_ops_layout.addWidget(dataset_buttons_widget)
+
+        # Add all sections to details layout
+        details_layout.addWidget(details_section)
+        details_layout.addWidget(row_ops_section)
+        details_layout.addWidget(dataset_ops_section)
 
         # Connect buttons
         self.show_summary_button.clicked.connect(self.show_summary)
-        self.word_cloud_button.clicked.connect(self.show_word_cloud)  # Connect new button
+        self.word_cloud_button.clicked.connect(self.show_word_cloud)
         self.add_remove_button.clicked.connect(self.toggle_list_status)
         self.export_selected_button.clicked.connect(self.export_selected)
         self.export_all_button.clicked.connect(self.export_all)
         self.generate_report_button.clicked.connect(lambda: generate_report(self))
 
-        # Add buttons widget to details layout
-        details_layout.addWidget(buttons_widget)
         splitter.addWidget(details_container)
 
         # Set initial sizes for the splitter to make them equal
@@ -581,7 +633,6 @@ class MainWindow(QMainWindow):
     def create_empty_tab(self, tab_type):
         """Create a new empty tab with table"""
         if tab_type == "Direct Inputs" and "Direct Inputs" in self.tabs:
-            # Return existing Direct Inputs table
             return self.tabs["Direct Inputs"].findChild(QTableWidget)
 
         tab = QWidget()
@@ -664,8 +715,21 @@ class MainWindow(QMainWindow):
         if (self.tab_widget.isHidden()):
             self.initial_message.hide()
             self.tab_widget.show()
+            # Enable dataset operations when first tab is created
+            self.enable_dataset_operations(True)
             
         return table
+
+    def enable_dataset_operations(self, enable=True):
+        """Enable or disable dataset operation buttons"""
+        dataset_buttons = [
+            self.show_summary_button,
+            self.word_cloud_button,
+            self.export_all_button,
+            self.generate_report_button
+        ]
+        for btn in dataset_buttons:
+            btn.setEnabled(enable)
 
     def get_current_table(self):
         """Get the table widget from the current tab"""
@@ -733,6 +797,9 @@ class MainWindow(QMainWindow):
         # Create new tab and get its table
         table = self.create_empty_tab(tab_name)
         
+        # Enable dataset operations since we now have data
+        self.enable_dataset_operations(True)
+
         for comment in comments:
             metadata = self.comment_metadata.get(comment, {})
             is_reply = metadata.get('is_reply', False)
@@ -807,18 +874,23 @@ class MainWindow(QMainWindow):
         selected_items = self.get_current_table().selectedItems()
         if not selected_items:
             self.details_text_edit.clear()
-            # Disable operation buttons but keep them visible
-            for btn in [self.show_summary_button, self.word_cloud_button, self.add_remove_button, 
-                       self.export_selected_button, self.export_all_button, 
-                       self.generate_report_button]:
+            # Disable row operations but keep dataset operations enabled if there's data
+            row_buttons = [self.add_remove_button, self.export_selected_button]
+            for btn in row_buttons:
                 btn.setEnabled(False)
+            
+            # Enable dataset operations only if there's at least one tab
+            has_tabs = self.tab_widget.count() > 0
+            self.enable_dataset_operations(has_tabs)
             return
 
-        # Enable operation buttons when row is selected
-        for btn in [self.show_summary_button, self.word_cloud_button, self.add_remove_button, 
-                   self.export_selected_button, self.export_all_button, 
-                   self.generate_report_button]:
+        # Enable row operation buttons when row is selected
+        row_buttons = [self.add_remove_button, self.export_selected_button]
+        for btn in row_buttons:
             btn.setEnabled(True)
+
+        # Make sure dataset operations are enabled when there's data
+        self.enable_dataset_operations(True)
 
         row = selected_items[0].row()
         comment = self.get_current_table().item(row, 0).text()
