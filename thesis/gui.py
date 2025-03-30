@@ -104,42 +104,8 @@ class MainWindow(QMainWindow):
             border-radius: 6px;
         """)
         self.get_started_button.setFixedWidth(200)
-        self.get_started_button.clicked.connect(self.show_role_buttons)
+        self.get_started_button.clicked.connect(self.show_login)
         welcome_layout.addWidget(self.get_started_button, alignment=Qt.AlignCenter)
-
-        # Role buttons container - initially hidden
-        self.role_buttons_container = QWidget()
-        role_buttons_layout = QHBoxLayout(self.role_buttons_container)
-        role_buttons_layout.setSpacing(20)
-
-        # Admin button
-        self.admin_button = QPushButton("Detailed View")
-        self.admin_button.setFont(FONTS['button'])
-        self.admin_button.setStyleSheet(f"""
-            {BUTTON_STYLE}
-            padding: 12px 30px;
-            font-size: 16px;
-            border-radius: 6px;
-        """)
-        self.admin_button.setFixedWidth(200)
-        self.admin_button.clicked.connect(self.show_main_ui)
-        role_buttons_layout.addWidget(self.admin_button)
-
-        # User button
-        self.user_button = QPushButton("Simple View")
-        self.user_button.setFont(FONTS['button'])
-        self.user_button.setStyleSheet(f"""
-            {BUTTON_STYLE}
-            padding: 12px 30px;
-            font-size: 16px;
-            border-radius: 6px;
-        """)
-        self.user_button.setFixedWidth(200)
-        self.user_button.clicked.connect(self.show_user_ui)
-        role_buttons_layout.addWidget(self.user_button)
-
-        self.role_buttons_container.hide()
-        welcome_layout.addWidget(self.role_buttons_container, alignment=Qt.AlignCenter)
 
         welcome_layout.addStretch(1)
         
@@ -155,10 +121,18 @@ class MainWindow(QMainWindow):
 
         self.central_widget.addWidget(welcome_widget)
 
-    def show_role_buttons(self):
-        """Hide get started button and show role selection buttons"""
-        self.get_started_button.hide()
-        self.role_buttons_container.show()
+    def show_login(self):
+        """Show login dialog and handle user role"""
+        from login import LoginWindow
+        login_dialog = LoginWindow(self)
+        result = login_dialog.exec_()
+        
+        if result == QDialog.Accepted:
+            role = login_dialog.get_role()
+            if role == "admin":
+                self.show_main_ui()
+            elif role == "user":
+                self.show_user_ui()
 
     def show_user_ui(self):
         """Show user interface"""
@@ -195,7 +169,7 @@ class MainWindow(QMainWindow):
         header_layout.setContentsMargins(0, 0, 0, 0)
         
         # Add back button
-        back_button = QPushButton("← Back")
+        back_button = QPushButton("Sign Out")
         back_button.setFont(FONTS['button'])
         back_button.setStyleSheet(BUTTON_STYLE)
         back_button.setFixedWidth(100)
@@ -1129,4 +1103,3 @@ class MainWindow(QMainWindow):
                 display_message(self, "Success", "All comments exported successfully")
             except Exception as e:
                 display_message(self, "Error", f"Error exporting comments: {e}")
-

@@ -38,9 +38,11 @@ class UserMainWindow(QMainWindow):
     def set_main_window(self, main_window):
         self.main_window = main_window
 
-    def return_to_main(self):
-        if self.main_window:
-            self.main_window.show()
+    def sign_out(self):
+        """Sign out and return to main GUI"""
+        from gui import MainWindow  # Import here to avoid circular import
+        self.main_window = MainWindow()
+        self.main_window.show()
         self.close()
     
     def show_main_ui(self):
@@ -53,24 +55,24 @@ class UserMainWindow(QMainWindow):
         self.layout.setSpacing(10)  # Reduced spacing
         self.layout.setContentsMargins(10, 10, 10, 10)  # Reduced margins
 
-        # Top header section with back button and title in one row
+        # Top header section with sign out button and title in one row
         header_widget = QWidget()
         header_layout = QHBoxLayout(header_widget)
         header_layout.setContentsMargins(0, 0, 0, 0)
         
-        # Add back button
-        back_button = QPushButton("← Back")
-        back_button.setFont(FONTS['button'])
-        back_button.setStyleSheet(BUTTON_STYLE)
-        back_button.setFixedWidth(100)  # Smaller width
-        back_button.clicked.connect(self.return_to_main)
+        # Add sign out button
+        self.sign_out_button = QPushButton("Sign Out")
+        self.sign_out_button.setFont(FONTS['button'])
+        self.sign_out_button.setStyleSheet(BUTTON_STYLE)
+        self.sign_out_button.setFixedWidth(100)  # Smaller width
+        self.sign_out_button.clicked.connect(self.sign_out)
         
         # Title
         title = QLabel("Cyberbullying Detection Tool")
         title.setFont(FONTS['header'])
         title.setAlignment(Qt.AlignCenter)
         
-        header_layout.addWidget(back_button)
+        header_layout.addWidget(self.sign_out_button)
         header_layout.addWidget(title, 1)  # Title takes remaining space
         header_layout.addSpacing(100)  # Balance the layout
         
