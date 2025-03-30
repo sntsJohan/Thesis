@@ -3,6 +3,7 @@ from PyQt5.QtCore import Qt
 from styles import COLORS, FONTS, BUTTON_STYLE, INPUT_STYLE
 import json
 import os
+from db_config import get_db_connection
 
 class RegisterWindow(QDialog):
     def __init__(self, parent=None):
@@ -81,20 +82,31 @@ class RegisterWindow(QDialog):
             self.confirm_input.clear()
             return
 
-        # Check if username already exists
-        credentials = {
-            "admin": {"password": "admin123", "role": "admin"},
-            "user": {"password": "user123", "role": "user"}
-        }
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            # Check if username exists
+            cursor.execute("SELECT username FROM users WHERE username=?", (username,))
+            if cursor.fetchone():
+                self.error_label.setText("Username already exists")
+                conn.close()
+                return
 
-        if username in credentials:
-            self.error_label.setText("Username already exists")
-            return
-
-        # Add new user
-        credentials[username] = {"password": password, "role": "user"}
-        self.username = username
-        self.accept()
+            # Add new user
+            cursor.execute(
+                "INSERT INTO users (username, password, role) VALUES (?, ?, ?)",
+                (username, password, "user")
+            )
+            conn.commit()
+            conn.close()
+            
+            self.username = username
+            self.accept()
+            
+        except Exception as e:
+            self.error_label.setText("Database error occurred")
+            print(f"Database error: {str(e)}")
 
     def get_username(self):
         return self.username

@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton
 from PyQt5.QtCore import Qt
 from styles import COLORS, FONTS, BUTTON_STYLE, INPUT_STYLE
+from db_config import get_db_connection
 
 class LoginWindow(QDialog):
     def __init__(self, parent=None):
@@ -66,18 +67,26 @@ class LoginWindow(QDialog):
         username = self.username_input.text()
         password = self.password_input.text()
 
-        # Define user credentials
-        credentials = {
-            "admin": {"password": "admin123", "role": "admin"},
-            "user": {"password": "user123", "role": "user"}
-        }
-
-        if username in credentials and password == credentials[username]["password"]:
-            self.role = credentials[username]["role"]
-            self.accept()
-        else:
-            self.error_label.setText("Invalid username or password")
-            self.password_input.clear()
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT role FROM users WHERE username=? AND password=?",
+                (username, password)
+            )
+            result = cursor.fetchone()
+            
+            if result:
+                self.role = result[0].strip()  # Strip any whitespace from role
+                conn.close()
+                self.accept()
+            else:
+                self.error_label.setText("Invalid username or password")
+                self.password_input.clear()
+            
+        except Exception as e:
+            self.error_label.setText("Database connection error")
+            print(f"Database error: {str(e)}")
 
     def open_register(self):
         from register import RegisterWindow

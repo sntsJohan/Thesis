@@ -129,10 +129,20 @@ class MainWindow(QMainWindow):
         
         if result == QDialog.Accepted:
             role = login_dialog.get_role()
-            if role == "admin":
-                self.show_main_ui()
-            elif role == "user":
-                self.show_user_ui()
+            if role and role.lower() == "admin":
+                self.central_widget.setCurrentIndex(1)  # Switch to main UI
+                self.showFullScreen()
+            elif role and role.lower() == "user":
+                self.user_window = UserMainWindow()
+                self.user_window.set_main_window(self)
+                self.user_window.showFullScreen()
+                self.hide()
+            else:
+                display_message(self, "Error", f"Invalid role: {role}")
+                self.central_widget.setCurrentIndex(0)  # Back to welcome screen
+        else:
+            # User cancelled login - stay on welcome screen
+            self.central_widget.setCurrentIndex(0)
 
     def show_user_ui(self):
         """Show user interface"""
