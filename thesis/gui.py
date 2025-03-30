@@ -1,9 +1,13 @@
 from PyQt5.QtWidgets import (QMainWindow, QVBoxLayout, QHBoxLayout, QLabel, 
                            QLineEdit, QPushButton, QTextEdit, QWidget, 
                            QFileDialog, QTableWidget, QTableWidgetItem, 
-                           QHeaderView, QSplitter, QGridLayout, QComboBox, QSizePolicy, QStackedWidget, QFrame, QTabWidget, QMessageBox, QCheckBox)
+                           QHeaderView, QSplitter, QGridLayout, QComboBox, QSizePolicy, QStackedWidget, QDialog, QTabWidget, QMessageBox, QCheckBox)
 from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QColor, QTextCursor  
+from PyQt5.QtGui import QColor, QTextCursor, QPixmap, QImage
+import numpy as np
+from wordcloud import WordCloud
+import matplotlib.pyplot as plt
+from io import BytesIO
 from scraper import scrape_comments
 from model import classify_comment
 import pandas as pd
@@ -15,6 +19,8 @@ from PyQt5.QtWidgets import QApplication
 from comment_operations import generate_report
 from user import UserMainWindow
 from loading_overlay import LoadingOverlay
+from stopwords import TAGALOG_STOP_WORDS
+import re
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -409,6 +415,7 @@ class MainWindow(QMainWindow):
 
         # Operations Buttons inside details
         self.show_summary_button = QPushButton("📊 Show Summary")
+        self.word_cloud_button = QPushButton("☁️ Word Cloud")  # New button
         self.add_remove_button = QPushButton("➕ Add to List")
         self.export_selected_button = QPushButton("💾 Export List")
         self.export_all_button = QPushButton("📤 Export All Results")
@@ -421,6 +428,7 @@ class MainWindow(QMainWindow):
 
         buttons = [
             self.show_summary_button, 
+            self.word_cloud_button,  # Add to buttons list
             self.add_remove_button, 
             self.export_selected_button, 
             self.export_all_button,
@@ -428,13 +436,22 @@ class MainWindow(QMainWindow):
         ]
         
         for i, btn in enumerate(buttons):
-            btn.setStyleSheet(BUTTON_STYLE)
+            btn.setStyleSheet(f"""
+                {BUTTON_STYLE}
+                QPushButton:disabled {{
+                    background-color: {COLORS['surface']};
+                    color: {COLORS['secondary']};
+                    border: 1px solid {COLORS['secondary']};
+                    opacity: 0.7;
+                }}
+            """)
             btn.setFont(FONTS['button'])
             buttons_layout.addWidget(btn, i // 2, i % 2)
-            btn.hide()
+            btn.setEnabled(False)  # Initially disabled
 
         # Connect buttons
         self.show_summary_button.clicked.connect(self.show_summary)
+        self.word_cloud_button.clicked.connect(self.show_word_cloud)  # Connect new button
         self.add_remove_button.clicked.connect(self.toggle_list_status)
         self.export_selected_button.clicked.connect(self.export_selected)
         self.export_all_button.clicked.connect(self.export_all)
@@ -790,10 +807,18 @@ class MainWindow(QMainWindow):
         selected_items = self.get_current_table().selectedItems()
         if not selected_items:
             self.details_text_edit.clear()
-            # Hide operation buttons
-            for btn in [self.show_summary_button, self.add_remove_button, self.export_selected_button, self.export_all_button, self.generate_report_button]:
-                btn.hide()
+            # Disable operation buttons but keep them visible
+            for btn in [self.show_summary_button, self.word_cloud_button, self.add_remove_button, 
+                       self.export_selected_button, self.export_all_button, 
+                       self.generate_report_button]:
+                btn.setEnabled(False)
             return
+
+        # Enable operation buttons when row is selected
+        for btn in [self.show_summary_button, self.word_cloud_button, self.add_remove_button, 
+                   self.export_selected_button, self.export_all_button, 
+                   self.generate_report_button]:
+            btn.setEnabled(True)
 
         row = selected_items[0].row()
         comment = self.get_current_table().item(row, 0).text()
@@ -816,12 +841,6 @@ class MainWindow(QMainWindow):
         likes = metadata.get('likes_count', 'N/A')
         is_reply = metadata.get('is_reply', False)
         reply_to = metadata.get('reply_to', '')
-
-        # Show all operation buttons
-        for btn in [self.show_summary_button, self.add_remove_button, 
-                   self.export_selected_button, self.export_all_button,
-                   self.generate_report_button]:
-            btn.show()
 
         # Update add/remove button text based on list status
         if comment in self.selected_comments:
@@ -900,8 +919,77 @@ class MainWindow(QMainWindow):
             f"High Confidence Predictions: {high_confidence_count} ({(high_confidence_count/total_comments)*100:.1f}%)\n"
             f"Comments in Selection List: {len(self.selected_comments)}"
         )
-
+        
+        # Display summary in a simple dialog
         display_message(self, "Results Summary", summary_text)
+
+    def show_word_cloud(self):
+        """Generate and display word cloud visualization"""
+        total_comments = self.get_current_table().rowCount()
+        if total_comments == 0:
+            display_message(self, "Error", "No comments to visualize")
+            return
+
+        all_comments = []
+        for row in range(total_comments):
+            comment = self.get_current_table().item(row, 0).text()
+            all_comments.append(comment)
+
+        try:
+            # Preprocess comments
+            def preprocess_text(text):
+                text = text.lower()
+                text = re.sub(r'http\S+|www\S+|https\S+', '', text)
+                text = re.sub(r'[^\w\s]', '', text)
+                text = ' '.join(text.split())
+                return text
+
+            processed_comments = [preprocess_text(comment) for comment in all_comments]
+            
+            wordcloud = WordCloud(
+                width=800, 
+                height=400,
+                background_color='white',
+                max_words=100,
+                stopwords=TAGALOG_STOP_WORDS,
+                collocations=False
+            ).generate(' '.join(processed_comments))
+
+            plt.figure(figsize=(10, 5))
+            plt.imshow(wordcloud, interpolation='bilinear')
+            plt.axis('off')
+            
+            buf = BytesIO()
+            plt.savefig(buf, format='png', bbox_inches='tight', pad_inches=0)
+            plt.close()
+            buf.seek(0)
+            
+            image = QImage.fromData(buf.getvalue())
+            pixmap = QPixmap.fromImage(image)
+
+            # Create dialog for word cloud
+            dialog = QDialog(self)
+            dialog.setWindowTitle("Word Cloud Visualization")
+            dialog.setMinimumWidth(800)
+            layout = QVBoxLayout(dialog)
+
+            # Add word cloud
+            image_label = QLabel()
+            scaled_pixmap = pixmap.scaled(700, 350, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            image_label.setPixmap(scaled_pixmap)
+            image_label.setAlignment(Qt.AlignCenter)
+            layout.addWidget(image_label)
+
+            # Add close button
+            close_button = QPushButton("Close")
+            close_button.setStyleSheet(BUTTON_STYLE)
+            close_button.clicked.connect(dialog.close)
+            layout.addWidget(close_button, alignment=Qt.AlignCenter)
+
+            dialog.exec_()
+
+        except Exception as e:
+            display_message(self, "Error", f"Error generating word cloud: {e}")
 
     def toggle_list_status(self):
         selected_items = self.get_current_table().selectedItems()
