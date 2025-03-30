@@ -12,7 +12,7 @@ from scraper import scrape_comments
 from model import classify_comment
 import pandas as pd
 from utils import display_message
-from styles import COLORS, FONTS, BUTTON_STYLE, INPUT_STYLE, TABLE_STYLE
+from styles import COLORS, FONTS, BUTTON_STYLE, INPUT_STYLE, TABLE_STYLE, TAB_STYLE
 import tempfile
 import time
 from PyQt5.QtWidgets import QApplication
@@ -169,8 +169,9 @@ class MainWindow(QMainWindow):
     def init_ui(self):
         # Input Container
         input_container = QWidget()
+        input_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)  # Limit vertical size
         input_layout = QVBoxLayout(input_container)
-        input_layout.setSpacing(10)
+        input_layout.setSpacing(10)  # Reduced spacing
         input_layout.setContentsMargins(0, 0, 0, 0)
 
         # Add header section with back button and title
@@ -196,25 +197,25 @@ class MainWindow(QMainWindow):
         
         input_layout.addWidget(header_widget)
 
-        # Create horizontal layout for input sections
+        # Create horizontal layout for input sections with reduced spacing
         input_sections = QHBoxLayout()
-        input_sections.setSpacing(20)  # Space between sections
+        input_sections.setSpacing(10)  # Reduced spacing
 
-        # Facebook Post Section
+        # Facebook Post Section - Made more compact
         fb_section = QWidget()
         fb_section.setStyleSheet(f"""
             QWidget {{
                 background-color: {COLORS['surface']};
                 border: 1px solid {COLORS['secondary']};
                 border-radius: 4px;
-                padding: 10px;
             }}
         """)
         fb_layout = QVBoxLayout(fb_section)
-        fb_layout.setSpacing(10)
-        
+        fb_layout.setSpacing(5)  # Reduced spacing
+        fb_layout.setContentsMargins(8, 8, 8, 8)  # Reduced padding
+
         fb_title = QLabel("Facebook Post")
-        fb_title.setFont(FONTS['header'])
+        fb_title.setFont(FONTS['button'])  # Smaller font
         fb_title.setAlignment(Qt.AlignCenter)
         self.url_input = QLineEdit()
         self.url_input.setStyleSheet(INPUT_STYLE)
@@ -229,29 +230,27 @@ class MainWindow(QMainWindow):
         self.scrape_button = QPushButton("Scrape and Classify Comments")
         self.scrape_button.setFont(FONTS['button'])
         self.scrape_button.setStyleSheet(BUTTON_STYLE)
-        self.scrape_button.clicked.connect(self.scrape_comments)
-        
         fb_layout.addWidget(fb_title)
         fb_layout.addWidget(self.url_input)
         fb_layout.addWidget(self.include_replies)
         fb_layout.addWidget(self.scrape_button)
         input_sections.addWidget(fb_section)
 
-        # CSV File Section
+        # CSV File Section - Made more compact
         csv_section = QWidget()
         csv_section.setStyleSheet(f"""
             QWidget {{
                 background-color: {COLORS['surface']};
                 border: 1px solid {COLORS['secondary']};
                 border-radius: 4px;
-                padding: 10px;
             }}
         """)
         csv_layout = QVBoxLayout(csv_section)
-        csv_layout.setSpacing(10)
-        
+        csv_layout.setSpacing(5)  # Reduced spacing
+        csv_layout.setContentsMargins(8, 8, 8, 8)  # Reduced padding
+
         csv_title = QLabel("CSV File")
-        csv_title.setFont(FONTS['header'])
+        csv_title.setFont(FONTS['button'])  # Smaller font
         csv_title.setAlignment(Qt.AlignCenter)
         self.file_input = QLineEdit()
         self.file_input.setStyleSheet(INPUT_STYLE)
@@ -260,6 +259,7 @@ class MainWindow(QMainWindow):
         self.browse_button = QPushButton("Browse")
         self.browse_button.setFont(FONTS['button'])
         self.browse_button.setStyleSheet(BUTTON_STYLE)
+        self.browse_button.setFixedWidth(80)  # Smaller button
         self.browse_button.clicked.connect(self.browse_file)
         self.process_csv_button = QPushButton("Process CSV")
         self.process_csv_button.setFont(FONTS['button'])
@@ -273,21 +273,21 @@ class MainWindow(QMainWindow):
         csv_layout.addLayout(browse_layout)
         input_sections.addWidget(csv_section)
 
-        # Direct Input Section
+        # Direct Input Section - Made more compact
         direct_section = QWidget()
         direct_section.setStyleSheet(f"""
             QWidget {{
                 background-color: {COLORS['surface']};
                 border: 1px solid {COLORS['secondary']};
                 border-radius: 4px;
-                padding: 10px;
             }}
         """)
         direct_layout = QVBoxLayout(direct_section)
-        direct_layout.setSpacing(10)
-        
+        direct_layout.setSpacing(5)  # Reduced spacing
+        direct_layout.setContentsMargins(8, 8, 8, 8)  # Reduced padding
+
         direct_title = QLabel("Direct Input")
-        direct_title.setFont(FONTS['header'])
+        direct_title.setFont(FONTS['button'])  # Smaller font
         direct_title.setAlignment(Qt.AlignCenter)
         self.text_input = QLineEdit()
         self.text_input.setStyleSheet(INPUT_STYLE)
@@ -296,7 +296,6 @@ class MainWindow(QMainWindow):
         self.analyze_button.setFont(FONTS['button'])
         self.analyze_button.setStyleSheet(BUTTON_STYLE)
         self.analyze_button.clicked.connect(self.analyze_single)
-        
         direct_layout.addWidget(direct_title)
         direct_layout.addWidget(self.text_input)
         direct_layout.addWidget(self.analyze_button)
@@ -317,27 +316,7 @@ class MainWindow(QMainWindow):
         
         # Add tab widget
         self.tab_widget = QTabWidget()
-        self.tab_widget.setStyleSheet(f"""
-            QTabWidget::pane {{
-                border: 1px solid {COLORS['secondary']};
-                background: {COLORS['surface']};
-            }}
-            QTabBar::tab {{
-                background: {COLORS['surface']};
-                color: {COLORS['text']};
-                padding: 8px 12px;
-                border: 1px solid {COLORS['secondary']};
-                border-bottom: none;
-                border-top-left-radius: 4px;
-                border-top-right-radius: 4px;
-            }}
-            QTabBar::tab:selected {{
-                background: {COLORS['primary']};
-                color: {COLORS['text']};
-            }}
-        """)
-
-        # Initial message widget
+        self.tab_widget.setStyleSheet(TAB_STYLE)
         self.initial_message = QLabel("No analysis performed yet.\nResults will appear here.")
         self.initial_message.setAlignment(Qt.AlignCenter)
         self.initial_message.setStyleSheet(f"color: {COLORS['text']}; font-size: 14px;")
@@ -461,7 +440,7 @@ class MainWindow(QMainWindow):
 
         dataset_buttons = [
             self.show_summary_button,
-            self.word_cloud_button,  # Updated order
+            self.word_cloud_button,  
             self.export_all_button,
             self.generate_report_button
         ]
@@ -486,14 +465,6 @@ class MainWindow(QMainWindow):
         details_layout.addWidget(details_section)
         details_layout.addWidget(row_ops_section)
         details_layout.addWidget(dataset_ops_section)
-
-        # Connect buttons
-        self.show_summary_button.clicked.connect(self.show_summary)
-        self.word_cloud_button.clicked.connect(self.show_word_cloud)
-        self.add_remove_button.clicked.connect(self.toggle_list_status)
-        self.export_selected_button.clicked.connect(self.export_selected)
-        self.export_all_button.clicked.connect(self.export_all)
-        self.generate_report_button.clicked.connect(lambda: generate_report(self))
 
         splitter.addWidget(details_container)
 
@@ -695,6 +666,10 @@ class MainWindow(QMainWindow):
         self.tab_widget.addTab(tab, tab_type)
         self.tabs[tab_type] = tab
         
+        # Enable close buttons for tabs
+        self.tab_widget.setTabsClosable(True)
+        self.tab_widget.tabCloseRequested.connect(self.close_tab)
+
         # Show tab widget and hide initial message when first tab is created
         if (self.tab_widget.isHidden()):
             self.initial_message.hide()
@@ -703,6 +678,22 @@ class MainWindow(QMainWindow):
             self.enable_dataset_operations(True)
             
         return table
+
+    def close_tab(self, index):
+        """Close the tab and clean up resources"""
+        # Get tab name before removing
+        tab_name = self.tab_widget.tabText(index)
+        
+        # Remove tab and its reference
+        self.tab_widget.removeTab(index)
+        if tab_name in self.tabs:
+            del self.tabs[tab_name]
+            
+        # If no tabs left, show initial message and disable dataset operations
+        if self.tab_widget.count() == 0:
+            self.tab_widget.hide()
+            self.initial_message.show()
+            self.enable_dataset_operations(False)
 
     def enable_dataset_operations(self, enable=True):
         """Enable or disable dataset operation buttons"""

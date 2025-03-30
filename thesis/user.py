@@ -9,7 +9,7 @@ from scraper import scrape_comments
 from model import classify_comment
 import pandas as pd
 from utils import display_message
-from styles import COLORS, FONTS, BUTTON_STYLE, INPUT_STYLE, TABLE_STYLE
+from styles import COLORS, FONTS, BUTTON_STYLE, INPUT_STYLE, TABLE_STYLE, TAB_STYLE
 import tempfile
 import time
 from PyQt5.QtWidgets import QApplication
@@ -240,25 +240,7 @@ class UserMainWindow(QMainWindow):
         
         # Tab widget styling
         self.tab_widget = QTabWidget()
-        self.tab_widget.setStyleSheet(f"""
-            QTabWidget::pane {{
-                border: none;
-                background: transparent;
-            }}
-            QTabBar::tab {{
-                background: {COLORS['surface']};
-                color: {COLORS['text']};
-                padding: 6px 10px;
-                border: 1px solid {COLORS['secondary']};
-                border-bottom: none;
-                border-top-left-radius: 4px;
-                border-top-right-radius: 4px;
-            }}
-            QTabBar::tab:selected {{
-                background: {COLORS['primary']};
-                color: {COLORS['text']};
-            }}
-        """)
+        self.tab_widget.setStyleSheet(TAB_STYLE)
         
         # Add initial message to tab widget area
         results_layout.addWidget(message_container)
@@ -479,7 +461,25 @@ class UserMainWindow(QMainWindow):
             self.initial_message.hide()
             self.tab_widget.show()
         
+        self.tab_widget.setTabsClosable(True)  # Enable close buttons
+        self.tab_widget.tabCloseRequested.connect(self.close_tab)
+        
         return table
+
+    def close_tab(self, index):
+        """Close the tab and clean up resources"""
+        # Get tab name before removing
+        tab_name = self.tab_widget.tabText(index)
+        
+        # Remove tab and its reference
+        self.tab_widget.removeTab(index)
+        if tab_name in self.tabs:
+            del self.tabs[tab_name]
+            
+        # If no tabs left, show initial message
+        if self.tab_widget.count() == 0:
+            self.tab_widget.hide()
+            self.initial_message.show()
 
     def get_current_table(self):
         """Get the table widget from the current tab"""

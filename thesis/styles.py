@@ -143,6 +143,38 @@ TABLE_STYLE = f"""
     }}
 """
 
+# Add new tab styles
+TAB_STYLE = f"""
+    QTabWidget::pane {{
+        border: 1px solid {COLORS['border']};
+        background: {COLORS['surface']};
+        border-radius: 8px;
+    }}
+    QTabBar::tab {{
+        background: {COLORS['surface']};
+        color: {COLORS['text']};
+        padding: 8px 12px;
+        border: 1px solid {COLORS['border']};
+        border-bottom: none;
+        border-top-left-radius: 4px;
+        border-top-right-radius: 4px;
+        min-width: 80px;
+    }}
+    QTabBar::tab:selected {{
+        background: {COLORS['primary']};
+        color: {COLORS['text']};
+    }}
+    QTabBar::tab:hover:!selected {{
+        background: {COLORS['hover']};
+    }}
+    QTabBar::close-button {{
+        image: url(assets/close.png);
+        subcontrol-position: right;
+        subcontrol-origin: padding;
+        margin-right: 4px;
+    }}
+"""
+
 # New styles for additional elements
 
 # Dropdown/Combo Box Style
