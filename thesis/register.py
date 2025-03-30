@@ -1,14 +1,16 @@
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton
 from PyQt5.QtCore import Qt
 from styles import COLORS, FONTS, BUTTON_STYLE, INPUT_STYLE
+import json
+import os
 
-class LoginWindow(QDialog):
+class RegisterWindow(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Login")
+        self.setWindowTitle("Register")
         self.setStyleSheet(f"background-color: {COLORS['background']}; color: {COLORS['text']};")
         self.setMinimumWidth(400)
-        self.role = None  # Store the user role
+        self.username = ""
         self.setup_ui()
 
     def setup_ui(self):
@@ -17,7 +19,7 @@ class LoginWindow(QDialog):
         layout.setContentsMargins(40, 40, 40, 40)
 
         # Title
-        title = QLabel("Login")
+        title = QLabel("Create Account")
         title.setFont(FONTS['header'])
         title.setStyleSheet(f"color: {COLORS['primary']}; font-size: 24px;")
         title.setAlignment(Qt.AlignCenter)
@@ -42,48 +44,57 @@ class LoginWindow(QDialog):
         layout.addWidget(password_label)
         layout.addWidget(self.password_input)
 
-        # Login Button
-        self.login_button = QPushButton("Login")
-        self.login_button.setStyleSheet(BUTTON_STYLE)
-        self.login_button.setFont(FONTS['button'])
-        self.login_button.clicked.connect(self.validate_login)
-        layout.addWidget(self.login_button)
+        # Confirm Password
+        confirm_label = QLabel("Confirm Password")
+        confirm_label.setFont(FONTS['body'])
+        self.confirm_input = QLineEdit()
+        self.confirm_input.setStyleSheet(INPUT_STYLE)
+        self.confirm_input.setPlaceholderText("Confirm your password")
+        self.confirm_input.setEchoMode(QLineEdit.Password)
+        layout.addWidget(confirm_label)
+        layout.addWidget(self.confirm_input)
 
-        # Sign Up Text Link
-        self.signup_label = QLabel("New User? Create Account.")
-        self.signup_label.setFont(FONTS['body'])
-        self.signup_label.setStyleSheet("text-decoration: underline; color: blue; cursor: pointer;")
-        self.signup_label.setAlignment(Qt.AlignCenter)
-        self.signup_label.mousePressEvent = lambda e: self.open_register()
-        layout.addWidget(self.signup_label)
+        # Register Button
+        self.register_button = QPushButton("Register")
+        self.register_button.setStyleSheet(BUTTON_STYLE)
+        self.register_button.setFont(FONTS['button'])
+        self.register_button.clicked.connect(self.register_user)
+        layout.addWidget(self.register_button)
 
         self.error_label = QLabel("")
         self.error_label.setStyleSheet(f"color: {COLORS['error']};")
         self.error_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.error_label)
 
-    def validate_login(self):
+    def register_user(self):
         username = self.username_input.text()
         password = self.password_input.text()
+        confirm = self.confirm_input.text()
 
-        # Define user credentials
+        if not username or not password:
+            self.error_label.setText("Please fill in all fields")
+            return
+
+        if password != confirm:
+            self.error_label.setText("Passwords do not match")
+            self.password_input.clear()
+            self.confirm_input.clear()
+            return
+
+        # Check if username already exists
         credentials = {
             "admin": {"password": "admin123", "role": "admin"},
             "user": {"password": "user123", "role": "user"}
         }
 
-        if username in credentials and password == credentials[username]["password"]:
-            self.role = credentials[username]["role"]
-            self.accept()
-        else:
-            self.error_label.setText("Invalid username or password")
-            self.password_input.clear()
+        if username in credentials:
+            self.error_label.setText("Username already exists")
+            return
 
-    def open_register(self):
-        from register import RegisterWindow
-        register_window = RegisterWindow(self)
-        if register_window.exec_() == QDialog.Accepted:
-            self.username_input.setText(register_window.get_username())
+        # Add new user
+        credentials[username] = {"password": password, "role": "user"}
+        self.username = username
+        self.accept()
 
-    def get_role(self):
-        return self.role
+    def get_username(self):
+        return self.username
