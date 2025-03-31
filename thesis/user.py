@@ -306,11 +306,11 @@ class UserMainWindow(QMainWindow):
         # Add initial message to tab widget area
         results_layout.addWidget(message_container)
         results_layout.addWidget(self.tab_widget)
-        self.tab_widget.hide()  # Hide tab widget initially
+        self.tab_widget.hide()  
 
         # Operations section - Created as a boxed container like input sections with fixed height
         operations_container = QWidget()
-        operations_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)  # Limit vertical size
+        operations_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)  
         operations_container.setStyleSheet(f"""
             QWidget {{
                 background-color: {COLORS['surface']};
@@ -388,7 +388,9 @@ class UserMainWindow(QMainWindow):
             
             if self.current_user:  # Only log if we have a valid user
                 try:
-                    log_user_action(self.current_user, f"Scraped comments from URL: {url}")
+                    # Truncate URL if too long
+                    short_url = url[:30] + "..." if len(url) > 30 else url
+                    log_user_action(self.current_user, f"Scraped FB post: {short_url}")
                 except Exception as log_error:
                     print(f"Logging error: {log_error}")
             
@@ -438,7 +440,9 @@ class UserMainWindow(QMainWindow):
             
             if self.current_user:  # Only log if we have a valid user
                 try:
-                    log_user_action(self.current_user, f"Processed CSV file: {file_path}")
+                    # Get just the filename without full path
+                    file_name = file_path.split('/')[-1].split('\\')[-1]
+                    log_user_action(self.current_user, f"Processed CSV: {file_name}")
                 except Exception as log_error:
                     print(f"Logging error: {log_error}")
             
