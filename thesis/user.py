@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import (QMainWindow, QVBoxLayout, QHBoxLayout, QLabel,
                            QHeaderView, QSplitter, QGridLayout, QComboBox, 
                            QSizePolicy, QStackedWidget, QFrame, QTabWidget, QMessageBox, QCheckBox)
 from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QColor, QTextCursor
+from PyQt5.QtGui import QColor, QTextCursor, QImage, QPixmap
 from scraper import scrape_comments
 from model import classify_comment
 import pandas as pd
@@ -14,6 +14,12 @@ import tempfile
 import time
 from PyQt5.QtWidgets import QApplication
 from comment_operations import generate_report_from_window, generate_report_user
+from wordcloud import WordCloud
+import matplotlib.pyplot as plt
+import re
+from io import BytesIO
+from stopwords import TAGALOG_STOP_WORDS
+from PyQt5.QtWidgets import QDialog
 
 # Reuse the LoadingOverlay from the main GUI
 from loading_overlay import LoadingOverlay
@@ -255,7 +261,7 @@ class UserMainWindow(QMainWindow):
         separator.setStyleSheet(f"background-color: {COLORS['border']};")
         self.layout.addWidget(separator)
         
-     # Results section with tab widget - Modified to match input containers
+        # Results section with tab widget - Modified to match input containers
         results_container = QWidget()
         results_container.setStyleSheet(f"""
             QWidget {{
@@ -266,55 +272,95 @@ class UserMainWindow(QMainWindow):
         """)
         results_layout = QVBoxLayout(results_container)
         results_layout.setContentsMargins(8, 8, 8, 8)  # Match input section padding
-        
-        # Table controls in a compact horizontal layout with better alignment
-        table_controls = QWidget()
-        table_controls.setStyleSheet("border: none;")  # Remove border for inner widget
-        controls_layout = QHBoxLayout(table_controls)
-        controls_layout.setContentsMargins(0, 0, 0, 5)  # Minimal margins
-        
+
         # Create a container for the title with proper alignment
         title_container = QWidget()
         title_container.setStyleSheet("border: none;")
         title_layout = QHBoxLayout(title_container)
         title_layout.setContentsMargins(0, 0, 0, 0)
-        
+
         table_title = QLabel("Results")
         table_title.setFont(FONTS['header'])
         table_title.setAlignment(Qt.AlignLeft)
         title_layout.addWidget(table_title)
         title_layout.addStretch()
-        
-        # Add the title container to the main controls layout
-        controls_layout.addWidget(title_container, 1)  # Give title container stretch priority
-        
+
+        # Add the title container to the results layout
+        results_layout.addWidget(title_container)
+
         # Initial message widget with styled container
         message_container = QWidget()
         message_container.setStyleSheet("border: none;")  # Remove border for inner widget
         message_layout = QVBoxLayout(message_container)
         message_layout.setContentsMargins(5, 10, 5, 10)  # Better padding for message
-        
+
         self.initial_message = QLabel("No analysis performed yet.\nResults will appear here.")
         self.initial_message.setAlignment(Qt.AlignCenter)
         self.initial_message.setStyleSheet(f"color: {COLORS['text']}; font-size: 14px;")
         message_layout.addWidget(self.initial_message)
-        
+
         # Tab widget styling
         self.tab_widget = QTabWidget()
         self.tab_widget.setStyleSheet(TAB_STYLE)
-        
+
         # Add initial message to tab widget area
         results_layout.addWidget(message_container)
         results_layout.addWidget(self.tab_widget)
         self.tab_widget.hide()  # Hide tab widget initially
 
+        # Operations section - Created as a boxed container like input sections with fixed height
+        operations_container = QWidget()
+        operations_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)  # Limit vertical size
+        operations_container.setStyleSheet(f"""
+            QWidget {{
+                background-color: {COLORS['surface']};
+                border: 1px solid {COLORS['secondary']};
+                border-radius: 4px;
+            }}
+        """)
+        operations_layout = QVBoxLayout(operations_container)
+        operations_layout.setSpacing(5)  # Reduced spacing
+        operations_layout.setContentsMargins(8, 8, 8, 8)  # Reduced padding
+
+        # Operations title with fixed height and compact layout
+        operations_title = QLabel("Operations")
+        operations_title.setFont(FONTS['button'])  # Same font as input section titles
+        operations_title.setAlignment(Qt.AlignCenter)
+        operations_title.setFixedHeight(20)  # Set fixed height for title to minimize space
+        operations_layout.addWidget(operations_title)
+
+        # Add buttons for summary, word cloud, and report generation in a row
+        buttons_layout = QHBoxLayout()
+        buttons_layout.setContentsMargins(0, 0, 0, 0)  # Remove margins to make more compact
+        self.show_summary_button = QPushButton("📊 Show Summary")
+        self.word_cloud_button = QPushButton("☁️ Word Cloud")
+        self.generate_report_button = QPushButton("📝 Generate Report")
+
+        # Connect the buttons
+        self.show_summary_button.clicked.connect(self.show_summary)
+        self.word_cloud_button.clicked.connect(self.show_word_cloud)
+        self.generate_report_button.clicked.connect(self.generate_report)
+
+        # Style the buttons
+        for btn in [self.show_summary_button, self.word_cloud_button, self.generate_report_button]:
+            btn.setStyleSheet(BUTTON_STYLE)
+            btn.setFont(FONTS['button'])
+
+        buttons_layout.addWidget(self.show_summary_button)
+        buttons_layout.addWidget(self.word_cloud_button)
+        buttons_layout.addWidget(self.generate_report_button)
+        operations_layout.addLayout(buttons_layout)
+
+        # Add operations container below the results
+        results_layout.addWidget(operations_container)
+
         # Initialize tab counters
         self.csv_tab_count = 1
         self.url_tab_count = 1
-        
+
         # Dictionary to store tab references
         self.tabs = {}
-        
+
         # Add results container to main layout with stretch factor
         self.layout.addWidget(results_container, 1)  # Give it maximum stretch
             
@@ -486,10 +532,11 @@ class UserMainWindow(QMainWindow):
         sort_combo = QComboBox()
         sort_combo.addItems([
             "Sort by Comments (A-Z)",
-            "Sort by Comments (Z-A)",
+            "Sort by Comments (Z-A)", 
             "Sort by Prediction (A-Z)",
             "Sort by Confidence (High to Low)",
-            "Sort by Confidence (Low to High)"
+            "Sort by Confidence (Low to High)",
+            "Show Replies Only"  # Add this option
         ])
         header_layout.addWidget(sort_combo)
         tab_layout.addLayout(header_layout)
@@ -588,6 +635,16 @@ class UserMainWindow(QMainWindow):
         """Sort the specified table based on its combo box selection"""
         sort_combo = table.sort_combo
         index = sort_combo.currentIndex()
+        
+        # Handle the new replies filter
+        if index == 5:  # "Show Replies Only"
+            for row in range(table.rowCount()):
+                text = table.item(row, 0).text()
+                is_reply = text.startswith(" [↪ Reply]") or text.startswith(" ↪ Reply")
+                table.setRowHidden(row, not is_reply)
+            return
+            
+        # Regular sorting
         if index == 0:
             table.sortItems(0, Qt.AscendingOrder)
         elif index == 1:
@@ -750,3 +807,112 @@ class UserMainWindow(QMainWindow):
                 display_message(self, "Success", "Results exported successfully")
             except Exception as e:
                 display_message(self, "Error", f"Error exporting results: {e}")
+
+    def show_word_cloud(self):
+        """Generate and display word cloud visualization"""
+        total_comments = self.get_current_table().rowCount()
+        if total_comments == 0:
+            display_message(self, "Error", "No comments to visualize")
+            return
+
+        all_comments = []
+        for row in range(total_comments):
+            if not self.get_current_table().isRowHidden(row):
+                comment = self.get_current_table().item(row, 0).text()
+                all_comments.append(comment)
+
+        try:
+            # Preprocess comments
+            def preprocess_text(text):
+                text = text.lower()
+                text = re.sub(r'http\S+|www\S+|https\S+', '', text)
+                text = re.sub(r'[^\w\s]', '', text)
+                text = ' '.join(text.split())
+                return text
+
+            processed_comments = [preprocess_text(comment) for comment in all_comments]
+            
+            wordcloud = WordCloud(
+                width=800, 
+                height=400,
+                background_color='white',
+                max_words=100,
+                stopwords=TAGALOG_STOP_WORDS,
+                collocations=False
+            ).generate(' '.join(processed_comments))
+
+            plt.figure(figsize=(10, 5))
+            plt.imshow(wordcloud, interpolation='bilinear')
+            plt.axis('off')
+            
+            buf = BytesIO()
+            plt.savefig(buf, format='png', bbox_inches='tight', pad_inches=0)
+            plt.close()
+            buf.seek(0)
+            
+            image = QImage.fromData(buf.getvalue())
+            pixmap = QPixmap.fromImage(image)
+
+            # Create dialog for word cloud
+            dialog = QDialog(self)
+            dialog.setWindowTitle("Word Cloud Visualization")
+            dialog.setMinimumWidth(800)
+            layout = QVBoxLayout(dialog)
+
+            # Add word cloud
+            image_label = QLabel()
+            scaled_pixmap = pixmap.scaled(700, 350, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            image_label.setPixmap(scaled_pixmap)
+            image_label.setAlignment(Qt.AlignCenter)
+            layout.addWidget(image_label)
+
+            # Add close button
+            close_button = QPushButton("Close")
+            close_button.setStyleSheet(BUTTON_STYLE)
+            close_button.clicked.connect(dialog.close)
+            layout.addWidget(close_button, alignment=Qt.AlignCenter)
+
+            dialog.exec_()
+
+        except Exception as e:
+            display_message(self, "Error", f"Error generating word cloud: {e}")
+
+    def show_summary(self):
+        """Show summary of comments analysis"""
+        total_comments = 0
+        cyberbullying_count = 0
+        normal_count = 0
+        high_confidence_count = 0
+
+        table = self.get_current_table()
+        for row in range(table.rowCount()):
+            if not table.isRowHidden(row):
+                total_comments += 1
+                prediction = table.item(row, 1).text()
+                confidence = float(table.item(row, 2).text().strip('%')) / 100
+
+                if prediction == "Cyberbullying":
+                    cyberbullying_count += 1
+                else:
+                    normal_count += 1
+
+                if confidence > 0.9:
+                    high_confidence_count += 1
+
+        if total_comments == 0:
+            display_message(self, "Error", "No visible comments to summarize")
+            return
+
+        summary_text = (
+            f"Analysis Summary:\n\n"
+            f"Total Comments: {total_comments}\n"
+            f"Cyberbullying Comments: {cyberbullying_count} ({(cyberbullying_count/total_comments)*100:.1f}%)\n"
+            f"Normal Comments: {normal_count} ({(normal_count/total_comments)*100:.1f}%)\n"
+            f"High Confidence Predictions: {high_confidence_count} ({(high_confidence_count/total_comments)*100:.1f}%)"
+        )
+
+        display_message(self, "Results Summary", summary_text)
+
+    def generate_report(self):
+        """Generate report by calling the report generation function"""
+        generate_report_user(self)

@@ -670,7 +670,8 @@ class MainWindow(QMainWindow):
             "Sort by Comments (Z-A)",
             "Sort by Prediction (A-Z)",
             "Sort by Confidence (High to Low)",
-            "Sort by Confidence (Low to High)"
+            "Sort by Confidence (Low to High)",
+            "Show Replies Only"  # Add this option
         ])
         header_layout.addWidget(sort_combo)
         tab_layout.addLayout(header_layout)
@@ -880,6 +881,16 @@ class MainWindow(QMainWindow):
         """Sort the specified table based on its combo box selection"""
         sort_combo = table.sort_combo
         index = sort_combo.currentIndex()
+        
+        # Handle the new replies filter
+        if index == 5:  # "Show Replies Only"
+            for row in range(table.rowCount()):
+                text = table.item(row, 0).text()
+                is_reply = text.startswith(" [↪ Reply]") or text.startswith(" ↪ Reply")
+                table.setRowHidden(row, not is_reply)
+            return
+            
+        # Regular sorting
         if index == 0:
             table.sortItems(0, Qt.AscendingOrder)
         elif index == 1:
