@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import (QMainWindow, QVBoxLayout, QHBoxLayout, QLabel,
                            QLineEdit, QPushButton, QTextEdit, QWidget, 
                            QFileDialog, QTableWidget, QTableWidgetItem, 
                            QHeaderView, QSplitter, QGridLayout, QComboBox, 
-                           QSizePolicy, QStackedWidget, QFrame, QTabWidget, QMessageBox)
+                           QSizePolicy, QStackedWidget, QFrame, QTabWidget, QMessageBox, QCheckBox)
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QColor, QTextCursor
 from scraper import scrape_comments
@@ -157,6 +157,13 @@ class UserMainWindow(QMainWindow):
         self.url_input = QLineEdit()
         self.url_input.setStyleSheet(INPUT_STYLE)
         self.url_input.setPlaceholderText("Enter Facebook Post URL")
+
+        # Add checkbox for including replies
+        self.include_replies = QCheckBox("Include Replies")
+        self.include_replies.setStyleSheet(f"color: {COLORS['text']};")
+        self.include_replies.setFont(FONTS['button'])
+        self.include_replies.setChecked(True)  # Default to including replies
+        
         self.scrape_button = QPushButton("Scrape Comments")
         self.scrape_button.setFont(FONTS['button'])
         self.scrape_button.setStyleSheet(BUTTON_STYLE)
@@ -164,6 +171,7 @@ class UserMainWindow(QMainWindow):
         
         fb_layout.addWidget(fb_title)
         fb_layout.addWidget(self.url_input)
+        fb_layout.addWidget(self.include_replies)  # Add checkbox to layout
         fb_layout.addWidget(self.scrape_button)
         input_layout.addWidget(fb_section)
 
@@ -341,8 +349,13 @@ class UserMainWindow(QMainWindow):
             from scraper import scrape_comments
             with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as temp_file:
                 temp_path = temp_file.name
-            scrape_comments(url, temp_path)
+            # Pass include_replies flag to scrape_comments
+            scrape_comments(url, temp_path, self.include_replies.isChecked())
             df = pd.read_csv(temp_path)
+            
+            # Filter out replies if not included
+            if not self.include_replies.isChecked():
+                df = df[~df['Is Reply']]
             
             # Store additional comment metadata
             self.comment_metadata = {}
@@ -352,7 +365,9 @@ class UserMainWindow(QMainWindow):
                     'profile_picture': row['Profile Picture'],
                     'date': row['Date'],
                     'likes_count': row['Likes Count'],
-                    'profile_id': row['Profile ID']
+                    'profile_id': row['Profile ID'],
+                    'is_reply': row.get('Is Reply', False),
+                    'reply_to': row.get('Reply To', '')
                 }
             
             comments = df['Text'].tolist()
@@ -394,7 +409,9 @@ class UserMainWindow(QMainWindow):
                     'profile_picture': '',
                     'date': time.strftime('%Y-%m-%d %H:%M:%S'),
                     'likes_count': 'N/A',
-                    'profile_id': 'N/A'
+                    'profile_id': 'N/A',
+                    'is_reply': False,
+                    'reply_to': ''
                 }
             
             self.populate_table(comments)
@@ -427,7 +444,9 @@ class UserMainWindow(QMainWindow):
                     'profile_picture': '',
                     'date': time.strftime('%Y-%m-%d %H:%M:%S'),
                     'likes_count': 'N/A',
-                    'profile_id': 'N/A'
+                    'profile_id': 'N/A',
+                    'is_reply': False,
+                    'reply_to': ''
                 }
             }
             
@@ -643,13 +662,28 @@ class UserMainWindow(QMainWindow):
         table = self.create_empty_tab(tab_name)
         
         for comment in comments:
+            metadata = self.comment_metadata.get(comment, {})
+            is_reply = metadata.get('is_reply', False)
+            reply_to = metadata.get('reply_to', '')
+            
             prediction, confidence = classify_comment(comment)
             row_position = table.rowCount()
             table.insertRow(row_position)
 
-            comment_item = QTableWidgetItem(comment)
-            comment_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-
+            # Create display text with reply indicator
+            if is_reply:
+                comment_item = QTableWidgetItem()
+                comment_item.setData(Qt.UserRole, comment)  # Store original comment
+                comment_item.setData(Qt.DisplayRole, f" [↪ Reply] {comment}")
+                comment_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+                
+                # Add subtle background color for replies
+                lighter_surface = QColor(COLORS['surface']).lighter(105)
+                comment_item.setBackground(lighter_surface)
+            else:
+                comment_item = QTableWidgetItem(comment)
+                comment_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+            
             prediction_item = QTableWidgetItem(prediction)
             prediction_item.setTextAlignment(Qt.AlignCenter)
             if prediction == "Cyberbullying":

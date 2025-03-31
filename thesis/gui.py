@@ -247,6 +247,7 @@ class MainWindow(QMainWindow):
         self.scrape_button = QPushButton("Scrape and Classify Comments")
         self.scrape_button.setFont(FONTS['button'])
         self.scrape_button.setStyleSheet(BUTTON_STYLE)
+        self.scrape_button.clicked.connect(self.scrape_comments) 
         fb_layout.addWidget(fb_title)
         fb_layout.addWidget(self.url_input)
         fb_layout.addWidget(self.include_replies)
@@ -839,13 +840,8 @@ class MainWindow(QMainWindow):
                 reply_to = metadata.get('reply_to', '')
                 comment_item = QTableWidgetItem(display_text)
                 comment_item.setData(Qt.UserRole, comment)  # Store original comment
-                comment_item.setData(Qt.DisplayRole, f" ↪ Reply {display_text}")  # Remove square brackets
+                comment_item.setData(Qt.DisplayRole, f" [↪ Reply] {display_text}") 
                 comment_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-                comment_item.setData(
-                    Qt.DecorationRole, 
-                    QColor(COLORS['primary']).lighter(130)
-                )
-                # Remove tooltip as this info will be in details panel
             else:
                 comment_item = QTableWidgetItem(display_text)
                 comment_item.setData(Qt.UserRole, comment)
