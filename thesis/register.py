@@ -3,7 +3,7 @@ from PyQt5.QtCore import Qt
 from styles import COLORS, FONTS, BUTTON_STYLE, INPUT_STYLE
 import json
 import os
-from db_config import get_db_connection
+from db_config import get_db_connection, log_user_action
 
 class RegisterWindow(QDialog):
     def __init__(self, parent=None):
@@ -100,6 +100,9 @@ class RegisterWindow(QDialog):
             )
             conn.commit()
             conn.close()
+            
+            # Add logging
+            log_user_action(username, "User Registration")
             
             self.username = username
             self.accept()

@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton
 from PyQt5.QtCore import Qt
 from styles import COLORS, FONTS, BUTTON_STYLE, INPUT_STYLE
-from db_config import get_db_connection
+from db_config import get_db_connection, log_user_action
 
 class LoginWindow(QDialog):
     def __init__(self, parent=None):
@@ -77,8 +77,10 @@ class LoginWindow(QDialog):
             result = cursor.fetchone()
             
             if result:
-                self.role = result[0].strip()  # Strip any whitespace from role
+                self.role = result[0].strip()
                 conn.close()
+                # Add logging
+                log_user_action(username, "User Login")
                 self.accept()
             else:
                 self.error_label.setText("Invalid username or password")

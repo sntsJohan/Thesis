@@ -45,6 +45,29 @@ class UserMainWindow(QMainWindow):
         self.main_window.show()
         self.close()
     
+    def confirm_sign_out(self):
+        """Show confirmation dialog before signing out"""
+        msg = QMessageBox(self)
+        msg.setIcon(QMessageBox.Question)
+        msg.setWindowTitle("Sign Out")
+        msg.setText("Are you sure you want to sign out?")
+        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        
+        # Style the message box
+        msg.setStyleSheet(f"""
+            QMessageBox {{
+                background-color: {COLORS['background']};
+                color: {COLORS['text']};
+            }}
+            QPushButton {{
+                {BUTTON_STYLE}
+                min-width: 100px;
+            }}
+        """)
+        
+        if msg.exec_() == QMessageBox.Yes:
+            self.sign_out()
+    
     def show_main_ui(self):
         self.central_widget.setCurrentIndex(1)
     
@@ -60,21 +83,24 @@ class UserMainWindow(QMainWindow):
         header_layout = QHBoxLayout(header_widget)
         header_layout.setContentsMargins(0, 0, 0, 0)
         
-        # Add sign out button
-        self.sign_out_button = QPushButton("Sign Out")
-        self.sign_out_button.setFont(FONTS['button'])
-        self.sign_out_button.setStyleSheet(BUTTON_STYLE)
-        self.sign_out_button.setFixedWidth(100)  # Smaller width
-        self.sign_out_button.clicked.connect(self.sign_out)
-        
-        # Title
+        # Title in center
         title = QLabel("Cyberbullying Detection Tool")
         title.setFont(FONTS['header'])
         title.setAlignment(Qt.AlignCenter)
         
-        header_layout.addWidget(self.sign_out_button)
+        # Add invisible spacer on left to match button width
+        header_layout.addSpacing(100)
+        
+        # Add title
         header_layout.addWidget(title, 1)  # Title takes remaining space
-        header_layout.addSpacing(100)  # Balance the layout
+        
+        # Sign Out button on right
+        sign_out_button = QPushButton("Sign Out")
+        sign_out_button.setFont(FONTS['button'])
+        sign_out_button.setStyleSheet(BUTTON_STYLE)
+        sign_out_button.setFixedWidth(100)
+        sign_out_button.clicked.connect(self.confirm_sign_out)
+        header_layout.addWidget(sign_out_button)
         
         self.layout.addWidget(header_widget)
         

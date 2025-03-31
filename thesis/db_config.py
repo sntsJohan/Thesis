@@ -9,88 +9,6 @@ def get_db_connection():
     )
     return conn
 
-def init_db():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    # Create users table if not exists
-    cursor.execute('''
-        IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='users' AND xtype='U')
-        CREATE TABLE users (
-            username VARCHAR(50) PRIMARY KEY,
-            password VARCHAR(100) NOT NULL,
-            role VARCHAR(20) NOT NULL
-        )
-    ''')
-    
-    # Create tabs table
-    cursor.execute('''
-        IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='tabs' AND xtype='U')
-        CREATE TABLE tabs (
-            tab_id INT IDENTITY(1,1) PRIMARY KEY,
-            tab_name VARCHAR(100) NOT NULL,
-            tab_type VARCHAR(50) NOT NULL,
-            creation_date DATETIME DEFAULT GETDATE(),
-            username VARCHAR(50) NOT NULL,
-            FOREIGN KEY (username) REFERENCES users(username)
-        )
-    ''')
-    
-    # Create comments table
-    cursor.execute('''
-        IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='comments' AND xtype='U')
-        CREATE TABLE comments (
-            comment_id INT IDENTITY(1,1) PRIMARY KEY,
-            comment_text NVARCHAR(MAX) NOT NULL,
-            prediction VARCHAR(50) NOT NULL,
-            confidence FLOAT NOT NULL,
-            analysis_date DATETIME DEFAULT GETDATE()
-        )
-    ''')
-    
-    # Create comment metadata table
-    cursor.execute('''
-        IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='comment_metadata' AND xtype='U')
-        CREATE TABLE comment_metadata (
-            comment_id INT PRIMARY KEY,
-            profile_name NVARCHAR(100),
-            profile_picture NVARCHAR(MAX),
-            post_date DATETIME,
-            likes_count INT,
-            profile_id VARCHAR(100),
-            is_reply BIT DEFAULT 0,
-            reply_to_comment_id INT,
-            FOREIGN KEY (comment_id) REFERENCES comments(comment_id),
-            FOREIGN KEY (reply_to_comment_id) REFERENCES comments(comment_id)
-        )
-    ''')
-    
-    # Create tab_comments junction table
-    cursor.execute('''
-        IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='tab_comments' AND xtype='U')
-        CREATE TABLE tab_comments (
-            tab_id INT,
-            comment_id INT,
-            display_order INT NOT NULL,
-            PRIMARY KEY (tab_id, comment_id),
-            FOREIGN KEY (tab_id) REFERENCES tabs(tab_id),
-            FOREIGN KEY (comment_id) REFERENCES comments(comment_id)
-        )
-    ''')
-
-    # Insert default admin and user if they don't exist
-    cursor.execute('''
-        IF NOT EXISTS (SELECT * FROM users WHERE username='admin')
-        INSERT INTO users (username, password, role) VALUES ('admin', 'admin123', 'admin')
-    ''')
-    cursor.execute('''
-        IF NOT EXISTS (SELECT * FROM users WHERE username='user')
-        INSERT INTO users (username, password, role) VALUES ('user', 'user123', 'user')
-    ''')
-    
-    conn.commit()
-    conn.close()
-
 def save_tab(username, tab_name, tab_type, comments_data):
     """Save a tab and its comments to the database"""
     conn = get_db_connection()
@@ -184,3 +102,18 @@ def get_tab_comments(tab_id):
     ''', tab_id)
     
     return cursor.fetchall()
+
+def log_user_action(username, action):
+    """Log user actions to the database"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute('''
+            INSERT INTO user_logs (username, action, timestamp)
+            VALUES (?, ?, GETDATE())
+        ''', (username, action))
+        conn.commit()
+    except Exception as e:
+        print(f"Logging error: {str(e)}")
+    finally:
+        conn.close()

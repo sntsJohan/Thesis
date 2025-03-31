@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import (QMainWindow, QVBoxLayout, QHBoxLayout, QLabel,
                            QFileDialog, QTableWidget, QTableWidgetItem, 
                            QHeaderView, QSplitter, QGridLayout, QComboBox, QSizePolicy, QStackedWidget, QDialog, QTabWidget, QMessageBox, QCheckBox)
 from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QColor, QTextCursor, QPixmap, QImage
+from PyQt5.QtGui import QColor, QTextCursor, QPixmap, QImage, QIcon
 import numpy as np
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
@@ -174,26 +174,38 @@ class MainWindow(QMainWindow):
         input_layout.setSpacing(10)  # Reduced spacing
         input_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Add header section with back button and title
+        # Add header section with buttons and title
         header_widget = QWidget()
         header_layout = QHBoxLayout(header_widget)
         header_layout.setContentsMargins(0, 0, 0, 0)
         
-        # Add back button
-        back_button = QPushButton("Sign Out")
-        back_button.setFont(FONTS['button'])
-        back_button.setStyleSheet(BUTTON_STYLE)
-        back_button.setFixedWidth(100)
-        back_button.clicked.connect(lambda: self.central_widget.setCurrentIndex(0))  # Return to welcome screen
+        # User Logs button with proper icon and text
+        logs_button = QPushButton()
+        logs_button.setFont(FONTS['button'])
+        logs_button.setStyleSheet(BUTTON_STYLE)
+        logs_button.setFixedWidth(150)
+        logs_button.setText(" User Logs")  # Space for icon padding
         
-        # Title
+        # Add icon to button
+        icon_pixmap = QPixmap("assets/history.png")
+        icon_pixmap = icon_pixmap.scaled(16, 16, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        logs_button.setIcon(QIcon(icon_pixmap))
+        
+        # Title in center
         title = QLabel("Taglish Cyberbullying Detection System")
         title.setFont(FONTS['header'])
         title.setAlignment(Qt.AlignCenter)
-        
-        header_layout.addWidget(back_button)
+
+        # Sign Out button on right
+        sign_out_button = QPushButton("Sign Out")
+        sign_out_button.setFont(FONTS['button'])
+        sign_out_button.setStyleSheet(BUTTON_STYLE)
+        sign_out_button.setFixedWidth(100)
+        sign_out_button.clicked.connect(self.confirm_sign_out)
+
+        header_layout.addWidget(logs_button)
         header_layout.addWidget(title, 1)  # Title takes remaining space
-        header_layout.addSpacing(100)  # Balance the layout
+        header_layout.addWidget(sign_out_button)
         
         input_layout.addWidget(header_widget)
 
@@ -495,6 +507,29 @@ class MainWindow(QMainWindow):
             self.loading_overlay.show()
         else:
             self.loading_overlay.hide()
+
+    def confirm_sign_out(self):
+        """Show confirmation dialog before signing out"""
+        msg = QMessageBox(self)
+        msg.setIcon(QMessageBox.Question)
+        msg.setWindowTitle("Sign Out")
+        msg.setText("Are you sure you want to sign out?")
+        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        
+        # Style the message box
+        msg.setStyleSheet(f"""
+            QMessageBox {{
+                background-color: {COLORS['background']};
+                color: {COLORS['text']};
+            }}
+            QPushButton {{
+                {BUTTON_STYLE}
+                min-width: 100px;
+            }}
+        """)
+        
+        if msg.exec_() == QMessageBox.Yes:
+            self.central_widget.setCurrentIndex(0)
 
     def scrape_comments(self):
         url = self.url_input.text()
