@@ -130,11 +130,14 @@ class MainWindow(QMainWindow):
         
         if result == QDialog.Accepted:
             role = login_dialog.get_role()
+            username = login_dialog.get_username()  # Get username
+            
             if role and role.lower() == "admin":
                 self.central_widget.setCurrentIndex(1)  # Switch to main UI
                 self.showFullScreen()
             elif role and role.lower() == "user":
                 self.user_window = UserMainWindow()
+                self.user_window.set_current_user(username)  # Pass username to user window
                 self.user_window.set_main_window(self)
                 self.user_window.showFullScreen()
                 self.hide()
@@ -199,7 +202,7 @@ class MainWindow(QMainWindow):
         title.setAlignment(Qt.AlignCenter)
 
         # Sign Out button on right
-        sign_out_button = QPushButton("Sign Out")
+        sign_out_button = QPushButton("↩ Sign Out")
         sign_out_button.setFont(FONTS['button'])
         sign_out_button.setStyleSheet(BUTTON_STYLE)
         sign_out_button.setFixedWidth(100)

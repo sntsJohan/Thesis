@@ -10,6 +10,7 @@ class LoginWindow(QDialog):
         self.setStyleSheet(f"background-color: {COLORS['background']}; color: {COLORS['text']};")
         self.setMinimumWidth(400)
         self.role = None  # Store the user role
+        self.username = None  # Store the username
         self.setup_ui()
 
     def setup_ui(self):
@@ -78,6 +79,7 @@ class LoginWindow(QDialog):
             
             if result:
                 self.role = result[0].strip()
+                self.username = username  # Store username
                 conn.close()
                 # Only log if role is user
                 if self.role.lower() == "user":
@@ -99,3 +101,6 @@ class LoginWindow(QDialog):
 
     def get_role(self):
         return self.role
+
+    def get_username(self):  # Add this new method
+        return getattr(self, 'username', None)
