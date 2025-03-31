@@ -17,6 +17,7 @@ from comment_operations import generate_report_from_window, generate_report_user
 
 # Reuse the LoadingOverlay from the main GUI
 from loading_overlay import LoadingOverlay
+from db_config import log_user_action  # Add this import
 
 class UserMainWindow(QMainWindow):
     def __init__(self):
@@ -35,15 +36,29 @@ class UserMainWindow(QMainWindow):
         # Store reference to main window
         self.main_window = None
 
+        # Initialize current user
+        self.current_user = None
+
     def set_main_window(self, main_window):
         self.main_window = main_window
 
     def sign_out(self):
         """Sign out and return to main GUI"""
-        from gui import MainWindow  # Import here to avoid circular import
-        self.main_window = MainWindow()
-        self.main_window.show()
-        self.close()
+        try:
+            if self.current_user:  # Only log if we have a valid username
+                try:
+                    log_user_action(self.current_user, "Signed out")
+                except Exception as log_error:
+                    print(f"Logging error: {log_error}")
+            else:
+                print("Warning: Cannot log sign out - no current user")
+
+            from gui import MainWindow
+            self.main_window = MainWindow()
+            self.main_window.show()
+            self.close()
+        except Exception as e:
+            display_message(self, "Error", f"Error during sign out: {e}")
     
     def confirm_sign_out(self):
         """Show confirmation dialog before signing out"""
@@ -67,6 +82,18 @@ class UserMainWindow(QMainWindow):
         
         if msg.exec_() == QMessageBox.Yes:
             self.sign_out()
+    
+    def set_current_user(self, username):
+        """Set current user and ensure it's not None"""
+        if username:
+            self.current_user = username
+            try:
+                log_user_action(username, "Logged in as user")
+            except Exception as log_error:
+                print(f"Logging error: {log_error}")
+        else:
+            print("Warning: Attempted to set None as current user")
+            self.current_user = None
     
     def show_main_ui(self):
         self.central_widget.setCurrentIndex(1)
@@ -302,8 +329,14 @@ class UserMainWindow(QMainWindow):
             return
 
         try:
-            self.show_loading(True)  # Show loading overlay
-            QApplication.processEvents()  # Ensure the UI updates
+            self.show_loading(True)
+            QApplication.processEvents()
+            
+            if self.current_user:  # Only log if we have a valid user
+                try:
+                    log_user_action(self.current_user, f"Scraped comments from URL: {url}")
+                except Exception as log_error:
+                    print(f"Logging error: {log_error}")
             
             from scraper import scrape_comments
             with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as temp_file:
@@ -327,7 +360,7 @@ class UserMainWindow(QMainWindow):
         except Exception as e:
             display_message(self, "Error", f"Error scraping comments: {e}")
         finally:
-            self.show_loading(False)  # Hide loading overlay
+            self.show_loading(False)
 
     def browse_file(self):
         file_path, _ = QFileDialog.getOpenFileName(self, "Open CSV File", "", "CSV Files (*.csv)")
@@ -339,8 +372,16 @@ class UserMainWindow(QMainWindow):
             display_message(self, "Error", "Please select a CSV file first")
             return
         try:
-            self.show_loading(True)  # Show loading overlay
-            QApplication.processEvents()  # Ensure the UI updates
+            self.show_loading(True)
+            file_path = self.file_input.text()
+            
+            if self.current_user:  # Only log if we have a valid user
+                try:
+                    log_user_action(self.current_user, f"Processed CSV file: {file_path}")
+                except Exception as log_error:
+                    print(f"Logging error: {log_error}")
+            
+            QApplication.processEvents()
             
             df = pd.read_csv(self.file_input.text())
             comments = df.iloc[:, 0].tolist()
@@ -360,7 +401,7 @@ class UserMainWindow(QMainWindow):
         except Exception as e:
             display_message(self, "Error", f"Error reading CSV file: {e}")
         finally:
-            self.show_loading(False)  # Hide loading overlay
+            self.show_loading(False)
 
     def analyze_single(self):
         if not self.text_input.text():
@@ -368,11 +409,18 @@ class UserMainWindow(QMainWindow):
             return
         
         try:
-            self.show_loading(True)  # Show loading overlay
-            QApplication.processEvents()  # Ensure the UI updates
+            self.show_loading(True)
+            comment = self.text_input.text()
+            
+            if self.current_user:  # Only log if we have a valid user
+                try:
+                    log_user_action(self.current_user, "Analyzed single comment")
+                except Exception as log_error:
+                    print(f"Logging error: {log_error}")
+            
+            QApplication.processEvents()
             
             # Create metadata for the direct input comment
-            comment = self.text_input.text()
             self.comment_metadata = {
                 comment: {
                     'profile_name': 'Direct Input',
@@ -385,7 +433,7 @@ class UserMainWindow(QMainWindow):
             
             self.populate_table([comment])
         finally:
-            self.show_loading(False)  # Hide loading overlay
+            self.show_loading(False)
 
     def create_empty_tab(self, tab_type):
         """Create a new empty tab with table"""
@@ -494,8 +542,13 @@ class UserMainWindow(QMainWindow):
 
     def close_tab(self, index):
         """Close the tab and clean up resources"""
-        # Get tab name before removing
         tab_name = self.tab_widget.tabText(index)
+        
+        if self.current_user:  # Only log if we have a valid user
+            try:
+                log_user_action(self.current_user, f"Closed tab: {tab_name}")
+            except Exception as log_error:
+                print(f"Logging error: {log_error}")
         
         # Remove tab and its reference
         self.tab_widget.removeTab(index)
@@ -653,6 +706,13 @@ class UserMainWindow(QMainWindow):
                     'Confidence': confidences
                 })
                 df.to_csv(file_path, index=False)
+                
+                if self.current_user:  # Only log if we have a valid user
+                    try:
+                        log_user_action(self.current_user, f"Exported results to: {file_path}")
+                    except Exception as log_error:
+                        print(f"Logging error: {log_error}")
+                
                 display_message(self, "Success", "Results exported successfully")
             except Exception as e:
                 display_message(self, "Error", f"Error exporting results: {e}")

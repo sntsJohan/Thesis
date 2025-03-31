@@ -79,8 +79,9 @@ class LoginWindow(QDialog):
             if result:
                 self.role = result[0].strip()
                 conn.close()
-                # Add logging
-                log_user_action(username, "User Login")
+                # Only log if role is user
+                if self.role.lower() == "user":
+                    log_user_action(username, "User Login")
                 self.accept()
             else:
                 self.error_label.setText("Invalid username or password")

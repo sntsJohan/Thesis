@@ -21,6 +21,7 @@ from user import UserMainWindow
 from loading_overlay import LoadingOverlay
 from stopwords import TAGALOG_STOP_WORDS
 import re
+from history import HistoryDialog  # Add at top with other imports
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -190,6 +191,7 @@ class MainWindow(QMainWindow):
         icon_pixmap = QPixmap("assets/history.png")
         icon_pixmap = icon_pixmap.scaled(16, 16, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         logs_button.setIcon(QIcon(icon_pixmap))
+        logs_button.clicked.connect(self.show_history)  # Add this line
         
         # Title in center
         title = QLabel("Taglish Cyberbullying Detection System")
@@ -1153,3 +1155,8 @@ class MainWindow(QMainWindow):
     def generate_report(self):
         """Generate report by calling the report generation function"""
         generate_report_from_window(self)
+
+    def show_history(self):
+        """Show the history dialog"""
+        dialog = HistoryDialog(self)
+        dialog.exec_()
