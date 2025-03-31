@@ -16,7 +16,7 @@ from styles import COLORS, FONTS, BUTTON_STYLE, INPUT_STYLE, TABLE_STYLE, TAB_ST
 import tempfile
 import time
 from PyQt5.QtWidgets import QApplication
-from comment_operations import generate_report
+from comment_operations import generate_report_from_window
 from user import UserMainWindow
 from loading_overlay import LoadingOverlay
 from stopwords import TAGALOG_STOP_WORDS
@@ -408,6 +408,10 @@ class MainWindow(QMainWindow):
 
         row_ops_layout.addWidget(row_buttons_widget)
 
+        # Connect row operation buttons
+        self.add_remove_button.clicked.connect(self.toggle_list_status)
+        self.export_selected_button.clicked.connect(self.export_selected)
+
         # Dataset Operations Box
         dataset_ops_section = QWidget()
         dataset_ops_section.setStyleSheet(f"""
@@ -437,6 +441,12 @@ class MainWindow(QMainWindow):
         dataset_buttons_widget = QWidget()
         dataset_buttons_layout = QGridLayout(dataset_buttons_widget)
         dataset_buttons_layout.setSpacing(10)
+
+        # Connect dataset operation buttons
+        self.show_summary_button.clicked.connect(self.show_summary)
+        self.word_cloud_button.clicked.connect(self.show_word_cloud)
+        self.export_all_button.clicked.connect(self.export_all)
+        self.generate_report_button.clicked.connect(lambda: generate_report_from_window(self))
 
         dataset_buttons = [
             self.show_summary_button,
@@ -1104,3 +1114,7 @@ class MainWindow(QMainWindow):
                 display_message(self, "Success", "All comments exported successfully")
             except Exception as e:
                 display_message(self, "Error", f"Error exporting comments: {e}")
+
+    def generate_report(self):
+        """Generate report by calling the report generation function"""
+        generate_report_from_window(self)

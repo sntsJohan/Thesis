@@ -13,7 +13,7 @@ from styles import COLORS, FONTS, BUTTON_STYLE, INPUT_STYLE, TABLE_STYLE, TAB_ST
 import tempfile
 import time
 from PyQt5.QtWidgets import QApplication
-from comment_operations import generate_report, generate_report_user
+from comment_operations import generate_report_from_window, generate_report_user
 
 # Reuse the LoadingOverlay from the main GUI
 from loading_overlay import LoadingOverlay

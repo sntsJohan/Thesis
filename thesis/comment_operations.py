@@ -150,7 +150,8 @@ def sort_table(window, index):
     elif index == 4:
         window.output_table.sortItems(2, Qt.AscendingOrder)
 
-def generate_report(window):
+def generate_report_from_window(window):
+    """Generate detailed report from the main window"""
     if window.get_current_table().rowCount() == 0:
         display_message(window, "Error", "No data available to generate report")
         return
