@@ -365,7 +365,6 @@ class MainWindow(QMainWindow):
                 background-color: {COLORS['surface']};
                 color: {COLORS['text']};
                 border: 1px solid {COLORS['secondary']};
-                border-radius: 4px;
             }}
         """)
         details_section_layout = QVBoxLayout(details_section)
@@ -378,7 +377,7 @@ class MainWindow(QMainWindow):
 
         self.details_text_edit = QTextEdit()
         self.details_text_edit.setReadOnly(True)
-        self.details_text_edit.setStyleSheet(f"color: {COLORS['text']}; font-size: 14px;") 
+        self.details_text_edit.setStyleSheet(f"color: {COLORS['text']}; font-size: 16px;")  # Increased font size
         details_section_layout.addWidget(self.details_text_edit)
 
         # Row Operations Box
@@ -387,8 +386,6 @@ class MainWindow(QMainWindow):
             QWidget {{
                 background-color: {COLORS['surface']};
                 color: {COLORS['text']};
-                border: 1px solid {COLORS['secondary']};
-                border-radius: 4px;
                 margin-top: 10px;
             }}
         """)
@@ -436,8 +433,6 @@ class MainWindow(QMainWindow):
             QWidget {{
                 background-color: {COLORS['surface']};
                 color: {COLORS['text']};
-                border: 1px solid {COLORS['secondary']};
-                border-radius: 4px;
                 margin-top: 10px;
             }}
         """)
@@ -955,12 +950,17 @@ class MainWindow(QMainWindow):
         # Rules text
         rules_broken = ["Harassment", "Hate Speech", "Threatening Language"] if prediction == "Cyberbullying" else []
 
-        # Set text contents with additional metadata
+        # Set text contents with additional metadata and larger font size
         self.details_text_edit.clear()
-        self.details_text_edit.append(f"<b>Comment:</b>\n{comment}\n")
-        self.details_text_edit.append(f"<b>Commenter:</b> {commenter}\n")
-        self.details_text_edit.append(f"<b>Date:</b> {date}\n")
-        self.details_text_edit.append(f"<b>Likes:</b> {likes}\n")
+        
+        # Create spans with larger font size
+        def make_text(label, value):
+            return f'<span style="font-size: 16px;"><b>{label}</b>{value}</span>'
+
+        self.details_text_edit.append(make_text("Comment:\n", f"{comment}\n"))
+        self.details_text_edit.append(make_text("Commenter: ", f"{commenter}\n"))
+        self.details_text_edit.append(make_text("Date: ", f"{date}\n"))
+        self.details_text_edit.append(make_text("Likes: ", f"{likes}\n"))
         
         # Add reply information if it's a reply
         if is_reply and reply_to:
@@ -973,24 +973,24 @@ class MainWindow(QMainWindow):
                     parent_name = parent_metadata.get('profile_name', 'Unknown')
                     parent_date = parent_metadata.get('date', 'N/A')
                     
-                    self.details_text_edit.append("\n<b>Reply Information:</b>")
-                    self.details_text_edit.append(f"Row #{i+1}")
-                    self.details_text_edit.append(f"Replying to: {parent_name}")
-                    self.details_text_edit.append(f"Original Comment: {reply_to}")
-                    self.details_text_edit.append(f"Date: {parent_date}\n")
+                    self.details_text_edit.append("\n" + make_text("Reply Information:\n", ""))
+                    self.details_text_edit.append(make_text("Row #", f"{i+1}\n"))
+                    self.details_text_edit.append(make_text("Replying to: ", f"{parent_name}\n"))
+                    self.details_text_edit.append(make_text("Original Comment: ", f"{reply_to}\n"))
+                    self.details_text_edit.append(make_text("Date: ", f"{parent_date}\n"))
                     break
             else:
-                self.details_text_edit.append("\n<b>Reply Information:</b>")
-                self.details_text_edit.append(f"Replying to: {reply_to}\n")
+                self.details_text_edit.append("\n" + make_text("Reply Information:\n", ""))
+                self.details_text_edit.append(make_text("Replying to: ", f"{reply_to}\n"))
 
-        self.details_text_edit.append(f"<b>Classification:</b> {prediction}\n")
-        self.details_text_edit.append(f"<b>Confidence:</b> {confidence}\n")
-        self.details_text_edit.append(f"<b>Status:</b> {'In List' if comment in self.selected_comments else 'Not in List'}\n")
-        self.details_text_edit.append("<b>Rules Broken:</b>")
+        self.details_text_edit.append(make_text("Classification: ", f"{prediction}\n"))
+        self.details_text_edit.append(make_text("Confidence: ", f"{confidence}\n"))
+        self.details_text_edit.append(make_text("Status: ", f"{'In List' if comment in self.selected_comments else 'Not in List'}\n"))
+        self.details_text_edit.append(make_text("Rules Broken:", ""))
 
         cursor = self.details_text_edit.textCursor()
         for rule in rules_broken:
-            cursor.insertHtml(f'<span style="background-color: {COLORS["secondary"]}; border-radius: 4px; padding: 2px 4px; margin: 2px; display: inline-block;">{rule}</span> ')
+            cursor.insertHtml(f'<span style="font-size: 16px; background-color: {COLORS["secondary"]}; border-radius: 4px; padding: 2px 4px; margin: 2px; display: inline-block;">{rule}</span> ')
         self.details_text_edit.setTextCursor(cursor)
 
     def show_summary(self):

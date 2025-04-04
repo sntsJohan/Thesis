@@ -1,29 +1,15 @@
 SAMPLE_COMMENTS = [
     {
-        "comment": "I really enjoyed reading this post! Great work!",
+        "comment": "You are amazing!",
         "prediction": "Not Cyberbullying",
         "confidence": 0.95
     },
     {
-        "comment": "You're such an idiot, nobody likes you",
+        "comment": "I hate you, you're stupid",
         "prediction": "Cyberbullying",
-        "confidence": 0.89
-    },
-    {
-        "comment": "Thanks for sharing your experience",
-        "prediction": "Not Cyberbullying",
-        "confidence": 0.92
-    },
-    {
-        "comment": "Delete your account, you're worthless",
-        "prediction": "Cyberbullying",
-        "confidence": 0.97
-    },
-    {
-        "comment": "This is an interesting perspective",
-        "prediction": "Not Cyberbullying",
         "confidence": 0.88
-    }
+    },
+    # Add more sample data as needed
 ]
 
 # Sample comments for URL scraping simulation
