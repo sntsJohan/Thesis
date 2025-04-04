@@ -12,7 +12,7 @@ from scraper import scrape_comments
 from model import classify_comment
 import pandas as pd
 from utils import display_message
-from styles import COLORS, FONTS, BUTTON_STYLE, INPUT_STYLE, TABLE_STYLE, TAB_STYLE
+from styles import COLORS, FONTS, BUTTON_STYLE, INPUT_STYLE, TABLE_STYLE, TAB_STYLE, WELCOME_TITLE_STYLE, WELCOME_SUBTITLE_STYLE, WELCOME_DESCRIPTION_STYLE, GET_STARTED_BUTTON_STYLE, WELCOME_VERSION_STYLE, CONTAINER_STYLE, DETAIL_TEXT_STYLE, TABLE_ALTERNATE_STYLE, DIALOG_STYLE, IMAGE_LABEL_STYLE
 import tempfile
 import time
 from PyQt5.QtWidgets import QApplication
@@ -58,22 +58,14 @@ class MainWindow(QMainWindow):
         # App title - largest and most prominent
         title_label = QLabel("Cyber Boolean")
         title_label.setFont(FONTS['header'])
-        title_label.setStyleSheet(f"""
-            font-size: 42px; 
-            color: {COLORS['primary']};
-            letter-spacing: 1px;
-        """)
+        title_label.setStyleSheet(WELCOME_TITLE_STYLE)
         title_label.setAlignment(Qt.AlignCenter)
         header_layout.addWidget(title_label)
 
         # Subtitle - secondary emphasis
         subtitle_label = QLabel("Taglish Cyberbullying Detection System")
         subtitle_label.setFont(FONTS['header'])
-        subtitle_label.setStyleSheet(f"""
-            font-size: 18px; 
-            color: {COLORS['text']};
-            letter-spacing: 0.5px;
-        """)
+        subtitle_label.setStyleSheet(WELCOME_SUBTITLE_STYLE)
         subtitle_label.setAlignment(Qt.AlignCenter)
         header_layout.addWidget(subtitle_label)
 
@@ -86,11 +78,7 @@ class MainWindow(QMainWindow):
         )
         description.setWordWrap(True)
         description.setAlignment(Qt.AlignCenter)
-        description.setStyleSheet(f"""
-            font-size: 15px; 
-            color: {COLORS['secondary']};
-            letter-spacing: 0.2px;
-        """)
+        description.setStyleSheet(WELCOME_DESCRIPTION_STYLE)
         welcome_layout.addWidget(description)
         
         welcome_layout.addSpacing(50)
@@ -98,12 +86,7 @@ class MainWindow(QMainWindow):
         # Get started button - initially visible
         self.get_started_button = QPushButton("Get Started")
         self.get_started_button.setFont(FONTS['button'])
-        self.get_started_button.setStyleSheet(f"""
-            {BUTTON_STYLE}
-            padding: 12px 30px;
-            font-size: 16px;
-            border-radius: 6px;
-        """)
+        self.get_started_button.setStyleSheet(GET_STARTED_BUTTON_STYLE)
         self.get_started_button.setFixedWidth(200)
         self.get_started_button.clicked.connect(self.show_login)
         welcome_layout.addWidget(self.get_started_button, alignment=Qt.AlignCenter)
@@ -113,11 +96,7 @@ class MainWindow(QMainWindow):
         # Version info
         version_label = QLabel("Version 1.0")
         version_label.setAlignment(Qt.AlignRight)
-        version_label.setStyleSheet(f"""
-            color: {COLORS['secondary']}; 
-            font-size: 12px;
-            opacity: 0.8;
-        """)
+        version_label.setStyleSheet(WELCOME_VERSION_STYLE)
         welcome_layout.addWidget(version_label)
 
         self.central_widget.addWidget(welcome_widget)
@@ -173,9 +152,10 @@ class MainWindow(QMainWindow):
     def init_ui(self):
         # Input Container
         input_container = QWidget()
-        input_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)  # Limit vertical size
+        input_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
+        input_container.setStyleSheet(CONTAINER_STYLE)
         input_layout = QVBoxLayout(input_container)
-        input_layout.setSpacing(10)  # Reduced spacing
+        input_layout.setSpacing(10)
         input_layout.setContentsMargins(0, 0, 0, 0)
 
         # Add header section with buttons and title
@@ -220,13 +200,7 @@ class MainWindow(QMainWindow):
 
         # Facebook Post Section - Made more compact
         fb_section = QWidget()
-        fb_section.setStyleSheet(f"""
-            QWidget {{
-                background-color: {COLORS['surface']};
-                border: 1px solid {COLORS['secondary']};
-                border-radius: 4px;
-            }}
-        """)
+        fb_section.setStyleSheet(CONTAINER_STYLE)
         fb_layout = QVBoxLayout(fb_section)
         fb_layout.setSpacing(5)  # Reduced spacing
         fb_layout.setContentsMargins(8, 8, 8, 8)  # Reduced padding
@@ -256,13 +230,7 @@ class MainWindow(QMainWindow):
 
         # CSV File Section - Made more compact
         csv_section = QWidget()
-        csv_section.setStyleSheet(f"""
-            QWidget {{
-                background-color: {COLORS['surface']};
-                border: 1px solid {COLORS['secondary']};
-                border-radius: 4px;
-            }}
-        """)
+        csv_section.setStyleSheet(CONTAINER_STYLE)
         csv_layout = QVBoxLayout(csv_section)
         csv_layout.setSpacing(5)  # Reduced spacing
         csv_layout.setContentsMargins(8, 8, 8, 8)  # Reduced padding
@@ -293,13 +261,7 @@ class MainWindow(QMainWindow):
 
         # Direct Input Section - Made more compact
         direct_section = QWidget()
-        direct_section.setStyleSheet(f"""
-            QWidget {{
-                background-color: {COLORS['surface']};
-                border: 1px solid {COLORS['secondary']};
-                border-radius: 4px;
-            }}
-        """)
+        direct_section.setStyleSheet(CONTAINER_STYLE)
         direct_layout = QVBoxLayout(direct_section)
         direct_layout.setSpacing(5)  # Reduced spacing
         direct_layout.setContentsMargins(8, 8, 8, 8)  # Reduced padding
@@ -360,13 +322,7 @@ class MainWindow(QMainWindow):
 
         # Details section (for selected comment)
         details_section = QWidget()
-        details_section.setStyleSheet(f"""
-            QWidget {{
-                background-color: {COLORS['surface']};
-                color: {COLORS['text']};
-                border: 1px solid {COLORS['secondary']};
-            }}
-        """)
+        details_section.setStyleSheet(CONTAINER_STYLE)
         details_section_layout = QVBoxLayout(details_section)
         details_section_layout.setSpacing(5) 
         details_section_layout.setContentsMargins(10, 10, 10, 10)
@@ -377,18 +333,12 @@ class MainWindow(QMainWindow):
 
         self.details_text_edit = QTextEdit()
         self.details_text_edit.setReadOnly(True)
-        self.details_text_edit.setStyleSheet(f"color: {COLORS['text']}; font-size: 16px;")  # Increased font size
+        self.details_text_edit.setStyleSheet(DETAIL_TEXT_STYLE)
         details_section_layout.addWidget(self.details_text_edit)
 
         # Row Operations Box
         row_ops_section = QWidget()
-        row_ops_section.setStyleSheet(f"""
-            QWidget {{
-                background-color: {COLORS['surface']};
-                color: {COLORS['text']};
-                margin-top: 10px;
-            }}
-        """)
+        row_ops_section.setStyleSheet(CONTAINER_STYLE)
         row_ops_layout = QVBoxLayout(row_ops_section)
         row_ops_layout.setSpacing(10)
         row_ops_layout.setContentsMargins(10, 10, 10, 10)
@@ -429,13 +379,7 @@ class MainWindow(QMainWindow):
 
         # Dataset Operations Box
         dataset_ops_section = QWidget()
-        dataset_ops_section.setStyleSheet(f"""
-            QWidget {{
-                background-color: {COLORS['surface']};
-                color: {COLORS['text']};
-                margin-top: 10px;
-            }}
-        """)
+        dataset_ops_section.setStyleSheet(CONTAINER_STYLE)
         dataset_ops_layout = QVBoxLayout(dataset_ops_section)
         dataset_ops_layout.setSpacing(10)
         dataset_ops_layout.setContentsMargins(10, 10, 10, 10)
@@ -674,9 +618,10 @@ class MainWindow(QMainWindow):
         # Create table
         table = QTableWidget()
         table.setSortingEnabled(True)
-        table.setStyleSheet(TABLE_STYLE)
+        table.setStyleSheet(TABLE_ALTERNATE_STYLE)
         table.setColumnCount(3)
         table.setHorizontalHeaderLabels(["Comment", "Prediction", "Confidence"])
+        table.setAlternatingRowColors(True)
 
         # Adjust column sizes
         header = table.horizontalHeader()
@@ -1075,10 +1020,12 @@ class MainWindow(QMainWindow):
             dialog = QDialog(self)
             dialog.setWindowTitle("Word Cloud Visualization")
             dialog.setMinimumWidth(800)
+            dialog.setStyleSheet(DIALOG_STYLE)
             layout = QVBoxLayout(dialog)
 
             # Add word cloud
             image_label = QLabel()
+            image_label.setStyleSheet(IMAGE_LABEL_STYLE)
             scaled_pixmap = pixmap.scaled(700, 350, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             image_label.setPixmap(scaled_pixmap)
             image_label.setAlignment(Qt.AlignCenter)

@@ -9,7 +9,7 @@ from scraper import scrape_comments
 from model import classify_comment
 import pandas as pd
 from utils import display_message
-from styles import COLORS, FONTS, BUTTON_STYLE, INPUT_STYLE, TABLE_STYLE, TAB_STYLE
+from styles import COLORS, FONTS, BUTTON_STYLE, INPUT_STYLE, TABLE_STYLE, TAB_STYLE, DIALOG_STYLE, CONTAINER_STYLE, TITLELESS_CONTAINER_STYLE, TABLE_ALTERNATE_STYLE, DETAIL_TEXT_STYLE, HEADER_STYLE, TAG_STYLE
 import tempfile
 import time
 from PyQt5.QtWidgets import QApplication
@@ -73,18 +73,7 @@ class UserMainWindow(QMainWindow):
         msg.setWindowTitle("Sign Out")
         msg.setText("Are you sure you want to sign out?")
         msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-        
-        # Style the message box
-        msg.setStyleSheet(f"""
-            QMessageBox {{
-                background-color: {COLORS['background']};
-                color: {COLORS['text']};
-            }}
-            QPushButton {{
-                {BUTTON_STYLE}
-                min-width: 100px;
-            }}
-        """)
+        msg.setStyleSheet(DIALOG_STYLE)
         
         if msg.exec_() == QMessageBox.Yes:
             self.sign_out()
@@ -119,6 +108,7 @@ class UserMainWindow(QMainWindow):
         # Title in center
         title = QLabel("Cyberbullying Detection Tool")
         title.setFont(FONTS['header'])
+        title.setStyleSheet(HEADER_STYLE)
         title.setAlignment(Qt.AlignCenter)
         
         # Add invisible spacer on left to match button width
@@ -146,13 +136,7 @@ class UserMainWindow(QMainWindow):
 
         # Facebook Post Section - Made more compact
         fb_section = QWidget()
-        fb_section.setStyleSheet(f"""
-            QWidget {{
-                background-color: {COLORS['surface']};
-                border: 1px solid {COLORS['secondary']};
-                border-radius: 4px;
-            }}
-        """)
+        fb_section.setStyleSheet(CONTAINER_STYLE)
         fb_layout = QVBoxLayout(fb_section)
         fb_layout.setSpacing(5)  # Reduced spacing
         fb_layout.setContentsMargins(8, 8, 8, 8)  # Reduced padding
@@ -183,13 +167,7 @@ class UserMainWindow(QMainWindow):
 
         # CSV File Section - Made more compact
         csv_section = QWidget()
-        csv_section.setStyleSheet(f"""
-            QWidget {{
-                background-color: {COLORS['surface']};
-                border: 1px solid {COLORS['secondary']};
-                border-radius: 4px;
-            }}
-        """)
+        csv_section.setStyleSheet(CONTAINER_STYLE)
         csv_layout = QVBoxLayout(csv_section)
         csv_layout.setSpacing(5)  # Reduced spacing
         csv_layout.setContentsMargins(8, 8, 8, 8)  # Reduced padding
@@ -224,13 +202,7 @@ class UserMainWindow(QMainWindow):
 
         # Direct Input Section - Made more compact
         direct_section = QWidget()
-        direct_section.setStyleSheet(f"""
-            QWidget {{
-                background-color: {COLORS['surface']};
-                border: 1px solid {COLORS['secondary']};
-                border-radius: 4px;
-            }}
-        """)
+        direct_section.setStyleSheet(CONTAINER_STYLE)
         direct_layout = QVBoxLayout(direct_section)
         direct_layout.setSpacing(5)  # Reduced spacing
         direct_layout.setContentsMargins(8, 8, 8, 8)  # Reduced padding
@@ -263,19 +235,13 @@ class UserMainWindow(QMainWindow):
         
         # Results section with tab widget - Modified to match input containers
         results_container = QWidget()
-        results_container.setStyleSheet(f"""
-            QWidget {{
-                background-color: {COLORS['surface']};
-                border: 1px solid {COLORS['secondary']};
-                border-radius: 4px;
-            }}
-        """)
+        results_container.setStyleSheet(CONTAINER_STYLE)
         results_layout = QVBoxLayout(results_container)
         results_layout.setContentsMargins(8, 8, 8, 8)  # Match input section padding
 
         # Create a container for the title with proper alignment
         title_container = QWidget()
-        title_container.setStyleSheet("border: none;")
+        title_container.setStyleSheet(TITLELESS_CONTAINER_STYLE)
         title_layout = QHBoxLayout(title_container)
         title_layout.setContentsMargins(0, 0, 0, 0)
 
@@ -290,7 +256,7 @@ class UserMainWindow(QMainWindow):
 
         # Initial message widget with styled container
         message_container = QWidget()
-        message_container.setStyleSheet("border: none;")  # Remove border for inner widget
+        message_container.setStyleSheet(TITLELESS_CONTAINER_STYLE)
         message_layout = QVBoxLayout(message_container)
         message_layout.setContentsMargins(5, 10, 5, 10)  # Better padding for message
 
@@ -311,13 +277,7 @@ class UserMainWindow(QMainWindow):
         # Operations section - Created as a boxed container like input sections with fixed height
         operations_container = QWidget()
         operations_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)  
-        operations_container.setStyleSheet(f"""
-            QWidget {{
-                background-color: {COLORS['surface']};
-                border: 1px solid {COLORS['secondary']};
-                border-radius: 4px;
-            }}
-        """)
+        operations_container.setStyleSheet(CONTAINER_STYLE)
         operations_layout = QVBoxLayout(operations_container)
         operations_layout.setSpacing(5)  # Reduced spacing
         operations_layout.setContentsMargins(8, 8, 8, 8)  # Reduced padding
@@ -548,22 +508,10 @@ class UserMainWindow(QMainWindow):
         # Create table
         table = QTableWidget()
         table.setSortingEnabled(True)
-        # Update the table style to include alternating row colors
-        table.setStyleSheet(f"""
-            {TABLE_STYLE}
-            QTableWidget::item:alternate {{
-                background-color: {COLORS['surface']};
-            }}
-            QTableWidget::item {{
-                background-color: {COLORS['background']};
-            }}
-            QTableWidget::item:selected {{
-                background-color: {COLORS['primary']};
-            }}
-        """)
+        table.setStyleSheet(TABLE_ALTERNATE_STYLE)
         table.setColumnCount(3)
         table.setHorizontalHeaderLabels(["Comment", "Prediction", "Confidence"])
-        table.setAlternatingRowColors(True)  # Keep only one instance of this
+        table.setAlternatingRowColors(True)
 
         # Adjust column sizes
         header = table.horizontalHeader()

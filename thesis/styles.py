@@ -261,3 +261,130 @@ LABEL_STYLE = f"""
         color: {COLORS['success']};
     }}
 """
+
+# Dialog and Message Box Style
+DIALOG_STYLE = f"""
+    QDialog {{
+        background-color: {COLORS['background']};
+        color: {COLORS['text']};
+    }}
+    QPushButton {{
+        {BUTTON_STYLE}
+        min-width: 100px;
+    }}
+"""
+
+# Image Label Style
+IMAGE_LABEL_STYLE = f"""
+    QLabel {{
+        background-color: {COLORS['surface']};
+        color: {COLORS['text']};
+        padding: 10px;
+        border-radius: 4px;
+    }}
+"""
+
+# Loading Overlay Style
+LOADING_OVERLAY_STYLE = f"""
+    QWidget {{
+        background-color: rgba(0, 0, 0, 0.5);
+        border-radius: 8px;
+    }}
+"""
+
+# Container Styles
+CONTAINER_STYLE = f"""
+    QWidget {{
+        background-color: {COLORS['surface']};
+        border: 1px solid {COLORS['secondary']};
+        border-radius: 4px;
+    }}
+"""
+
+TITLELESS_CONTAINER_STYLE = f"""
+    QWidget {{
+        background-color: {COLORS['surface']};
+        border: none;
+    }}
+"""
+
+# Alternative Table Row Style
+TABLE_ALTERNATE_STYLE = f"""
+    {TABLE_STYLE}
+    QTableWidget::item:alternate {{
+        background-color: {COLORS['surface']};
+    }}
+    QTableWidget::item {{
+        background-color: {COLORS['background']};
+    }}
+    QTableWidget::item:selected {{
+        background-color: {COLORS['primary']};
+    }}
+"""
+
+# Welcome Screen Styles
+WELCOME_TITLE_STYLE = f"""
+    font-size: 42px; 
+    color: {COLORS['primary']};
+    letter-spacing: 1px;
+"""
+
+WELCOME_SUBTITLE_STYLE = f"""
+    font-size: 18px; 
+    color: {COLORS['text']};
+    letter-spacing: 0.5px;
+"""
+
+WELCOME_DESCRIPTION_STYLE = f"""
+    font-size: 15px; 
+    color: {COLORS['secondary']};
+    letter-spacing: 0.2px;
+"""
+
+WELCOME_VERSION_STYLE = f"""
+    color: {COLORS['secondary']}; 
+    font-size: 12px;
+    opacity: 0.8;
+"""
+
+# Header Title Style
+HEADER_STYLE = f"""
+    font-size: 15px;
+    color: {COLORS['text']};
+    padding: 0px;
+"""
+
+# Detail Text Style
+DETAIL_TEXT_STYLE = f"""
+    font-size: 16px;
+    color: {COLORS['text']};
+"""
+
+# Disabled Button Style
+BUTTON_DISABLED_STYLE = f"""
+    {BUTTON_STYLE}
+    QPushButton:disabled {{
+        background-color: {COLORS['surface']};
+        color: {COLORS['secondary']};
+        border: 1px solid {COLORS['secondary']};
+        opacity: 0.7;
+    }}
+"""
+
+# Get Started Button Style
+GET_STARTED_BUTTON_STYLE = f"""
+    {BUTTON_STYLE}
+    padding: 12px 30px;
+    font-size: 16px;
+    border-radius: 6px;
+"""
+
+# Tag Style for rules in details panel
+TAG_STYLE = f"""
+    font-size: 16px; 
+    background-color: {COLORS['secondary']}; 
+    border-radius: 4px; 
+    padding: 2px 4px; 
+    margin: 2px; 
+    display: inline-block;
+"""
