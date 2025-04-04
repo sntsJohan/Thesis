@@ -168,13 +168,26 @@ class MainWindow(QMainWindow):
         logs_button.setFont(FONTS['button'])
         logs_button.setStyleSheet(BUTTON_STYLE)
         logs_button.setFixedWidth(150)
-        logs_button.setText(" User Logs")  # Space for icon padding
+        logs_button.setText(" User Logs")  
         
         # Add icon to button
         icon_pixmap = QPixmap("assets/history.png")
         icon_pixmap = icon_pixmap.scaled(16, 16, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         logs_button.setIcon(QIcon(icon_pixmap))
-        logs_button.clicked.connect(self.show_history)  # Add this line
+        logs_button.clicked.connect(self.show_history)  
+
+        #Api button
+        api_button = QPushButton()
+        api_button.setFont(FONTS['button'])
+        api_button.setStyleSheet(BUTTON_STYLE)
+        api_button.setFixedWidth(150)
+        api_button.setText("Manage API")  
+
+        #api icon
+        icon_pixmap = QPixmap("assets/api.png")
+        icon_pixmap = icon_pixmap.scaled(16, 16, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        api_button.setIcon(QIcon(icon_pixmap))
+        api_button.clicked.connect(self.show_api)  
         
         # Title in center
         title = QLabel("Taglish Cyberbullying Detection System")
@@ -189,6 +202,7 @@ class MainWindow(QMainWindow):
         sign_out_button.clicked.connect(self.confirm_sign_out)
 
         header_layout.addWidget(logs_button)
+        header_layout.addWidget(api_button)
         header_layout.addWidget(title, 1)  # Title takes remaining space
         header_layout.addWidget(sign_out_button)
         
@@ -234,29 +248,33 @@ class MainWindow(QMainWindow):
         csv_layout = QVBoxLayout(csv_section)
         csv_layout.setSpacing(5)  # Reduced spacing
         csv_layout.setContentsMargins(8, 8, 8, 8)  # Reduced padding
-
+        
         csv_title = QLabel("CSV File")
         csv_title.setFont(FONTS['button'])  # Smaller font
         csv_title.setAlignment(Qt.AlignCenter)
+        
+        file_browse_layout = QHBoxLayout()
         self.file_input = QLineEdit()
         self.file_input.setStyleSheet(INPUT_STYLE)
         self.file_input.setPlaceholderText("Select CSV file")
-        browse_layout = QHBoxLayout()
+        
         self.browse_button = QPushButton("Browse")
         self.browse_button.setFont(FONTS['button'])
         self.browse_button.setStyleSheet(BUTTON_STYLE)
         self.browse_button.setFixedWidth(80)  # Smaller button
         self.browse_button.clicked.connect(self.browse_file)
+        
+        file_browse_layout.addWidget(self.file_input)
+        file_browse_layout.addWidget(self.browse_button)
+        
         self.process_csv_button = QPushButton("Process CSV")
         self.process_csv_button.setFont(FONTS['button'])
         self.process_csv_button.setStyleSheet(BUTTON_STYLE)
         self.process_csv_button.clicked.connect(self.process_csv)
-        browse_layout.addWidget(self.browse_button)
-        browse_layout.addWidget(self.process_csv_button)
         
         csv_layout.addWidget(csv_title)
-        csv_layout.addWidget(self.file_input)
-        csv_layout.addLayout(browse_layout)
+        csv_layout.addLayout(file_browse_layout)
+        csv_layout.addWidget(self.process_csv_button)
         input_sections.addWidget(csv_section)
 
         # Direct Input Section - Made more compact
@@ -1121,4 +1139,10 @@ class MainWindow(QMainWindow):
     def show_history(self):
         """Show the history dialog"""
         dialog = HistoryDialog(self)
+        dialog.exec_()
+
+    def show_api(self):
+        """Show the API manager dialog"""
+        from api_manager import APIManagerDialog
+        dialog = APIManagerDialog(self)
         dialog.exec_()
