@@ -822,7 +822,12 @@ class MainWindow(QMainWindow):
         sort_combo = table.sort_combo
         index = sort_combo.currentIndex()
         
-        # Handle the new replies filter
+        # First show all rows when not in "Show Replies Only" mode
+        if index != 5:
+            for row in range(table.rowCount()):
+                table.setRowHidden(row, False)
+        
+        # Handle the replies filter
         if index == 5:  # "Show Replies Only"
             for row in range(table.rowCount()):
                 text = table.item(row, 0).text()
