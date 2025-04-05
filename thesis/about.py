@@ -85,10 +85,10 @@ class AboutDialog(QDialog):
         
         # Team member data
         team_members = [
-            {"name": "John Doe", "role": "Project Lead & ML Engineer", "image": "assets/placeholder.png"},
-            {"name": "Jane Smith", "role": "Backend Developer", "image": "assets/placeholder.png"},
-            {"name": "Mike Johnson", "role": "Frontend Developer", "image": "assets/placeholder.png"},
-            {"name": "Samtos, Johan", "role": "Frontend Developer", "image": "assets/santos.jpg"}
+            {"name": "Anioay, Kenneth", "role": "Project Lead & ML Engineer", "image": "assets/placeholder.png"},
+            {"name": "De Vera, Nathan", "role": "Backend Developer", "image": "assets/placeholder.png"},
+            {"name": "Evangelista, Danielle", "role": "Frontend Developer", "image": "assets/placeholder.png"},
+            {"name": "Santos, Johan", "role": "Frontend Developer", "image": "assets/placeholder.png"}
         ]
         
         # Create team member cards
@@ -143,7 +143,7 @@ class AboutDialog(QDialog):
             "• Python with PyQt5 for the user interface\n"
             "• Natural Language Processing (NLP) for text analysis\n"
             "• Machine Learning for classification\n"
-            "• SQLite for data storage\n"
+            "• SQL for data storage\n"
             "• Matplotlib and WordCloud for data visualization"
         )
         technologies.setFont(FONTS['body'])
