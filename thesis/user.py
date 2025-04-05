@@ -145,15 +145,15 @@ class UserMainWindow(QMainWindow):
         self.central_widget.setCurrentIndex(1)
     
     def init_main_ui(self):
+        # Create and set up main widget that will contain everything
         main_widget = QWidget()
-        self.central_widget.addWidget(main_widget)
-        self.layout = QVBoxLayout(main_widget)
-        self.layout.setSpacing(15)
-        self.layout.setContentsMargins(0, 0, 0, 0)  # Remove margins completely
+        main_layout = QVBoxLayout(main_widget)
+        main_layout.setSpacing(15)
+        main_layout.setContentsMargins(0, 0, 0, 0)  # Remove margins completely
         
         # Add menu bar at the top with no margins
         self.menu_bar.setContentsMargins(0, 0, 0, 0)
-        self.layout.addWidget(self.menu_bar)
+        main_layout.addWidget(self.menu_bar)
         
         # Add a container for the main content with proper padding
         content_container = QWidget()
@@ -178,7 +178,7 @@ class UserMainWindow(QMainWindow):
         input_layout.setSpacing(20)
         input_layout.setContentsMargins(20, 20, 20, 20)
 
-        # Facebook Post Section with enhanced styling
+        # Facebook Post Section
         fb_section = QWidget()
         fb_section.setStyleSheet(f"""
             QWidget {{
@@ -318,6 +318,7 @@ class UserMainWindow(QMainWindow):
         results_container.setStyleSheet(CONTAINER_STYLE)
         results_layout = QVBoxLayout(results_container)
         results_layout.setContentsMargins(15, 15, 15, 15)
+        results_layout.setSpacing(5)  # Reduced spacing between elements
 
         # Tab widget with styling
         self.tab_widget = QTabWidget()
@@ -330,22 +331,32 @@ class UserMainWindow(QMainWindow):
         results_layout.addWidget(self.tab_widget)
         self.tab_widget.hide()
 
-        # Operations section with enhanced styling
+        # Operations section with enhanced styling but more compact
         operations_container = QWidget()
-        operations_container.setStyleSheet(CONTAINER_STYLE)
+        operations_container.setStyleSheet("background: transparent;")  # Remove box
+        operations_container.setMaximumHeight(95)  # Constrain max height for compactness
         operations_layout = QVBoxLayout(operations_container)
-        operations_layout.setSpacing(10)
-        operations_layout.setContentsMargins(15, 15, 15, 15)
+        operations_layout.setSpacing(5)  # Reduced spacing
+        operations_layout.setContentsMargins(0, 0, 0, 0)
 
+        # Title section with fixed height
+        title_container = QWidget()
+        title_container.setFixedHeight(30)  # Reduced height for title
+        title_container.setStyleSheet("background: transparent;")
+        title_layout = QVBoxLayout(title_container)
+        title_layout.setContentsMargins(0, 0, 0, 0)
+        title_layout.setSpacing(0)
+        
         operations_title = QLabel("Dataset Operations")
         operations_title.setFont(FONTS['header'])
         operations_title.setStyleSheet(f"color: {COLORS['text']};")
-        operations_layout.addWidget(operations_title)
+        title_layout.addWidget(operations_title)
+        operations_layout.addWidget(title_container)
 
-        # Operation buttons with icons
-        buttons_layout = QGridLayout()
+        # Operation buttons with icons in a single row
+        buttons_layout = QHBoxLayout()
         buttons_layout.setSpacing(10)
-        buttons_layout.setContentsMargins(0, 5, 0, 5)
+        buttons_layout.setContentsMargins(0, 0, 0, 0)
 
         self.show_summary_button = QPushButton("📊 Summary")
         self.word_cloud_button = QPushButton("☁️ Word Cloud")
@@ -366,11 +377,7 @@ class UserMainWindow(QMainWindow):
                 }}
             """)
             btn.setFont(FONTS['button'])
-
-        # Add buttons to grid
-        buttons_layout.addWidget(self.show_summary_button, 0, 0)
-        buttons_layout.addWidget(self.word_cloud_button, 0, 1)
-        buttons_layout.addWidget(self.generate_report_button, 1, 0)
+            buttons_layout.addWidget(btn)
 
         operations_layout.addLayout(buttons_layout)
         results_layout.addWidget(operations_container)
@@ -383,7 +390,11 @@ class UserMainWindow(QMainWindow):
         content_layout.setStretch(1, 1)  # Results container - takes remaining space
 
         # Add content container to main layout
-        self.layout.addWidget(content_container)
+        main_layout.addWidget(content_container)
+
+        # CRITICAL: Set the main widget as the central widget's current widget
+        self.central_widget.addWidget(main_widget)
+        self.central_widget.setCurrentWidget(main_widget)
     
     def show_loading(self, show=True):
         if show:
