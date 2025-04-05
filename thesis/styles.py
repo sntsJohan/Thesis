@@ -318,9 +318,8 @@ WELCOME_DESCRIPTION_STYLE = f"""
 """
 
 WELCOME_VERSION_STYLE = f"""
-    color: {COLORS['secondary']}; 
+    color: {COLORS['surface']}; 
     font-size: 18px;
-    opacity: 0.8;
 """
 
 WELCOME_BACKGROUND_STYLE = f"background-color: {COLORS['primary']};"

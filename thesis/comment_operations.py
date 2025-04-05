@@ -12,19 +12,22 @@ def update_details_panel(window):
     selected_items = window.output_table.selectedItems()
     if not selected_items:
         window.details_text_edit.clear()
-        for btn in [window.show_summary_button, window.add_remove_button, window.export_selected_button, window.export_all_button]:
-            btn.hide()
+        # Disable row operations when no row is selected
+        row_buttons = [window.add_remove_button, window.export_selected_button]
+        for btn in row_buttons:
+            btn.setEnabled(False)
         return
+
+    # Enable row operation buttons since a row is selected
+    row_buttons = [window.add_remove_button, window.export_selected_button]
+    for btn in row_buttons:
+        btn.setEnabled(True)
 
     row = selected_items[0].row()
     comment = window.output_table.item(row, 0).text()
     prediction = window.output_table.item(row, 1).text()
     confidence = window.output_table.item(row, 2).text()
     commenter = "Placeholder Commenter"  # Placeholder for commenter
-
-    # Show all operation buttons
-    for btn in [window.show_summary_button, window.add_remove_button, window.export_selected_button, window.export_all_button]:
-        btn.show()
 
     # Update add/remove button text based on list status
     if comment in window.selected_comments:

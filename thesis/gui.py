@@ -61,7 +61,16 @@ class MainWindow(QMainWindow):
         admin_layout.setContentsMargins(0, 0, 0, 0)
         admin_layout.setSpacing(0)  # Remove spacing between buttons
 
-        # Create buttons with icons - left side
+        # Add app name to the left
+        app_name = QLabel("Cyberbullying Detection System - Admin View")
+        app_name.setStyleSheet(f"color: {COLORS['text']}; font-size: 14px; padding: 0 16px;")
+        app_name.setFont(FONTS['button'])
+        admin_layout.addWidget(app_name)
+        
+        # Add stretch to push remaining buttons to right
+        admin_layout.addStretch()
+
+        # Create buttons - right side
         manage_api_button = QPushButton("🔑 Manage API")
         manage_api_button.clicked.connect(self.show_api)
         manage_api_button.setFont(FONTS['button'])
@@ -70,17 +79,13 @@ class MainWindow(QMainWindow):
         logs_button.clicked.connect(self.show_history)
         logs_button.setFont(FONTS['button'])
         
-        # Add left-side buttons
-        admin_layout.addWidget(manage_api_button)
-        admin_layout.addWidget(logs_button)
-        
-        # Add stretch to push sign out button to right
-        admin_layout.addStretch()
-        
-        # Create sign out button - right side
         sign_out_button = QPushButton("Sign Out")
         sign_out_button.clicked.connect(self.confirm_sign_out)
         sign_out_button.setFont(FONTS['button'])
+        
+        # Add right-side buttons
+        admin_layout.addWidget(manage_api_button)
+        admin_layout.addWidget(logs_button)
         admin_layout.addWidget(sign_out_button)
         
         # Hide by default - will show only for admin
@@ -117,6 +122,10 @@ class MainWindow(QMainWindow):
         self.generate_report_button.clicked.connect(self.generate_report)
         self.add_remove_button.clicked.connect(self.toggle_list_status)
         self.export_selected_button.clicked.connect(self.export_selected)
+
+        # Initially disable row operation buttons
+        self.add_remove_button.setEnabled(False)
+        self.export_selected_button.setEnabled(False)
 
         # Initialize tab counters
         self.csv_tab_count = 1
@@ -169,7 +178,7 @@ class MainWindow(QMainWindow):
 
         subtitle_label = QLabel("Tagalog and English Cyberbullying Detection System")
         subtitle_label.setFont(WELCOME_SUBTITLE_FONT)
-        subtitle_label.setStyleSheet(WELCOME_SUBTITLE_STYLE)
+        subtitle_label.setStyleSheet(WELCOME_TITLE_STYLE_DARK)
         subtitle_label.setAlignment(Qt.AlignLeft)
         header_layout.addWidget(subtitle_label)
 
@@ -224,11 +233,16 @@ class MainWindow(QMainWindow):
                 self.admin_buttons_container.show()  # Show admin buttons
                 self.showFullScreen()
             elif role and role.lower() == "user":
-                self.user_window = UserMainWindow()
-                self.user_window.set_current_user(username)
-                self.user_window.set_main_window(self)
-                self.user_window.showFullScreen()
-                self.hide()
+                try:
+                    self.user_window = UserMainWindow()
+                    self.user_window.set_current_user(username)  # Set username first
+                    self.user_window.set_main_window(self)      # Set main window second
+                    self.user_window.init_main_ui()             # Initialize UI third
+                    self.user_window.showFullScreen()           # Show window last
+                    self.hide()
+                except Exception as e:
+                    display_message(self, "Error", f"Error initializing user interface: {e}")
+                    self.central_widget.setCurrentIndex(0)
             else:
                 display_message(self, "Error", f"Invalid role: {role}")
                 self.central_widget.setCurrentIndex(0)
@@ -591,21 +605,19 @@ class MainWindow(QMainWindow):
         button_configs = [
             (self.show_summary_button, "📊 Summary", 0, 0),
             (self.word_cloud_button, "☁️ Word Cloud", 0, 1),
-            (self.export_all_button, "📤 Export All", 1, 0),
-            (self.generate_report_button, "📝 Generate Report", 1, 1)
+            (self.export_all_button, "📤 Export All", 0, 2),
+            (self.generate_report_button, "📝 Generate Report", 1, 0, 3)  # span 3 columns
         ]
 
-        for button, text, row, col in button_configs:
+        for button, text, row, col, *span in button_configs:
             button.setText(text)
             button.setFont(FONTS['button'])
-            button.setStyleSheet(f"""
-                {BUTTON_STYLE}
-                QPushButton {{
-                    padding: 12px 20px;
-                    min-width: 140px;
-                }}
-            """)
-            ops_grid.addWidget(button, row, col)
+            button.setStyleSheet(BUTTON_STYLE)
+            button.setEnabled(False)  # Initially disabled
+            if span:
+                ops_grid.addWidget(button, row, col, 1, span[0])  # Use column span if provided
+            else:
+                ops_grid.addWidget(button, row, col)
 
         dataset_ops_layout.addLayout(ops_grid)
         details_layout.addWidget(dataset_ops_section)
@@ -1028,20 +1040,18 @@ class MainWindow(QMainWindow):
         selected_items = self.get_current_table().selectedItems()
         if not selected_items:
             self.details_text_edit.clear()
-            # Disable row operations but keep dataset operations enabled if there's data
-            row_buttons = [self.add_remove_button, self.export_selected_button]
-            for btn in row_buttons:
-                btn.setEnabled(False)
+            # Disable row operations
+            self.add_remove_button.setEnabled(False)
+            self.export_selected_button.setEnabled(False)
             
-            # Enable dataset operations only if there's at least one tab
-            has_tabs = self.tab_widget.count() > 0
-            self.enable_dataset_operations(has_tabs)
+            # Keep dataset operations enabled if there's data
+            has_data = self.tab_widget.count() > 0
+            self.enable_dataset_operations(has_data)
             return
 
         # Enable row operation buttons when row is selected
-        row_buttons = [self.add_remove_button, self.export_selected_button]
-        for btn in row_buttons:
-            btn.setEnabled(True)
+        self.add_remove_button.setEnabled(True)
+        self.export_selected_button.setEnabled(True)
 
         # Make sure dataset operations are enabled when there's data
         self.enable_dataset_operations(True)
