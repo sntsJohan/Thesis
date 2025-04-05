@@ -1,25 +1,25 @@
-from PyQt5.QtWidgets import (QMainWindow, QVBoxLayout, QHBoxLayout, QLabel, 
+from PyQt5.QtWidgets import (QDialog, QMainWindow, QVBoxLayout, QHBoxLayout, QLabel, 
                            QLineEdit, QPushButton, QTextEdit, QWidget, 
                            QFileDialog, QTableWidget, QTableWidgetItem, 
                            QHeaderView, QSplitter, QGridLayout, QComboBox, 
-                           QSizePolicy, QStackedWidget, QFrame, QTabWidget, QMessageBox, QCheckBox)
-from PyQt5.QtCore import Qt, QTimer, QSize
-from PyQt5.QtGui import QColor, QTextCursor, QImage, QPixmap, QIcon
+                           QSizePolicy, QStackedWidget, QTabWidget, QMessageBox, 
+                           QCheckBox, QApplication)
+from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtGui import QColor, QFont, QPixmap, QImage, QIcon
+import numpy as np
+from wordcloud import WordCloud
+import matplotlib.pyplot as plt
+from io import BytesIO
 from scraper import scrape_comments
 from model import classify_comment
 import pandas as pd
 from utils import display_message
-from styles import COLORS, FONTS, BUTTON_STYLE, INPUT_STYLE, TABLE_STYLE, TAB_STYLE, DIALOG_STYLE, CONTAINER_STYLE, TITLELESS_CONTAINER_STYLE, TABLE_ALTERNATE_STYLE, DETAIL_TEXT_STYLE, HEADER_STYLE, TAG_STYLE
+from comment_operations import generate_report_user
+from styles import COLORS, FONTS, BUTTON_STYLE, INPUT_STYLE, DIALOG_STYLE, TABLE_ALTERNATE_STYLE, TABLE_STYLE, TAB_STYLE, CONTAINER_STYLE
 import tempfile
 import time
-from PyQt5.QtWidgets import QApplication
-from comment_operations import generate_report_from_window, generate_report_user
-from wordcloud import WordCloud
-import matplotlib.pyplot as plt
 import re
-from io import BytesIO
 from stopwords import TAGALOG_STOP_WORDS
-from PyQt5.QtWidgets import QDialog
 
 # Reuse the LoadingOverlay from the main GUI
 from loading_overlay import LoadingOverlay
@@ -37,7 +37,7 @@ class UserMainWindow(QMainWindow):
         
         # Create top menu bar
         self.menu_bar = QWidget()
-        self.menu_bar.setFixedHeight(40)  # Fixed height for menu bar
+        self.menu_bar.setFixedHeight(40)
         self.menu_bar.setStyleSheet(f"""
             QWidget {{
                 background-color: black;
@@ -59,10 +59,10 @@ class UserMainWindow(QMainWindow):
         # Create menu bar layout
         menu_layout = QHBoxLayout(self.menu_bar)
         menu_layout.setContentsMargins(0, 0, 0, 0)
-        menu_layout.setSpacing(0)  # Remove spacing between buttons
+        menu_layout.setSpacing(0)
         
         # Add app name on the left
-        app_name = QLabel("Cyber Boolean")
+        app_name = QLabel("Cyberbullying Detection System - User View")
         app_name.setStyleSheet(f"color: {COLORS['text']}; font-size: 14px; padding: 0 16px;")
         app_name.setFont(FONTS['button'])
         menu_layout.addWidget(app_name)
@@ -76,10 +76,9 @@ class UserMainWindow(QMainWindow):
         sign_out_button.setFont(FONTS['button'])
         menu_layout.addWidget(sign_out_button)
         
-        # Initialize rest of UI
+        # Initialize central widget but don't set up UI yet
         self.central_widget = QStackedWidget()
         self.setCentralWidget(self.central_widget)
-        self.init_main_ui()
         
         # Create loading overlay
         self.loading_overlay = LoadingOverlay(self)
@@ -89,6 +88,13 @@ class UserMainWindow(QMainWindow):
 
         # Initialize current user
         self.current_user = None
+
+        # Initialize tab counters
+        self.csv_tab_count = 1
+        self.url_tab_count = 1
+        
+        # Dictionary to store tab references
+        self.tabs = {}
 
     def set_main_window(self, main_window):
         self.main_window = main_window
@@ -378,13 +384,6 @@ class UserMainWindow(QMainWindow):
 
         # Add content container to main layout
         self.layout.addWidget(content_container)
-
-        # Initialize tab counters
-        self.csv_tab_count = 1
-        self.url_tab_count = 1
-        
-        # Dictionary to store tab references
-        self.tabs = {}
     
     def show_loading(self, show=True):
         if show:

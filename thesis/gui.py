@@ -236,10 +236,10 @@ class MainWindow(QMainWindow):
                 try:
                     self.user_window = UserMainWindow()
                     self.user_window.set_current_user(username)  # Set username first
-                    self.user_window.set_main_window(self)      # Set main window second
-                    self.user_window.init_main_ui()             # Initialize UI third
+                    self.user_window.set_main_window(self)      # Set main window reference
+                    self.hide()                                 # Hide main window
+                    self.user_window.init_main_ui()             # Initialize UI
                     self.user_window.showFullScreen()           # Show window last
-                    self.hide()
                 except Exception as e:
                     display_message(self, "Error", f"Error initializing user interface: {e}")
                     self.central_widget.setCurrentIndex(0)
@@ -311,17 +311,6 @@ class MainWindow(QMainWindow):
 
         # Facebook Post Section with enhanced styling
         fb_section = QWidget()
-        fb_section.setStyleSheet(f"""
-            QWidget {{
-                background-color: {COLORS['background']};
-                border: 1px solid {COLORS['border']};
-                border-radius: 6px;
-                padding: 15px;
-            }}
-            QWidget:hover {{
-                border: 1px solid {COLORS['hover']};
-            }}
-        """)
         fb_layout = QVBoxLayout(fb_section)
         fb_layout.setSpacing(10)
 
@@ -401,7 +390,7 @@ class MainWindow(QMainWindow):
         self.browse_button = QPushButton("Browse")
         self.browse_button.setFont(FONTS['button'])
         self.browse_button.setStyleSheet(BUTTON_STYLE)
-        self.browse_button.setFixedWidth(80)  # Smaller button
+        self.browse_button.setFixedWidth(80)
         self.browse_button.clicked.connect(self.browse_file)
         
         file_browse_layout.addWidget(self.file_input)
@@ -422,8 +411,7 @@ class MainWindow(QMainWindow):
         direct_section.setStyleSheet(CONTAINER_STYLE)
         direct_layout = QVBoxLayout(direct_section)
         direct_layout.setSpacing(5)  # Reduced spacing
-        direct_layout.setContentsMargins(8, 8, 8, 8)  # Reduced padding
-
+        direct_layout.setContentsMargins(8, 8, 8, 8)
         direct_title = QLabel("Direct Input")
         direct_title.setFont(FONTS['button'])  # Smaller font
         direct_title.setAlignment(Qt.AlignCenter)
