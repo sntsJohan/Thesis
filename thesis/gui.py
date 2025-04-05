@@ -1169,5 +1169,7 @@ class MainWindow(QMainWindow):
         dialog.exec_()
 
     def show_about(self):
-        """Show the about dialog"""
-        pass
+        """Show the About dialog"""
+        from about import AboutDialog
+        about_dialog = AboutDialog(self)
+        about_dialog.exec_()
