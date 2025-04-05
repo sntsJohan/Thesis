@@ -39,6 +39,10 @@ class MainWindow(QMainWindow):
         self.showFullScreen()  # Makes the window fullscreen
         self.setStyleSheet(f"background-color: {COLORS['background']}; color: {COLORS['text']};")
 
+        # Set window icon
+        app_icon = QIcon("assets/applogo.png")
+        self.setWindowIcon(app_icon)
+
         self.central_widget = QStackedWidget()  
         self.setCentralWidget(self.central_widget)
 

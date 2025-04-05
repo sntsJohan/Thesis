@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QTableWidget, QTableWidgetItem,
                            QHeaderView, QPushButton, QLabel, QHBoxLayout)
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QIcon
 from styles import COLORS, FONTS, BUTTON_STYLE, TABLE_STYLE
 from db_config import get_db_connection
 from datetime import datetime
@@ -11,6 +12,9 @@ class HistoryDialog(QDialog):
         self.setWindowTitle("User Logs")
         self.setStyleSheet(f"background-color: {COLORS['background']}; color: {COLORS['text']};")
         self.resize(800, 600)
+        
+        # Set window icon
+        self.setWindowIcon(QIcon("assets/applogo.png"))
         
         # Create layout
         layout = QVBoxLayout(self)

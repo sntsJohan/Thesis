@@ -1,5 +1,6 @@
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QIcon
 from styles import COLORS, FONTS, BUTTON_STYLE, INPUT_STYLE
 from db_config import get_db_connection, log_user_action
 
@@ -9,6 +10,10 @@ class LoginWindow(QDialog):
         self.setWindowTitle("Login")
         self.setStyleSheet(f"background-color: {COLORS['background']}; color: {COLORS['text']};")
         self.setMinimumWidth(400)
+        
+        # Set window icon
+        self.setWindowIcon(QIcon("assets/applogo.png"))
+        
         self.role = None  # Store the user role
         self.username = None  # Store the username
         self.setup_ui()

@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import (QMainWindow, QVBoxLayout, QHBoxLayout, QLabel,
                            QHeaderView, QSplitter, QGridLayout, QComboBox, 
                            QSizePolicy, QStackedWidget, QFrame, QTabWidget, QMessageBox, QCheckBox)
 from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QColor, QTextCursor, QImage, QPixmap
+from PyQt5.QtGui import QColor, QTextCursor, QImage, QPixmap, QIcon
 from scraper import scrape_comments
 from model import classify_comment
 import pandas as pd
@@ -31,6 +31,9 @@ class UserMainWindow(QMainWindow):
         self.setWindowTitle("Cyber Boolean - Simple View")
         self.showFullScreen()
         self.setStyleSheet(f"background-color: {COLORS['background']}; color: {COLORS['text']};")
+        
+        # Set window icon
+        self.setWindowIcon(QIcon("assets/applogo.png"))
         
         self.central_widget = QStackedWidget()
         self.setCentralWidget(self.central_widget)

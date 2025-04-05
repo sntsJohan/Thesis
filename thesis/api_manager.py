@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
                            QLineEdit, QPushButton, QWidget, QMessageBox)
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QIcon
 from styles import COLORS, FONTS, BUTTON_STYLE, INPUT_STYLE, DIALOG_STYLE
 import re
 
@@ -10,6 +11,10 @@ class APIManagerDialog(QDialog):
         self.setWindowTitle("API Key Management")
         self.setStyleSheet(DIALOG_STYLE)
         self.setMinimumWidth(650)
+        
+        # Set window icon
+        self.setWindowIcon(QIcon("assets/applogo.png"))
+        
         self.init_ui()
 
     def init_ui(self):
