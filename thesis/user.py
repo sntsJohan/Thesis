@@ -35,6 +35,42 @@ class UserMainWindow(QMainWindow):
         # Set window icon
         self.setWindowIcon(QIcon("assets/applogo.png"))
         
+        # Create top menu bar
+        self.menu_bar = QWidget()
+        self.menu_bar.setFixedHeight(40)
+        self.menu_bar.setStyleSheet(f"""
+            QWidget {{
+                background-color: black;
+                padding: 0px;
+            }}
+            QPushButton {{
+                color: {COLORS['text']};
+                background-color: transparent;
+                border: none;
+                padding: 8px 16px;
+                font-size: 14px;
+                min-width: 100px;
+            }}
+            QPushButton:hover {{
+                background-color: {COLORS['hover']};
+            }}
+        """)
+        
+        # Create menu bar layout
+        menu_layout = QHBoxLayout(self.menu_bar)
+        menu_layout.setContentsMargins(0, 0, 0, 0)
+        menu_layout.setSpacing(0)
+        
+        # Add stretch to push sign out button to right
+        menu_layout.addStretch()
+        
+        # Create sign out button
+        sign_out_button = QPushButton("🚪 Sign Out")
+        sign_out_button.setFont(FONTS['button'])
+        sign_out_button.clicked.connect(self.confirm_sign_out)
+        menu_layout.addWidget(sign_out_button)
+        
+        # Initialize rest of UI
         self.central_widget = QStackedWidget()
         self.setCentralWidget(self.central_widget)
         self.init_main_ui()
@@ -100,9 +136,20 @@ class UserMainWindow(QMainWindow):
         main_widget = QWidget()
         self.central_widget.addWidget(main_widget)
         self.layout = QVBoxLayout(main_widget)
-        self.layout.setSpacing(10)  # Reduced spacing
-        self.layout.setContentsMargins(10, 10, 10, 10)  # Reduced margins
-
+        self.layout.setSpacing(10)
+        self.layout.setContentsMargins(0, 0, 0, 0)  # Remove margins completely
+        
+        # Add menu bar at the top with no margins
+        self.menu_bar.setContentsMargins(0, 0, 0, 0)
+        self.layout.addWidget(self.menu_bar)
+        
+        # Add a container for the main content with proper padding
+        content_container = QWidget()
+        content_layout = QVBoxLayout(content_container)
+        content_layout.setSpacing(10)
+        content_layout.setContentsMargins(10, 10, 10, 10)
+        
+        # Move existing content initialization here
         # Top header section with sign out button and title in one row
         header_widget = QWidget()
         header_layout = QHBoxLayout(header_widget)
@@ -128,7 +175,7 @@ class UserMainWindow(QMainWindow):
         sign_out_button.clicked.connect(self.confirm_sign_out)
         header_layout.addWidget(sign_out_button)
         
-        self.layout.addWidget(header_widget)
+        content_layout.addWidget(header_widget)
         
         # Collapsible input section
         input_container = QWidget()
@@ -227,14 +274,14 @@ class UserMainWindow(QMainWindow):
         input_layout.addWidget(direct_section)
 
         # Add input container to main layout with fixed height
-        self.layout.addWidget(input_container)
+        content_layout.addWidget(input_container)
         
         # Make a line separator
         separator = QFrame()
         separator.setFrameShape(QFrame.HLine)
         separator.setFrameShadow(QFrame.Sunken)
         separator.setStyleSheet(f"background-color: {COLORS['border']};")
-        self.layout.addWidget(separator)
+        content_layout.addWidget(separator)
         
         # Results section with tab widget - Modified to match input containers
         results_container = QWidget()
@@ -325,13 +372,15 @@ class UserMainWindow(QMainWindow):
         self.tabs = {}
 
         # Add results container to main layout with stretch factor
-        self.layout.addWidget(results_container, 1)  # Give it maximum stretch
+        content_layout.addWidget(results_container, 1)  # Give it maximum stretch
             
         # Set stretch factors
-        self.layout.setStretch(0, 0)  # Header
-        self.layout.setStretch(1, 0)  # Input - minimal height
-        self.layout.setStretch(2, 0)  # Separator - minimal height
-        self.layout.setStretch(3, 1)  # Results - takes all remaining space
+        content_layout.setStretch(0, 0)  # Header
+        content_layout.setStretch(1, 0)  # Input - minimal height
+        content_layout.setStretch(2, 0)  # Separator - minimal height
+        content_layout.setStretch(3, 1)  # Results - takes all remaining space
+        
+        self.layout.addWidget(content_container)
     
     def show_loading(self, show=True):
         if show:

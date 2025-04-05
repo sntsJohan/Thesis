@@ -91,6 +91,19 @@ TABLE_STYLE = f"""
         font-weight: bold;
         font-size: 13px;
     }}
+    QHeaderView::section:vertical {{
+        background-color: {COLORS['surface']};
+        color: {COLORS['text']};
+        border: none;
+        border-right: 2px solid {COLORS['border']};
+        padding: 12px;
+    }}
+    QTableCornerButton::section {{
+        background-color: {COLORS['surface']};
+        border: none;
+        border-right: 2px solid {COLORS['border']};
+        border-bottom: 2px solid {COLORS['border']};
+    }}
     QTableWidget::item {{
         padding: 12px;
         border: none;
