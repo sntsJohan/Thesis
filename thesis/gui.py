@@ -2,8 +2,8 @@ from PyQt5.QtWidgets import (QMainWindow, QVBoxLayout, QHBoxLayout, QLabel,
                            QLineEdit, QPushButton, QTextEdit, QWidget, 
                            QFileDialog, QTableWidget, QTableWidgetItem, 
                            QHeaderView, QSplitter, QGridLayout, QComboBox, QSizePolicy, QStackedWidget, QDialog, QTabWidget, QMessageBox, QCheckBox)
-from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QColor, QTextCursor, QPixmap, QImage, QIcon
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QColor, QFont, QPixmap, QImage, QIcon
 import numpy as np
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
@@ -12,7 +12,14 @@ from scraper import scrape_comments
 from model import classify_comment
 import pandas as pd
 from utils import display_message
-from styles import COLORS, FONTS, BUTTON_STYLE, INPUT_STYLE, TABLE_STYLE, TAB_STYLE, WELCOME_TITLE_STYLE, WELCOME_SUBTITLE_STYLE, WELCOME_DESCRIPTION_STYLE, GET_STARTED_BUTTON_STYLE, WELCOME_VERSION_STYLE, CONTAINER_STYLE, DETAIL_TEXT_STYLE, TABLE_ALTERNATE_STYLE, DIALOG_STYLE, IMAGE_LABEL_STYLE
+from styles import (COLORS, FONTS, BUTTON_STYLE, INPUT_STYLE, TABLE_STYLE, TAB_STYLE, 
+                   WELCOME_TITLE_STYLE, WELCOME_SUBTITLE_STYLE, WELCOME_DESCRIPTION_STYLE, 
+                   GET_STARTED_BUTTON_STYLE, WELCOME_VERSION_STYLE, CONTAINER_STYLE, 
+                   DETAIL_TEXT_STYLE, TABLE_ALTERNATE_STYLE, DIALOG_STYLE, 
+                   IMAGE_LABEL_STYLE, ABOUT_BUTTON_STYLE, WELCOME_BACKGROUND_STYLE,
+                   WELCOME_CONTAINER_STYLE, WELCOME_TITLE_FONT, WELCOME_TITLE_STYLE_DARK,
+                   WELCOME_SUBTITLE_FONT, GET_STARTED_BUTTON_DARK_STYLE, 
+                   ABOUT_BUTTON_OUTLINE_STYLE, DETAIL_TEXT_SPAN_STYLE)
 import tempfile
 import time
 from PyQt5.QtWidgets import QApplication
@@ -43,61 +50,71 @@ class MainWindow(QMainWindow):
 
     def init_welcome_screen(self):
         welcome_widget = QWidget()
+        welcome_widget.setStyleSheet(WELCOME_BACKGROUND_STYLE)
         welcome_layout = QVBoxLayout(welcome_widget)
         welcome_layout.setSpacing(0)
-        welcome_layout.setContentsMargins(40, 0, 40, 0)
+        welcome_layout.setContentsMargins(90, 0, 90, 0)
 
         welcome_layout.addStretch(1)
 
-        # Header container for visual grouping
         header_container = QWidget()
+        header_container.setStyleSheet(WELCOME_CONTAINER_STYLE)
         header_layout = QVBoxLayout(header_container)
-        header_layout.setSpacing(15)
+        header_layout.setSpacing(10)
         header_layout.setContentsMargins(0, 0, 0, 0)
 
-        # App title - largest and most prominent
-        title_label = QLabel("Cyber Boolean")
-        title_label.setFont(FONTS['header'])
-        title_label.setStyleSheet(WELCOME_TITLE_STYLE)
-        title_label.setAlignment(Qt.AlignCenter)
+        # Title parts
+        title_label = QLabel("Cyberbullying")
+        title_label.setFont(WELCOME_TITLE_FONT)
+        title_label.setStyleSheet(WELCOME_TITLE_STYLE_DARK)
+        title_label.setAlignment(Qt.AlignLeft)
         header_layout.addWidget(title_label)
 
-        # Subtitle - secondary emphasis
-        subtitle_label = QLabel("Taglish Cyberbullying Detection System")
-        subtitle_label.setFont(FONTS['header'])
+        secondary_title = QLabel("Detection")
+        secondary_title.setFont(WELCOME_TITLE_FONT)
+        secondary_title.setStyleSheet(WELCOME_TITLE_STYLE_DARK)
+        secondary_title.setAlignment(Qt.AlignLeft)
+        header_layout.addWidget(secondary_title)
+
+        subtitle_label = QLabel("Tagalog and English Cyberbullying Detection System")
+        subtitle_label.setFont(WELCOME_SUBTITLE_FONT)
         subtitle_label.setStyleSheet(WELCOME_SUBTITLE_STYLE)
-        subtitle_label.setAlignment(Qt.AlignCenter)
+        subtitle_label.setAlignment(Qt.AlignLeft)
         header_layout.addWidget(subtitle_label)
 
         welcome_layout.addWidget(header_container)
-        welcome_layout.addSpacing(40)
+        welcome_layout.addSpacing(60)
 
-        # Description - tertiary emphasis
-        description = QLabel(
-            "Detect and analyze cyberbullying in online comments"
-        )
-        description.setWordWrap(True)
-        description.setAlignment(Qt.AlignCenter)
-        description.setStyleSheet(WELCOME_DESCRIPTION_STYLE)
-        welcome_layout.addWidget(description)
-        
-        welcome_layout.addSpacing(50)
+        button_container = QWidget()
+        button_container.setStyleSheet(WELCOME_CONTAINER_STYLE)
+        button_layout = QHBoxLayout(button_container)
+        button_layout.setContentsMargins(0, 0, 0, 0)
+        button_layout.setSpacing(20)
 
-        # Get started button - initially visible
         self.get_started_button = QPushButton("Get Started")
         self.get_started_button.setFont(FONTS['button'])
-        self.get_started_button.setStyleSheet(GET_STARTED_BUTTON_STYLE)
-        self.get_started_button.setFixedWidth(200)
+        self.get_started_button.setStyleSheet(GET_STARTED_BUTTON_DARK_STYLE)
         self.get_started_button.clicked.connect(self.show_login)
-        welcome_layout.addWidget(self.get_started_button, alignment=Qt.AlignCenter)
+        button_layout.addWidget(self.get_started_button)
+
+        about_button = QPushButton("About")
+        about_button.setFont(FONTS['button'])
+        about_button.setStyleSheet(ABOUT_BUTTON_OUTLINE_STYLE)
+        about_button.clicked.connect(self.show_about)
+        button_layout.addWidget(about_button)
+        
+        button_layout.addStretch()
+        welcome_layout.addWidget(button_container)
 
         welcome_layout.addStretch(1)
+        welcome_layout.addSpacing(40)
         
-        # Version info
         version_label = QLabel("Version 1.0")
-        version_label.setAlignment(Qt.AlignRight)
+        version_label.setAlignment(Qt.AlignLeft)
         version_label.setStyleSheet(WELCOME_VERSION_STYLE)
         welcome_layout.addWidget(version_label)
+        
+        welcome_layout.addSpacing(20)
 
         self.central_widget.addWidget(welcome_widget)
 
@@ -923,7 +940,7 @@ class MainWindow(QMainWindow):
         
         # Create spans with larger font size
         def make_text(label, value):
-            return f'<span style="font-size: 16px;"><b>{label}</b>{value}</span>'
+            return f'<span style="{DETAIL_TEXT_SPAN_STYLE}"><b>{label}</b>{value}</span>'
 
         self.details_text_edit.append(make_text("Comment:\n", f"{comment}\n"))
         self.details_text_edit.append(make_text("Commenter: ", f"{commenter}\n"))
@@ -1146,3 +1163,7 @@ class MainWindow(QMainWindow):
         from api_manager import APIManagerDialog
         dialog = APIManagerDialog(self)
         dialog.exec_()
+
+    def show_about(self):
+        """Show the about dialog"""
+        pass

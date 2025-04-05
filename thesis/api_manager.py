@@ -9,7 +9,7 @@ class APIManagerDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("API Key Management")
         self.setStyleSheet(DIALOG_STYLE)
-        self.setMinimumWidth(800)
+        self.setMinimumWidth(650)
         self.init_ui()
 
     def init_ui(self):
@@ -54,16 +54,6 @@ class APIManagerDialog(QDialog):
         self.new_api_input.setStyleSheet(INPUT_STYLE)
         self.new_api_input.setPlaceholderText("Enter new API key...")
         input_layout.addWidget(self.new_api_input)
-
-        # Add confirmation field
-        confirm_api_label = QLabel("Confirm API Key:")
-        confirm_api_label.setFont(FONTS['body'])
-        input_layout.addWidget(confirm_api_label)
-
-        self.confirm_api_input = QLineEdit()
-        self.confirm_api_input.setStyleSheet(INPUT_STYLE)
-        self.confirm_api_input.setPlaceholderText("Confirm new API key...")
-        input_layout.addWidget(self.confirm_api_input)
 
         layout.addWidget(input_container)
 
@@ -112,16 +102,10 @@ class APIManagerDialog(QDialog):
 
     def save_api_key(self):
         new_api = self.new_api_input.text().strip()
-        confirm_api = self.confirm_api_input.text().strip()
         
-        if not new_api or not confirm_api:
+        if not new_api:
             from utils import display_message
-            display_message(self, "Error", "Please fill in both fields")
-            return
-            
-        if new_api != confirm_api:
-            from utils import display_message
-            display_message(self, "Error", "API keys do not match")
+            display_message(self, "Error", "Please enter a new API key")
             return
         
         # Add confirmation dialog
@@ -153,7 +137,6 @@ class APIManagerDialog(QDialog):
             self.current_api = new_api
             self.api_display.setText('*' * len(new_api))
             self.new_api_input.clear()
-            self.confirm_api_input.clear()
             self.toggle_button.setText("Show")
             self.accept()
         except Exception as e:

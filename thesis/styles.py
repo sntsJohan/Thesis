@@ -330,7 +330,7 @@ WELCOME_TITLE_STYLE = f"""
 """
 
 WELCOME_SUBTITLE_STYLE = f"""
-    font-size: 18px; 
+    font-size: 24px; 
     color: {COLORS['text']};
     letter-spacing: 0.5px;
 """
@@ -343,9 +343,55 @@ WELCOME_DESCRIPTION_STYLE = f"""
 
 WELCOME_VERSION_STYLE = f"""
     color: {COLORS['secondary']}; 
-    font-size: 12px;
+    font-size: 18px;
     opacity: 0.8;
 """
+
+WELCOME_BACKGROUND_STYLE = f"background-color: {COLORS['primary']};"
+
+WELCOME_CONTAINER_STYLE = "background-color: transparent;"
+
+WELCOME_TITLE_FONT = QFont('Times New Roman', 96)
+WELCOME_TITLE_FONT.setBold(True)
+WELCOME_TITLE_FONT.setStyle(QFont.StyleItalic)
+
+WELCOME_TITLE_STYLE_DARK = """
+    color: #222222;
+"""
+
+WELCOME_SUBTITLE_FONT = QFont('Segoe UI', 24)
+
+GET_STARTED_BUTTON_DARK_STYLE = """
+    QPushButton {
+        background-color: #222222;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 4px;
+        min-width: 150px;
+        font-weight: 600;
+    }
+    QPushButton:hover {
+        background-color: #333333;
+    }
+"""
+
+ABOUT_BUTTON_OUTLINE_STYLE = """
+    QPushButton {
+        background-color: transparent;
+        color: #222222;
+        border: 1px solid #222222;
+        padding: 12px 24px;
+        border-radius: 4px;
+        min-width: 100px;
+        font-weight: 600;
+    }
+    QPushButton:hover {
+        background-color: rgba(34, 34, 34, 0.1);
+    }
+"""
+
+DETAIL_TEXT_SPAN_STYLE = "font-size: 16px;"
 
 # Header Title Style
 HEADER_STYLE = f"""
@@ -373,6 +419,14 @@ BUTTON_DISABLED_STYLE = f"""
 
 # Get Started Button Style
 GET_STARTED_BUTTON_STYLE = f"""
+    {BUTTON_STYLE}
+    padding: 12px 30px;
+    font-size: 16px;
+    border-radius: 6px;
+"""
+
+# about Button Style
+ABOUT_BUTTON_STYLE = f"""
     {BUTTON_STYLE}
     padding: 12px 30px;
     font-size: 16px;
