@@ -96,7 +96,7 @@ class AboutDialog(QDialog):
             {"name": "Anioay, Kenneth", "role": "Project Lead & ML Engineer", "image": "assets/placeholder.png"},
             {"name": "De Vera, Nathan", "role": "Backend Developer", "image": "assets/placeholder.png"},
             {"name": "Evangelista, Danielle", "role": "Frontend Developer", "image": "assets/placeholder.png"},
-            {"name": "Santos, Johan", "role": "Frontend Developer", "image": "assets/placeholder.png"}
+            {"name": "Santos, Johan", "role": "Frontend Developer", "image": "assets/santos.png"}
         ]
         
         # Create team member cards

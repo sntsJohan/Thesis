@@ -71,7 +71,7 @@ INPUT_STYLE = f"""
     }}
 """
 
-# Enhanced Table Style
+# Table Style with better borders and hover effects
 TABLE_STYLE = f"""
     QTableWidget {{
         border: 1px solid {COLORS['border']};
@@ -80,18 +80,19 @@ TABLE_STYLE = f"""
         color: {COLORS['text']};
         gridline-color: {COLORS['border']};
         outline: none;
-        padding: 6px;
+        padding: 8px;
     }}
     QHeaderView::section {{
-        background-color: #383838;
+        background-color: {COLORS['surface']};
         color: {COLORS['text']};
-        border: 1px solid {COLORS['border']};
-        padding: 15px;
+        border: none;
+        border-bottom: 2px solid {COLORS['border']};
+        padding: 12px 16px;
         font-weight: bold;
         font-size: 13px;
     }}
     QTableWidget::item {{
-        padding: 13px;
+        padding: 12px;
         border: none;
         border-bottom: 1px solid {COLORS['border']};
     }}
@@ -100,46 +101,8 @@ TABLE_STYLE = f"""
         color: {COLORS['text']};
     }}
     QTableWidget::item:hover:!selected {{
-        background-color: #353535;
-    }}
-    QTableWidget QTableCornerButton::section {{
-        background-color: #383838;
-        border: 1px solid {COLORS['border']};
-    }}
-    QScrollBar:vertical {{
-        background: transparent;
-        width: 10px;
-        margin: 2px;
-    }}
-    QScrollBar::handle:vertical {{
-        background: {COLORS['secondary']};
-        border-radius: 5px;
-        min-height: 30px;
-    }}
-    QScrollBar::handle:vertical:hover {{
-        background: {COLORS['primary']};
-    }}
-    QScrollBar:horizontal {{
-        background: transparent;
-        height: 10px;
-        margin: 2px;
-    }}
-    QScrollBar::handle:horizontal {{
-        background: {COLORS['secondary']};
-        border-radius: 5px;
-        min-width: 30px;
-    }}
-    QScrollBar::handle:horizontal:hover {{
-        background: {COLORS['primary']};
-    }}
-    QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical,
-    QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
-        border: none;
-        background: none;
-    }}
-    QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical,
-    QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {{
-        background: none;
+        background-color: {COLORS['hover']};
+        color: {COLORS['text']};
     }}
 """
 
@@ -308,7 +271,7 @@ TITLELESS_CONTAINER_STYLE = f"""
     }}
 """
 
-# Alternative Table Row Style
+# Alternative Table Style with alternating row colors
 TABLE_ALTERNATE_STYLE = f"""
     {TABLE_STYLE}
     QTableWidget::item:alternate {{
@@ -400,10 +363,20 @@ HEADER_STYLE = f"""
     padding: 0px;
 """
 
-# Detail Text Style
+# Enhanced Details Panel Style
 DETAIL_TEXT_STYLE = f"""
-    font-size: 16px;
-    color: {COLORS['text']};
+    QTextEdit {{
+        background-color: {COLORS['surface']};
+        color: {COLORS['text']};
+        border: 1px solid {COLORS['border']};
+        border-radius: 8px;
+        padding: 12px;
+        font-size: 14px;
+        selection-background-color: {COLORS['primary']};
+    }}
+    QTextEdit:focus {{
+        border: 1px solid {COLORS['primary']};
+    }}
 """
 
 # Disabled Button Style
