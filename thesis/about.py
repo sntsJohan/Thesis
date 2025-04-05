@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
-                           QWidget, QScrollArea, QGridLayout, QSizePolicy)
+                           QWidget, QScrollArea, QGridLayout, QSizePolicy, QApplication)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon, QPixmap
 from styles import COLORS, FONTS, DIALOG_STYLE, CONTAINER_STYLE
@@ -11,6 +11,14 @@ class AboutDialog(QDialog):
         self.setStyleSheet(DIALOG_STYLE)
         self.setMinimumWidth(800)
         self.setMinimumHeight(600)
+        
+         # Position window on the right side and center it vertically
+        screen = QApplication.desktop().screenGeometry()
+        self.setGeometry(0, 0, 400, 500)  # Set initial size
+        qr = self.frameGeometry()
+        qr.moveCenter(screen.center())  # Center the window
+        qr.moveRight(screen.right() - 200)  # Move to right side with 200px margin
+        self.setGeometry(qr)
         
         # Set window icon
         self.setWindowIcon(QIcon("assets/applogo.png"))
