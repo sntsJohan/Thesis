@@ -78,7 +78,7 @@ class MainWindow(QMainWindow):
         admin_layout.addStretch()
         
         # Create sign out button - right side
-        sign_out_button = QPushButton("🚪 Sign Out")
+        sign_out_button = QPushButton("Sign Out")
         sign_out_button.clicked.connect(self.confirm_sign_out)
         sign_out_button.setFont(FONTS['button'])
         admin_layout.addWidget(sign_out_button)
@@ -592,7 +592,7 @@ class MainWindow(QMainWindow):
             (self.show_summary_button, "📊 Summary", 0, 0),
             (self.word_cloud_button, "☁️ Word Cloud", 0, 1),
             (self.export_all_button, "📤 Export All", 1, 0),
-            (self.generate_report_button, "📝 Report", 1, 1)
+            (self.generate_report_button, "📝 Generate Report", 1, 1)
         ]
 
         for button, text, row, col in button_configs:

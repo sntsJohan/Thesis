@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import (QMainWindow, QVBoxLayout, QHBoxLayout, QLabel,
                            QFileDialog, QTableWidget, QTableWidgetItem, 
                            QHeaderView, QSplitter, QGridLayout, QComboBox, 
                            QSizePolicy, QStackedWidget, QFrame, QTabWidget, QMessageBox, QCheckBox)
-from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtCore import Qt, QTimer, QSize
 from PyQt5.QtGui import QColor, QTextCursor, QImage, QPixmap, QIcon
 from scraper import scrape_comments
 from model import classify_comment
@@ -28,7 +28,7 @@ from db_config import log_user_action  # Add this import
 class UserMainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Cyber Boolean - Simple View")
+        self.setWindowTitle("Cyber Bullying Detection System - User View")
         self.showFullScreen()
         self.setStyleSheet(f"background-color: {COLORS['background']}; color: {COLORS['text']};")
         
@@ -37,7 +37,7 @@ class UserMainWindow(QMainWindow):
         
         # Create top menu bar
         self.menu_bar = QWidget()
-        self.menu_bar.setFixedHeight(40)
+        self.menu_bar.setFixedHeight(40)  # Fixed height for menu bar
         self.menu_bar.setStyleSheet(f"""
             QWidget {{
                 background-color: black;
@@ -59,15 +59,21 @@ class UserMainWindow(QMainWindow):
         # Create menu bar layout
         menu_layout = QHBoxLayout(self.menu_bar)
         menu_layout.setContentsMargins(0, 0, 0, 0)
-        menu_layout.setSpacing(0)
+        menu_layout.setSpacing(0)  # Remove spacing between buttons
+        
+        # Add app name on the left
+        app_name = QLabel("Cyber Boolean")
+        app_name.setStyleSheet(f"color: {COLORS['text']}; font-size: 14px; padding: 0 16px;")
+        app_name.setFont(FONTS['button'])
+        menu_layout.addWidget(app_name)
         
         # Add stretch to push sign out button to right
         menu_layout.addStretch()
         
-        # Create sign out button
-        sign_out_button = QPushButton("🚪 Sign Out")
-        sign_out_button.setFont(FONTS['button'])
+        # Create sign out button - right side
+        sign_out_button = QPushButton("Sign Out")
         sign_out_button.clicked.connect(self.confirm_sign_out)
+        sign_out_button.setFont(FONTS['button'])
         menu_layout.addWidget(sign_out_button)
         
         # Initialize rest of UI
@@ -136,7 +142,7 @@ class UserMainWindow(QMainWindow):
         main_widget = QWidget()
         self.central_widget.addWidget(main_widget)
         self.layout = QVBoxLayout(main_widget)
-        self.layout.setSpacing(10)
+        self.layout.setSpacing(15)
         self.layout.setContentsMargins(0, 0, 0, 0)  # Remove margins completely
         
         # Add menu bar at the top with no margins
@@ -146,84 +152,106 @@ class UserMainWindow(QMainWindow):
         # Add a container for the main content with proper padding
         content_container = QWidget()
         content_layout = QVBoxLayout(content_container)
-        content_layout.setSpacing(10)
-        content_layout.setContentsMargins(10, 10, 10, 10)
-        
-        # Move existing content initialization here
-        # Top header section with sign out button and title in one row
-        header_widget = QWidget()
-        header_layout = QHBoxLayout(header_widget)
-        header_layout.setContentsMargins(0, 0, 0, 0)
-        
-        # Title in center
-        title = QLabel("Cyberbullying Detection Tool")
-        title.setFont(FONTS['header'])
-        title.setStyleSheet(HEADER_STYLE)
-        title.setAlignment(Qt.AlignCenter)
-        
-        # Add invisible spacer on left to match button width
-        header_layout.addSpacing(100)
-        
-        # Add title
-        header_layout.addWidget(title, 1)  # Title takes remaining space
-        
-        # Sign Out button on right
-        sign_out_button = QPushButton("Sign Out")
-        sign_out_button.setFont(FONTS['button'])
-        sign_out_button.setStyleSheet(BUTTON_STYLE)
-        sign_out_button.setFixedWidth(100)
-        sign_out_button.clicked.connect(self.confirm_sign_out)
-        header_layout.addWidget(sign_out_button)
-        
-        content_layout.addWidget(header_widget)
-        
-        # Collapsible input section
-        input_container = QWidget()
-        input_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)  # Limit vertical size
-        input_layout = QHBoxLayout(input_container)  # Changed to horizontal for space efficiency
-        input_layout.setSpacing(10)
-        input_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(15)
+        content_layout.setContentsMargins(25, 25, 25, 25)
 
-        # Facebook Post Section - Made more compact
-        fb_section = QWidget()
-        fb_section.setStyleSheet(CONTAINER_STYLE)
-        fb_layout = QVBoxLayout(fb_section)
-        fb_layout.setSpacing(5)  # Reduced spacing
-        fb_layout.setContentsMargins(8, 8, 8, 8)  # Reduced padding
+        # Input Container with enhanced styling and better spacing
+        input_container = QWidget()
+        input_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
+        input_container.setStyleSheet(f"""
+            QWidget {{
+                background-color: {COLORS['surface']};
+                border: 1px solid {COLORS['border']};
+                border-radius: 8px;
+                padding: 20px;
+            }}
+        """)
         
+        # Main horizontal layout with improved spacing
+        input_layout = QHBoxLayout(input_container)
+        input_layout.setSpacing(20)
+        input_layout.setContentsMargins(20, 20, 20, 20)
+
+        # Facebook Post Section with enhanced styling
+        fb_section = QWidget()
+        fb_section.setStyleSheet(f"""
+            QWidget {{
+                background-color: {COLORS['background']};
+                border: 1px solid {COLORS['border']};
+                border-radius: 6px;
+                padding: 15px;
+            }}
+            QWidget:hover {{
+                border: 1px solid {COLORS['hover']};
+            }}
+        """)
+        fb_layout = QVBoxLayout(fb_section)
+        fb_layout.setSpacing(10)
+
+        # Enhanced section headers with icons
+        fb_header = QHBoxLayout()
+        fb_icon = QLabel()
+        fb_icon.setPixmap(QIcon("assets/fb_icon.png").pixmap(QSize(20, 20)))
         fb_title = QLabel("Facebook Post")
-        fb_title.setFont(FONTS['button'])  # Smaller font
-        fb_title.setAlignment(Qt.AlignCenter)
+        fb_title.setFont(FONTS['header'])
+        fb_title.setStyleSheet(f"color: {COLORS['text']};")
+        fb_header.addWidget(fb_icon)
+        fb_header.addWidget(fb_title)
+        fb_header.addStretch()
+        fb_layout.addLayout(fb_header)
+
+        # Enhanced URL input with checkbox
         self.url_input = QLineEdit()
         self.url_input.setStyleSheet(INPUT_STYLE)
         self.url_input.setPlaceholderText("Enter Facebook Post URL")
+        fb_layout.addWidget(self.url_input)
 
-        # Add checkbox for including replies
+        # Checkbox with better styling
         self.include_replies = QCheckBox("Include Replies")
-        self.include_replies.setStyleSheet(f"color: {COLORS['text']};")
-        self.include_replies.setFont(FONTS['button'])
-        self.include_replies.setChecked(True)  # Default to including replies
-        
+        self.include_replies.setStyleSheet(f"""
+            QCheckBox {{
+                color: {COLORS['text']};
+                font-size: 13px;
+                padding: 5px;
+            }}
+            QCheckBox::indicator {{
+                width: 18px;
+                height: 18px;
+                border-radius: 4px;
+                border: 2px solid {COLORS['border']};
+            }}
+            QCheckBox::indicator:checked {{
+                background-color: {COLORS['primary']};
+                border: 2px solid {COLORS['primary']};
+            }}
+        """)
+        self.include_replies.setChecked(True)
+        fb_layout.addWidget(self.include_replies)
+
+        # Enhanced scrape button
         self.scrape_button = QPushButton("Scrape Comments")
         self.scrape_button.setFont(FONTS['button'])
-        self.scrape_button.setStyleSheet(BUTTON_STYLE)
+        self.scrape_button.setStyleSheet(f"""
+            {BUTTON_STYLE}
+            QPushButton {{
+                padding: 12px;
+                border-radius: 6px;
+            }}
+        """)
         self.scrape_button.clicked.connect(self.scrape_comments)
-        
-        fb_layout.addWidget(fb_title)
-        fb_layout.addWidget(self.url_input)
-        fb_layout.addWidget(self.include_replies)  # Add checkbox to layout
         fb_layout.addWidget(self.scrape_button)
+
         input_layout.addWidget(fb_section)
 
         # CSV File Section - Made more compact
         csv_section = QWidget()
         csv_section.setStyleSheet(CONTAINER_STYLE)
         csv_layout = QVBoxLayout(csv_section)
-        csv_layout.setSpacing(5)  # Reduced spacing
-        csv_layout.setContentsMargins(8, 8, 8, 8)  # Reduced padding
+        csv_layout.setSpacing(5)
+        csv_layout.setContentsMargins(8, 8, 8, 8)
         
         csv_title = QLabel("CSV File")
-        csv_title.setFont(FONTS['button'])  # Smaller font
+        csv_title.setFont(FONTS['button'])
         csv_title.setAlignment(Qt.AlignCenter)
         
         file_browse_layout = QHBoxLayout()
@@ -234,7 +262,7 @@ class UserMainWindow(QMainWindow):
         self.browse_button = QPushButton("Browse")
         self.browse_button.setFont(FONTS['button'])
         self.browse_button.setStyleSheet(BUTTON_STYLE)
-        self.browse_button.setFixedWidth(80)  # Smaller button
+        self.browse_button.setFixedWidth(80)
         self.browse_button.clicked.connect(self.browse_file)
         
         file_browse_layout.addWidget(self.file_input)
@@ -248,17 +276,18 @@ class UserMainWindow(QMainWindow):
         csv_layout.addWidget(csv_title)
         csv_layout.addLayout(file_browse_layout)
         csv_layout.addWidget(self.process_csv_button)
+        
         input_layout.addWidget(csv_section)
 
         # Direct Input Section - Made more compact
         direct_section = QWidget()
         direct_section.setStyleSheet(CONTAINER_STYLE)
         direct_layout = QVBoxLayout(direct_section)
-        direct_layout.setSpacing(5)  # Reduced spacing
-        direct_layout.setContentsMargins(8, 8, 8, 8)  # Reduced padding
+        direct_layout.setSpacing(5)
+        direct_layout.setContentsMargins(8, 8, 8, 8)
         
         direct_title = QLabel("Direct Input")
-        direct_title.setFont(FONTS['button'])  # Smaller font
+        direct_title.setFont(FONTS['button'])
         direct_title.setAlignment(Qt.AlignCenter)
         self.text_input = QLineEdit()
         self.text_input.setStyleSheet(INPUT_STYLE)
@@ -271,116 +300,91 @@ class UserMainWindow(QMainWindow):
         direct_layout.addWidget(direct_title)
         direct_layout.addWidget(self.text_input)
         direct_layout.addWidget(self.analyze_button)
+        
         input_layout.addWidget(direct_section)
 
-        # Add input container to main layout with fixed height
+        # Add input container to main layout
         content_layout.addWidget(input_container)
-        
-        # Make a line separator
-        separator = QFrame()
-        separator.setFrameShape(QFrame.HLine)
-        separator.setFrameShadow(QFrame.Sunken)
-        separator.setStyleSheet(f"background-color: {COLORS['border']};")
-        content_layout.addWidget(separator)
-        
-        # Results section with tab widget - Modified to match input containers
+
+        # Results Container with enhanced styling
         results_container = QWidget()
+        results_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         results_container.setStyleSheet(CONTAINER_STYLE)
         results_layout = QVBoxLayout(results_container)
-        results_layout.setContentsMargins(8, 8, 8, 8)  # Match input section padding
+        results_layout.setContentsMargins(15, 15, 15, 15)
 
-        # Create a container for the title with proper alignment
-        title_container = QWidget()
-        title_container.setStyleSheet(TITLELESS_CONTAINER_STYLE)
-        title_layout = QHBoxLayout(title_container)
-        title_layout.setContentsMargins(0, 0, 0, 0)
-
-        table_title = QLabel("Results")
-        table_title.setFont(FONTS['header'])
-        table_title.setAlignment(Qt.AlignLeft)
-        title_layout.addWidget(table_title)
-        title_layout.addStretch()
-
-        # Add the title container to the results layout
-        results_layout.addWidget(title_container)
-
-        # Initial message widget with styled container
-        message_container = QWidget()
-        message_container.setStyleSheet(TITLELESS_CONTAINER_STYLE)
-        message_layout = QVBoxLayout(message_container)
-        message_layout.setContentsMargins(5, 10, 5, 10)  # Better padding for message
-
+        # Tab widget with styling
+        self.tab_widget = QTabWidget()
+        self.tab_widget.setStyleSheet(TAB_STYLE)
         self.initial_message = QLabel("No analysis performed yet.\nResults will appear here.")
         self.initial_message.setAlignment(Qt.AlignCenter)
         self.initial_message.setStyleSheet(f"color: {COLORS['text']}; font-size: 14px;")
-        message_layout.addWidget(self.initial_message)
-
-        # Tab widget styling
-        self.tab_widget = QTabWidget()
-        self.tab_widget.setStyleSheet(TAB_STYLE)
-
-        # Add initial message to tab widget area
-        results_layout.addWidget(message_container)
+        results_layout.addWidget(self.initial_message)
+        
         results_layout.addWidget(self.tab_widget)
-        self.tab_widget.hide()  
+        self.tab_widget.hide()
 
-        # Operations section - Created as a boxed container like input sections with fixed height
+        # Operations section with enhanced styling
         operations_container = QWidget()
-        operations_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)  
         operations_container.setStyleSheet(CONTAINER_STYLE)
         operations_layout = QVBoxLayout(operations_container)
-        operations_layout.setSpacing(5)  # Reduced spacing
-        operations_layout.setContentsMargins(8, 8, 8, 8)  # Reduced padding
+        operations_layout.setSpacing(10)
+        operations_layout.setContentsMargins(15, 15, 15, 15)
 
-        # Operations title with fixed height and compact layout
-        operations_title = QLabel("Operations")
-        operations_title.setFont(FONTS['button'])  # Same font as input section titles
-        operations_title.setAlignment(Qt.AlignCenter)
-        operations_title.setFixedHeight(20)  # Set fixed height for title to minimize space
+        operations_title = QLabel("Dataset Operations")
+        operations_title.setFont(FONTS['header'])
+        operations_title.setStyleSheet(f"color: {COLORS['text']};")
         operations_layout.addWidget(operations_title)
 
-        # Add buttons for summary, word cloud, and report generation in a row
-        buttons_layout = QHBoxLayout()
-        buttons_layout.setContentsMargins(0, 0, 0, 0)  # Remove margins to make more compact
-        self.show_summary_button = QPushButton("📊 Show Summary")
+        # Operation buttons with icons
+        buttons_layout = QGridLayout()
+        buttons_layout.setSpacing(10)
+        buttons_layout.setContentsMargins(0, 5, 0, 5)
+
+        self.show_summary_button = QPushButton("📊 Summary")
         self.word_cloud_button = QPushButton("☁️ Word Cloud")
         self.generate_report_button = QPushButton("📝 Generate Report")
 
-        # Connect the buttons
+        # Connect buttons
         self.show_summary_button.clicked.connect(self.show_summary)
         self.word_cloud_button.clicked.connect(self.show_word_cloud)
         self.generate_report_button.clicked.connect(self.generate_report)
 
         # Style the buttons
         for btn in [self.show_summary_button, self.word_cloud_button, self.generate_report_button]:
-            btn.setStyleSheet(BUTTON_STYLE)
+            btn.setStyleSheet(f"""
+                {BUTTON_STYLE}
+                QPushButton {{
+                    padding: 12px 20px;
+                    min-width: 140px;
+                }}
+            """)
             btn.setFont(FONTS['button'])
 
-        buttons_layout.addWidget(self.show_summary_button)
-        buttons_layout.addWidget(self.word_cloud_button)
-        buttons_layout.addWidget(self.generate_report_button)
-        operations_layout.addLayout(buttons_layout)
+        # Add buttons to grid
+        buttons_layout.addWidget(self.show_summary_button, 0, 0)
+        buttons_layout.addWidget(self.word_cloud_button, 0, 1)
+        buttons_layout.addWidget(self.generate_report_button, 1, 0)
 
-        # Add operations container below the results
+        operations_layout.addLayout(buttons_layout)
         results_layout.addWidget(operations_container)
+
+        # Add results container to main layout
+        content_layout.addWidget(results_container)
+
+        # Set content layout stretching
+        content_layout.setStretch(0, 0)  # Input container - fixed height
+        content_layout.setStretch(1, 1)  # Results container - takes remaining space
+
+        # Add content container to main layout
+        self.layout.addWidget(content_container)
 
         # Initialize tab counters
         self.csv_tab_count = 1
         self.url_tab_count = 1
-
+        
         # Dictionary to store tab references
         self.tabs = {}
-
-        # Add results container to main layout with stretch factor
-        content_layout.addWidget(results_container, 1)  # Give it maximum stretch
-            
-        # Set stretch factors
-        content_layout.setStretch(0, 0)  # Header
-        content_layout.setStretch(1, 0)  # Input - minimal height
-        content_layout.setStretch(2, 0)  # Separator - minimal height
-        content_layout.setStretch(3, 1)  # Results - takes all remaining space
-        
-        self.layout.addWidget(content_container)
     
     def show_loading(self, show=True):
         if show:
