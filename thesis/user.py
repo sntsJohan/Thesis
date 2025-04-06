@@ -149,7 +149,7 @@ class UserMainWindow(QMainWindow):
         main_widget = QWidget()
         main_layout = QVBoxLayout(main_widget)
         main_layout.setSpacing(15)
-        main_layout.setContentsMargins(0, 0, 0, 0)  # Remove margins completely
+        main_layout.setContentsMargins(0, 0, 0, 0) 
         
         # Add menu bar at the top with no margins
         self.menu_bar.setContentsMargins(0, 0, 0, 0)
@@ -159,17 +159,17 @@ class UserMainWindow(QMainWindow):
         content_container = QWidget()
         content_layout = QVBoxLayout(content_container)
         content_layout.setSpacing(15)
-        content_layout.setContentsMargins(25, 25, 25, 25)
+        content_layout.setContentsMargins(25, 25, 25, 25)  #
 
         # Input Container with enhanced styling and better spacing
         input_container = QWidget()
         input_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
-        input_container.setStyleSheet("background: transparent;")  # Remove border from parent container
+        input_container.setStyleSheet("background: transparent;")  
         
         # Main horizontal layout with improved spacing
         input_layout = QHBoxLayout(input_container)
         input_layout.setSpacing(20)
-        input_layout.setContentsMargins(20, 20, 20, 20)
+        input_layout.setContentsMargins(0, 0, 0, 0)        
 
         # Facebook Post Section with enhanced styling
         fb_section = QWidget()
@@ -332,8 +332,7 @@ class UserMainWindow(QMainWindow):
         results_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         results_container.setStyleSheet(CONTAINER_STYLE)
         results_layout = QVBoxLayout(results_container)
-        results_layout.setContentsMargins(15, 15, 15, 15)
-        results_layout.setSpacing(5)  # Reduced spacing between elements
+        results_layout.setSpacing(8)  
 
         # Tab widget with styling
         self.tab_widget = QTabWidget()
@@ -348,8 +347,8 @@ class UserMainWindow(QMainWindow):
 
         # Operations section with enhanced styling but more compact
         operations_container = QWidget()
-        operations_container.setStyleSheet("background: transparent;")  # Remove box
-        operations_container.setMaximumHeight(95)  # Constrain max height for compactness
+        operations_container.setStyleSheet("background: transparent;") 
+        operations_container.setMaximumHeight(95)  
         operations_layout = QVBoxLayout(operations_container)
         operations_layout.setSpacing(5)  # Reduced spacing
         operations_layout.setContentsMargins(0, 0, 0, 0)
