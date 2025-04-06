@@ -264,84 +264,90 @@ class MainWindow(QMainWindow):
         self.central_widget.setCurrentIndex(1)
 
     def init_main_ui(self):
+        # Create and set up main widget that will contain everything
         main_widget = QWidget()
         self.central_widget.addWidget(main_widget)
-        self.layout = QVBoxLayout(main_widget)
-        self.layout.setSpacing(15)
-        self.layout.setContentsMargins(0, 0, 0, 0)  # Remove margins completely
         
-        # Add admin buttons at the top with no margins
+        # Create a master layout with zero margins
+        master_layout = QVBoxLayout(main_widget)
+        master_layout.setContentsMargins(0, 0, 0, 0)
+        master_layout.setSpacing(0)
+        
+        # Top bar container with zero margins
+        top_bar_container = QWidget()
+        top_bar_container.setContentsMargins(0, 0, 0, 0)
+        top_bar_layout = QVBoxLayout(top_bar_container)
+        top_bar_layout.setContentsMargins(0, 0, 0, 0)
+        top_bar_layout.setSpacing(0)
+        
+        # Add admin buttons container to top bar
         self.admin_buttons_container.setContentsMargins(0, 0, 0, 0)
-        self.layout.addWidget(self.admin_buttons_container)
+        top_bar_layout.addWidget(self.admin_buttons_container)
         
-        # Add a container for the main content with proper padding
+        # Add top bar to master layout
+        master_layout.addWidget(top_bar_container)
+        
+        # Create content container with proper margins
         content_container = QWidget()
-        content_layout = QVBoxLayout(content_container)
-        content_layout.setSpacing(15)
-        content_layout.setContentsMargins(25, 25, 25, 25)
+        self.content_layout = QVBoxLayout(content_container)
+        self.content_layout.setSpacing(15)
+        self.content_layout.setContentsMargins(25, 50, 25, 35)  # Added more top padding (50px)
         
         # Initialize the rest of the UI in the content container
         self.init_ui()
         
-        # Add the content container to the main layout
-        self.layout.addWidget(content_container)
+        # Add content container to master layout
+        master_layout.addWidget(content_container)
 
     def init_ui(self):
         # Input Container with enhanced styling and better spacing
         input_container = QWidget()
         input_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
-        input_container.setStyleSheet(f"""
-            QWidget {{
-                background-color: {COLORS['surface']};
-                border: 1px solid {COLORS['border']};
-                border-radius: 8px;
-                padding: 20px;
-            }}
-        """)
-        
-        # Main vertical layout with improved spacing
-        input_layout = QVBoxLayout(input_container)
-        input_layout.setSpacing(20)
-        input_layout.setContentsMargins(20, 20, 20, 20)
+        input_container.setStyleSheet("background: transparent;")  
 
-        # Add responsive grid layout for input sections
-        input_grid = QGridLayout()
-        input_grid.setSpacing(15)
-        input_grid.setContentsMargins(0, 0, 0, 0)
+        # Main horizontal layout with improved spacing
+        input_layout = QHBoxLayout(input_container)
+        input_layout.setSpacing(20)
+        input_layout.setContentsMargins(0, 0, 0, 0)
 
         # Facebook Post Section with enhanced styling
         fb_section = QWidget()
+        fb_section.setFixedHeight(200)  # Set fixed height
+        fb_section.setStyleSheet(f"""
+            QWidget {{
+                background-color: {COLORS['background']};
+                border: 1px solid {COLORS['border']};
+                border-radius: 6px;
+                padding: 12px;
+            }}
+        """)
         fb_layout = QVBoxLayout(fb_section)
-        fb_layout.setSpacing(10)
+        fb_layout.setSpacing(8)
+        fb_layout.setContentsMargins(12, 12, 12, 12)
 
-        # Enhanced section headers with icons
-        fb_header = QHBoxLayout()
-        fb_icon = QLabel()
-        fb_icon.setPixmap(QIcon("assets/fb_icon.png").pixmap(QSize(20, 20)))
+        # Simple label
         fb_title = QLabel("Facebook Post")
         fb_title.setFont(FONTS['header'])
         fb_title.setStyleSheet(f"color: {COLORS['text']};")
-        fb_header.addWidget(fb_icon)
-        fb_header.addWidget(fb_title)
-        fb_header.addStretch()
-        fb_layout.addLayout(fb_header)
+        fb_title.setContentsMargins(0, 0, 0, 5)
+        fb_layout.addWidget(fb_title)
 
-        # Enhanced URL input
-        url_container = QWidget()
-        url_layout = QVBoxLayout(url_container)
+        # URL input horizontal layout with checkbox
+        url_layout = QHBoxLayout()
+        url_layout.setSpacing(12)  # Increased spacing between URL input and checkbox
         url_layout.setContentsMargins(0, 0, 0, 0)
-        url_layout.setSpacing(5)
 
+        self.url_input = QLineEdit()
         self.url_input.setStyleSheet(INPUT_STYLE)
         self.url_input.setPlaceholderText("Enter Facebook Post URL")
-        url_layout.addWidget(self.url_input)
-
-        # Checkbox with better styling
+        
+        self.include_replies = QCheckBox("Include Replies")
         self.include_replies.setStyleSheet(f"""
             QCheckBox {{
                 color: {COLORS['text']};
                 font-size: 13px;
                 padding: 5px;
+                margin-left: 5px;
             }}
             QCheckBox::indicator {{
                 width: 18px;
@@ -352,12 +358,16 @@ class MainWindow(QMainWindow):
             QCheckBox::indicator:checked {{
                 background-color: {COLORS['primary']};
                 border: 2px solid {COLORS['primary']};
+                image: url(check.png);
             }}
         """)
-        url_layout.addWidget(self.include_replies)
-        fb_layout.addWidget(url_container)
+        self.include_replies.setChecked(True)
+        
+        url_layout.addWidget(self.url_input, 1)  # Give URL input stretch factor of 1
+        url_layout.addWidget(self.include_replies, 0)  # Don't stretch checkbox
+        fb_layout.addLayout(url_layout)
 
-        # Enhanced scrape button
+        self.scrape_button = QPushButton("Scrape Comments")
         self.scrape_button.setFont(FONTS['button'])
         self.scrape_button.setStyleSheet(f"""
             {BUTTON_STYLE}
@@ -366,23 +376,36 @@ class MainWindow(QMainWindow):
                 border-radius: 6px;
             }}
         """)
+        self.scrape_button.clicked.connect(self.scrape_comments)
         fb_layout.addWidget(self.scrape_button)
-        
-        # Add Facebook section to grid
-        input_grid.addWidget(fb_section, 0, 0)
 
-        # CSV File Section - Made more compact
+        input_layout.addWidget(fb_section)
+
+        # CSV File Section with matching styling
         csv_section = QWidget()
-        csv_section.setStyleSheet(CONTAINER_STYLE)
+        csv_section.setFixedHeight(200)  # Set fixed height
+        csv_section.setStyleSheet(f"""
+            QWidget {{
+                background-color: {COLORS['background']};
+                border: 1px solid {COLORS['border']};
+                border-radius: 6px;
+                padding: 12px;
+            }}
+        """)
         csv_layout = QVBoxLayout(csv_section)
-        csv_layout.setSpacing(5)  # Reduced spacing
-        csv_layout.setContentsMargins(8, 8, 8, 8)  # Reduced padding
+        csv_layout.setSpacing(8)
+        csv_layout.setContentsMargins(12, 12, 12, 12)
         
+        # Simple CSV label
         csv_title = QLabel("CSV File")
-        csv_title.setFont(FONTS['button'])  # Smaller font
-        csv_title.setAlignment(Qt.AlignCenter)
-        
+        csv_title.setFont(FONTS['header'])
+        csv_title.setStyleSheet(f"color: {COLORS['text']};")
+        csv_title.setContentsMargins(0, 0, 0, 5)
+        csv_layout.addWidget(csv_title)
+
+        # File input with browse button
         file_browse_layout = QHBoxLayout()
+        file_browse_layout.setContentsMargins(0, 0, 0, 0)
         self.file_input = QLineEdit()
         self.file_input.setStyleSheet(INPUT_STYLE)
         self.file_input.setPlaceholderText("Select CSV file")
@@ -395,44 +418,55 @@ class MainWindow(QMainWindow):
         
         file_browse_layout.addWidget(self.file_input)
         file_browse_layout.addWidget(self.browse_button)
+        csv_layout.addLayout(file_browse_layout)
         
         self.process_csv_button = QPushButton("Process CSV")
         self.process_csv_button.setFont(FONTS['button'])
         self.process_csv_button.setStyleSheet(BUTTON_STYLE)
         self.process_csv_button.clicked.connect(self.process_csv)
-        
-        csv_layout.addWidget(csv_title)
-        csv_layout.addLayout(file_browse_layout)
         csv_layout.addWidget(self.process_csv_button)
-        input_grid.addWidget(csv_section, 0, 1)
+        
+        input_layout.addWidget(csv_section)
 
-        # Direct Input Section - Made more compact
+        # Direct Input Section with matching styling
         direct_section = QWidget()
-        direct_section.setStyleSheet(CONTAINER_STYLE)
+        direct_section.setFixedHeight(200)  # Set fixed height
+        direct_section.setStyleSheet(f"""
+            QWidget {{
+                background-color: {COLORS['background']};
+                border: 1px solid {COLORS['border']};
+                border-radius: 6px;
+                padding: 12px;
+            }}
+        """)
         direct_layout = QVBoxLayout(direct_section)
-        direct_layout.setSpacing(5)  # Reduced spacing
-        direct_layout.setContentsMargins(8, 8, 8, 8)
+        direct_layout.setSpacing(8)
+        direct_layout.setContentsMargins(12, 12, 12, 12)
+        
+        # Simple direct input label
         direct_title = QLabel("Direct Input")
-        direct_title.setFont(FONTS['button'])  # Smaller font
-        direct_title.setAlignment(Qt.AlignCenter)
+        direct_title.setFont(FONTS['header'])
+        direct_title.setStyleSheet(f"color: {COLORS['text']};")
+        direct_title.setContentsMargins(0, 0, 0, 5)
+        direct_layout.addWidget(direct_title)
+        
         self.text_input = QLineEdit()
         self.text_input.setStyleSheet(INPUT_STYLE)
         self.text_input.setPlaceholderText("Enter comment to analyze")
+        
         self.analyze_button = QPushButton("Analyze Comment")
         self.analyze_button.setFont(FONTS['button'])
         self.analyze_button.setStyleSheet(BUTTON_STYLE)
         self.analyze_button.clicked.connect(self.analyze_single)
-        direct_layout.addWidget(direct_title)
+        
         direct_layout.addWidget(self.text_input)
         direct_layout.addWidget(self.analyze_button)
-        input_grid.addWidget(direct_section, 0, 2)
-
-        # Add input grid to main layout
-        input_layout.addLayout(input_grid)
         
-        # Add input container to main layout
-        self.layout.addWidget(input_container)
+        input_layout.addWidget(direct_section)
 
+        # Add input container to content layout
+        self.content_layout.addWidget(input_container)
+        
         # Create responsive splitter for table and details
         splitter = QSplitter(Qt.Horizontal)
         splitter.setHandleWidth(2)
@@ -612,17 +646,12 @@ class MainWindow(QMainWindow):
 
         splitter.addWidget(details_container)
 
-        # Set initial sizes for the splitter to make them equal
-        splitter.setSizes([self.width() // 2, self.width() // 2]) 
-        splitter.setStretchFactor(0, 1) 
-        splitter.setStretchFactor(1, 1)
+        # Add splitter to content layout
+        self.content_layout.addWidget(splitter)
 
-        # Add splitter to main layout
-        self.layout.addWidget(splitter)
-
-        # Set layout stretch factors
-        self.layout.setStretch(0, 0)  
-        self.layout.setStretch(1, 1) 
+        # Set content layout stretch factors
+        self.content_layout.setStretch(0, 0)  # Input container - fixed height
+        self.content_layout.setStretch(1, 1)  # Results container - takes remaining space
 
     def show_loading(self, show=True):
         if show:
