@@ -329,9 +329,7 @@ class UserManagementDialog(QDialog):
             dialog.setWindowTitle(f"Edit User - {username}")
             dialog.setStyleSheet(DIALOG_STYLE)
             dialog.setMinimumWidth(400)
-            
-            # Store initial size after dialog is created
-            initial_size = None
+            dialog.setFixedHeight(200)  # Set initial fixed height
             
             layout = QVBoxLayout(dialog)
             layout.setSpacing(15)
@@ -381,9 +379,10 @@ class UserManagementDialog(QDialog):
             
             # Password Reset Section (initially hidden)
             password_section = QWidget()
-            password_section.hide()  # Hidden by default
+            password_section.hide()
             password_layout = QVBoxLayout(password_section)
             password_layout.setSpacing(15)
+            password_layout.setContentsMargins(0, 0, 0, 0)  # Remove margins to prevent layout shifts
             
             # New Password
             password_label = QLabel("New Password:")
@@ -407,27 +406,6 @@ class UserManagementDialog(QDialog):
             
             layout.addWidget(password_section)
             
-            # Toggle password section visibility
-            def toggle_password_section():
-                nonlocal initial_size
-                
-                # Store initial size if not stored yet
-                if initial_size is None:
-                    initial_size = dialog.size()
-                
-                if password_section.isHidden():
-                    password_section.show()
-                    reset_pwd_btn.setText("🔑 Cancel Password Reset")
-                else:
-                    password_section.hide()
-                    reset_pwd_btn.setText("🔑 Reset Password")
-                    password_input.clear()
-                    confirm_input.clear()
-                    # Restore initial size when hiding password section
-                    dialog.resize(initial_size)
-            
-            reset_pwd_btn.clicked.connect(toggle_password_section)
-            
             # Error Label
             error_label = QLabel()
             error_label.setStyleSheet(f"color: {COLORS['error']}")
@@ -446,6 +424,21 @@ class UserManagementDialog(QDialog):
             btn_layout.addWidget(save_btn)
             btn_layout.addWidget(cancel_btn)
             layout.addLayout(btn_layout)
+            
+            # Toggle password section visibility
+            def toggle_password_section():
+                if password_section.isHidden():
+                    dialog.setFixedHeight(500)  # Expanded height for password section
+                    password_section.show()
+                    reset_pwd_btn.setText("Cancel Password Reset")
+                else:
+                    dialog.setFixedHeight(200)  # Original height
+                    password_section.hide()
+                    reset_pwd_btn.setText("Reset Password")
+                    password_input.clear()
+                    confirm_input.clear()
+            
+            reset_pwd_btn.clicked.connect(toggle_password_section)
             
             def save_changes():
                 try:
