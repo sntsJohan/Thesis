@@ -469,16 +469,15 @@ class MainWindow(QMainWindow):
         
         # Create responsive splitter for table and details
         splitter = QSplitter(Qt.Horizontal)
-        splitter.setHandleWidth(2)
+        splitter.setHandleWidth(0)  # Make handle invisible
         splitter.setStyleSheet(f"""
             QSplitter::handle {{
-                background: {COLORS['border']};
-                margin: 1px;
-            }}
-            QSplitter::handle:hover {{
-                background: {COLORS['hover']};
+                background: none;
+                width: 0px;
             }}
         """)
+        # Make splitter immovable
+        splitter.setChildrenCollapsible(False)
 
         # Table Container
         table_container = QWidget()
@@ -832,6 +831,7 @@ class MainWindow(QMainWindow):
         table.setColumnCount(3)
         table.setHorizontalHeaderLabels(["Comment", "Prediction", "Confidence"])
         table.setAlternatingRowColors(True)
+        table.setEditTriggers(QTableWidget.NoEditTriggers)  
 
         # Adjust column sizes
         header = table.horizontalHeader()
