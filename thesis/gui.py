@@ -19,7 +19,9 @@ from styles import (COLORS, FONTS, BUTTON_STYLE, INPUT_STYLE, TABLE_STYLE, TAB_S
                    IMAGE_LABEL_STYLE, ABOUT_BUTTON_STYLE, WELCOME_BACKGROUND_STYLE,
                    WELCOME_CONTAINER_STYLE, WELCOME_TITLE_FONT, WELCOME_TITLE_STYLE_DARK,
                    WELCOME_SUBTITLE_FONT, GET_STARTED_BUTTON_DARK_STYLE, 
-                   ABOUT_BUTTON_OUTLINE_STYLE, DETAIL_TEXT_SPAN_STYLE)
+                   ABOUT_BUTTON_OUTLINE_STYLE, DETAIL_TEXT_SPAN_STYLE,
+                   SECTION_CONTAINER_STYLE, DETAILS_SECTION_STYLE, TEXT_EDIT_STYLE,
+                   MENU_BAR_STYLE, CHECKBOX_REPLY_STYLE, ROW_OPERATION_BUTTON_STYLE)
 import tempfile
 import time
 from PyQt5.QtWidgets import QApplication
@@ -39,23 +41,7 @@ class MainWindow(QMainWindow):
         # Create admin menu bar
         self.admin_buttons_container = QWidget()
         self.admin_buttons_container.setFixedHeight(40)  # Fixed height for menu bar
-        self.admin_buttons_container.setStyleSheet(f"""
-            QWidget {{
-                background-color: black;
-                padding: 0px;
-            }}
-            QPushButton {{
-                color: {COLORS['text']};
-                background-color: transparent;
-                border: none;
-                padding: 8px 16px;
-                font-size: 14px;
-                min-width: 100px;
-            }}
-            QPushButton:hover {{
-                background-color: {COLORS['hover']};
-            }}
-        """)
+        self.admin_buttons_container.setStyleSheet(MENU_BAR_STYLE)
         
         admin_layout = QHBoxLayout(self.admin_buttons_container)
         admin_layout.setContentsMargins(0, 0, 0, 0)
@@ -313,14 +299,7 @@ class MainWindow(QMainWindow):
         # Facebook Post Section with enhanced styling
         fb_section = QWidget()
         fb_section.setFixedHeight(200)  # Set fixed height
-        fb_section.setStyleSheet(f"""
-            QWidget {{
-                background-color: {COLORS['background']};
-                border: 1px solid {COLORS['border']};
-                border-radius: 6px;
-                padding: 12px;
-            }}
-        """)
+        fb_section.setStyleSheet(SECTION_CONTAINER_STYLE)
         fb_layout = QVBoxLayout(fb_section)
         fb_layout.setSpacing(8)
         fb_layout.setContentsMargins(12, 12, 12, 12)
@@ -342,25 +321,7 @@ class MainWindow(QMainWindow):
         self.url_input.setPlaceholderText("Enter Facebook Post URL")
         
         self.include_replies = QCheckBox("Include Replies")
-        self.include_replies.setStyleSheet(f"""
-            QCheckBox {{
-                color: {COLORS['text']};
-                font-size: 13px;
-                padding: 5px;
-                margin-left: 5px;
-            }}
-            QCheckBox::indicator {{
-                width: 18px;
-                height: 18px;
-                border-radius: 4px;
-                border: 2px solid {COLORS['border']};
-            }}
-            QCheckBox::indicator:checked {{
-                background-color: {COLORS['primary']};
-                border: 2px solid {COLORS['primary']};
-                image: url(check.png);
-            }}
-        """)
+        self.include_replies.setStyleSheet(CHECKBOX_REPLY_STYLE)
         self.include_replies.setChecked(True)
         
         url_layout.addWidget(self.url_input, 1)  # Give URL input stretch factor of 1
@@ -384,14 +345,7 @@ class MainWindow(QMainWindow):
         # CSV File Section with matching styling
         csv_section = QWidget()
         csv_section.setFixedHeight(200)  # Set fixed height
-        csv_section.setStyleSheet(f"""
-            QWidget {{
-                background-color: {COLORS['background']};
-                border: 1px solid {COLORS['border']};
-                border-radius: 6px;
-                padding: 12px;
-            }}
-        """)
+        csv_section.setStyleSheet(SECTION_CONTAINER_STYLE)
         csv_layout = QVBoxLayout(csv_section)
         csv_layout.setSpacing(8)
         csv_layout.setContentsMargins(12, 12, 12, 12)
@@ -431,14 +385,7 @@ class MainWindow(QMainWindow):
         # Direct Input Section with matching styling
         direct_section = QWidget()
         direct_section.setFixedHeight(200)  # Set fixed height
-        direct_section.setStyleSheet(f"""
-            QWidget {{
-                background-color: {COLORS['background']};
-                border: 1px solid {COLORS['border']};
-                border-radius: 6px;
-                padding: 12px;
-            }}
-        """)
+        direct_section.setStyleSheet(SECTION_CONTAINER_STYLE)
         direct_layout = QVBoxLayout(direct_section)
         direct_layout.setSpacing(8)
         direct_layout.setContentsMargins(12, 12, 12, 12)
@@ -514,14 +461,7 @@ class MainWindow(QMainWindow):
 
         # Details section with better visual hierarchy
         details_section = QWidget()
-        details_section.setStyleSheet(f"""
-            QWidget {{
-                background-color: {COLORS['surface']};
-                border: 1px solid {COLORS['border']};
-                border-radius: 8px;
-                padding: 15px;
-            }}
-        """)
+        details_section.setStyleSheet(DETAILS_SECTION_STYLE)
         details_section_layout = QVBoxLayout(details_section)
         details_section_layout.setSpacing(10)
         details_section_layout.setContentsMargins(15, 15, 15, 15)
@@ -538,32 +478,13 @@ class MainWindow(QMainWindow):
         # Enhanced details text area
         self.details_text_edit = QTextEdit()
         self.details_text_edit.setReadOnly(True)
-        self.details_text_edit.setStyleSheet(f"""
-            QTextEdit {{
-                background-color: {COLORS['background']};
-                color: {COLORS['text']};
-                border: 1px solid {COLORS['border']};
-                border-radius: 6px;
-                padding: 12px;
-                font-size: 14px;
-            }}
-            QTextEdit:focus {{
-                border: 1px solid {COLORS['primary']};
-            }}
-        """)
+        self.details_text_edit.setStyleSheet(TEXT_EDIT_STYLE)
         details_section_layout.addWidget(self.details_text_edit)
         details_layout.addWidget(details_section)
 
         # Row Operations Section - Enhanced styling
         row_ops_section = QWidget()
-        row_ops_section.setStyleSheet(f"""
-            QWidget {{
-                background-color: {COLORS['surface']};
-                border: 1px solid {COLORS['border']};
-                border-radius: 8px;
-                padding: 15px;
-            }}
-        """)
+        row_ops_section.setStyleSheet(DETAILS_SECTION_STYLE)
         row_ops_layout = QVBoxLayout(row_ops_section)
         row_ops_layout.setSpacing(12)
         row_ops_layout.setContentsMargins(15, 15, 15, 15)
@@ -586,13 +507,7 @@ class MainWindow(QMainWindow):
         for button, text, row, col in row_button_configs:
             button.setText(text)
             button.setFont(FONTS['button'])
-            button.setStyleSheet(f"""
-                {BUTTON_STYLE}
-                QPushButton {{
-                    padding: 12px 20px;
-                    min-width: 140px;
-                }}
-            """)
+            button.setStyleSheet(ROW_OPERATION_BUTTON_STYLE)
             row_grid.addWidget(button, row, col)
 
         row_ops_layout.addLayout(row_grid)

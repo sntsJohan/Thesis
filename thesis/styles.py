@@ -427,3 +427,83 @@ TAG_STYLE = f"""
     margin: 2px; 
     display: inline-block;
 """
+
+# Shared component styles
+SECTION_CONTAINER_STYLE = f"""
+    QWidget {{
+        background-color: {COLORS['background']};
+        border: 1px solid {COLORS['border']};
+        border-radius: 6px;
+        padding: 12px;
+    }}
+"""
+
+DETAILS_SECTION_STYLE = f"""
+    QWidget {{
+        background-color: {COLORS['surface']};
+        border: 1px solid {COLORS['border']};
+        border-radius: 8px;
+        padding: 15px;
+    }}
+"""
+
+TEXT_EDIT_STYLE = f"""
+    QTextEdit {{
+        background-color: {COLORS['background']};
+        color: {COLORS['text']};
+        border: 1px solid {COLORS['border']};
+        border-radius: 6px;
+        padding: 12px;
+        font-size: 14px;
+    }}
+    QTextEdit:focus {{
+        border: 1px solid {COLORS['primary']};
+    }}
+"""
+
+MENU_BAR_STYLE = f"""
+    QWidget {{
+        background-color: black;
+        padding: 0px;
+    }}
+    QPushButton {{
+        color: {COLORS['text']};
+        background-color: transparent;
+        border: none;
+        padding: 8px 16px;
+        font-size: 14px;
+        min-width: 100px;
+    }}
+    QPushButton:hover {{
+        background-color: {COLORS['hover']};
+    }}
+"""
+
+CHECKBOX_REPLY_STYLE = f"""
+    QCheckBox {{
+        color: {COLORS['text']};
+        font-size: 13px;
+        padding: 5px;
+        margin-left: 5px;
+    }}
+    QCheckBox::indicator {{
+        width: 18px;
+        height: 18px;
+        border-radius: 4px;
+        border: 2px solid {COLORS['border']};
+    }}
+    QCheckBox::indicator:checked {{
+        background-color: {COLORS['primary']};
+        border: 2px solid {COLORS['primary']};
+        image: url(check.png);
+    }}
+"""
+
+# Row operation button style
+ROW_OPERATION_BUTTON_STYLE = f"""
+    {BUTTON_STYLE}
+    QPushButton {{
+        padding: 12px 20px;
+        min-width: 140px;
+    }}
+"""
