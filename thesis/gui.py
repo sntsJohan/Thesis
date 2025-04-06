@@ -30,7 +30,8 @@ from user import UserMainWindow
 from loading_overlay import LoadingOverlay
 from stopwords import TAGALOG_STOP_WORDS
 import re
-from history import HistoryDialog  # Add at top with other imports
+from history import HistoryDialog
+from usermanagement import UserManagementDialog 
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -60,6 +61,10 @@ class MainWindow(QMainWindow):
         manage_api_button = QPushButton("🔑 Manage API")
         manage_api_button.clicked.connect(self.show_api)
         manage_api_button.setFont(FONTS['button'])
+
+        manage_users_button = QPushButton("👥 Users Management")
+        manage_users_button.clicked.connect(self.show_user_management)
+        manage_users_button.setFont(FONTS['button'])
         
         logs_button = QPushButton("📋 User Logs")
         logs_button.clicked.connect(self.show_history)
@@ -71,6 +76,7 @@ class MainWindow(QMainWindow):
         
         # Add right-side buttons
         admin_layout.addWidget(manage_api_button)
+        admin_layout.addWidget(manage_users_button)
         admin_layout.addWidget(logs_button)
         admin_layout.addWidget(sign_out_button)
         
@@ -1250,6 +1256,11 @@ class MainWindow(QMainWindow):
         """Show the API manager dialog"""
         from api_manager import APIManagerDialog
         dialog = APIManagerDialog(self)
+        dialog.exec_()
+
+    def show_user_management(self):
+        """Show the user management dialog"""
+        dialog = UserManagementDialog(self)
         dialog.exec_()
 
     def show_about(self):

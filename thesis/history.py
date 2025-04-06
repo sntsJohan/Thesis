@@ -31,7 +31,7 @@ class HistoryDialog(QDialog):
         header_layout.addWidget(title)
         
         # Add refresh button
-        refresh_button = QPushButton("🔄 Refresh")
+        refresh_button = QPushButton("↻ Refresh")
         refresh_button.setStyleSheet(BUTTON_STYLE)
         refresh_button.setFixedWidth(100)
         refresh_button.clicked.connect(self.load_logs)
