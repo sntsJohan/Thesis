@@ -164,47 +164,33 @@ class UserMainWindow(QMainWindow):
         # Input Container with enhanced styling and better spacing
         input_container = QWidget()
         input_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
-        input_container.setStyleSheet(f"""
-            QWidget {{
-                background-color: {COLORS['surface']};
-                border: 1px solid {COLORS['border']};
-                border-radius: 8px;
-                padding: 20px;
-            }}
-        """)
+        input_container.setStyleSheet("background: transparent;")  # Remove border from parent container
         
         # Main horizontal layout with improved spacing
         input_layout = QHBoxLayout(input_container)
         input_layout.setSpacing(20)
         input_layout.setContentsMargins(20, 20, 20, 20)
 
-        # Facebook Post Section
+        # Facebook Post Section with enhanced styling
         fb_section = QWidget()
         fb_section.setStyleSheet(f"""
             QWidget {{
                 background-color: {COLORS['background']};
                 border: 1px solid {COLORS['border']};
                 border-radius: 6px;
-                padding: 15px;
-            }}
-            QWidget:hover {{
-                border: 1px solid {COLORS['hover']};
+                padding: 12px;
             }}
         """)
         fb_layout = QVBoxLayout(fb_section)
-        fb_layout.setSpacing(10)
+        fb_layout.setSpacing(8)
+        fb_layout.setContentsMargins(12, 12, 12, 12)
 
-        # Enhanced section headers with icons
-        fb_header = QHBoxLayout()
-        fb_icon = QLabel()
-        fb_icon.setPixmap(QIcon("assets/fb_icon.png").pixmap(QSize(20, 20)))
+        # Simple label
         fb_title = QLabel("Facebook Post")
         fb_title.setFont(FONTS['header'])
         fb_title.setStyleSheet(f"color: {COLORS['text']};")
-        fb_header.addWidget(fb_icon)
-        fb_header.addWidget(fb_title)
-        fb_header.addStretch()
-        fb_layout.addLayout(fb_header)
+        fb_title.setContentsMargins(0, 0, 0, 5)
+        fb_layout.addWidget(fb_title)
 
         # Enhanced URL input with checkbox
         self.url_input = QLineEdit()
@@ -212,7 +198,6 @@ class UserMainWindow(QMainWindow):
         self.url_input.setPlaceholderText("Enter Facebook Post URL")
         fb_layout.addWidget(self.url_input)
 
-        # Checkbox with better styling
         self.include_replies = QCheckBox("Include Replies")
         self.include_replies.setStyleSheet(f"""
             QCheckBox {{
@@ -234,7 +219,6 @@ class UserMainWindow(QMainWindow):
         self.include_replies.setChecked(True)
         fb_layout.addWidget(self.include_replies)
 
-        # Enhanced scrape button
         self.scrape_button = QPushButton("Scrape Comments")
         self.scrape_button.setFont(FONTS['button'])
         self.scrape_button.setStyleSheet(f"""
@@ -249,17 +233,28 @@ class UserMainWindow(QMainWindow):
 
         input_layout.addWidget(fb_section)
 
-        # CSV File Section - Made more compact
+        # CSV File Section with matching styling
         csv_section = QWidget()
-        csv_section.setStyleSheet(CONTAINER_STYLE)
+        csv_section.setStyleSheet(f"""
+            QWidget {{
+                background-color: {COLORS['background']};
+                border: 1px solid {COLORS['border']};
+                border-radius: 6px;
+                padding: 12px;
+            }}
+        """)
         csv_layout = QVBoxLayout(csv_section)
-        csv_layout.setSpacing(5)
-        csv_layout.setContentsMargins(8, 8, 8, 8)
+        csv_layout.setSpacing(8)
+        csv_layout.setContentsMargins(12, 12, 12, 12)
         
+        # Simple CSV label
         csv_title = QLabel("CSV File")
-        csv_title.setFont(FONTS['button'])
-        csv_title.setAlignment(Qt.AlignCenter)
-        
+        csv_title.setFont(FONTS['header'])
+        csv_title.setStyleSheet(f"color: {COLORS['text']};")
+        csv_title.setContentsMargins(0, 0, 0, 5)
+        csv_layout.addWidget(csv_title)
+
+        # File input with browse button
         file_browse_layout = QHBoxLayout()
         self.file_input = QLineEdit()
         self.file_input.setStyleSheet(INPUT_STYLE)
@@ -273,37 +268,46 @@ class UserMainWindow(QMainWindow):
         
         file_browse_layout.addWidget(self.file_input)
         file_browse_layout.addWidget(self.browse_button)
+        csv_layout.addLayout(file_browse_layout)
         
         self.process_csv_button = QPushButton("Process CSV")
         self.process_csv_button.setFont(FONTS['button'])
         self.process_csv_button.setStyleSheet(BUTTON_STYLE)
         self.process_csv_button.clicked.connect(self.process_csv)
-        
-        csv_layout.addWidget(csv_title)
-        csv_layout.addLayout(file_browse_layout)
         csv_layout.addWidget(self.process_csv_button)
         
         input_layout.addWidget(csv_section)
 
-        # Direct Input Section - Made more compact
+        # Direct Input Section with matching styling
         direct_section = QWidget()
-        direct_section.setStyleSheet(CONTAINER_STYLE)
+        direct_section.setStyleSheet(f"""
+            QWidget {{
+                background-color: {COLORS['background']};
+                border: 1px solid {COLORS['border']};
+                border-radius: 6px;
+                padding: 12px;
+            }}
+        """)
         direct_layout = QVBoxLayout(direct_section)
-        direct_layout.setSpacing(5)
-        direct_layout.setContentsMargins(8, 8, 8, 8)
+        direct_layout.setSpacing(8)
+        direct_layout.setContentsMargins(12, 12, 12, 12)
         
+        # Simple direct input label
         direct_title = QLabel("Direct Input")
-        direct_title.setFont(FONTS['button'])
-        direct_title.setAlignment(Qt.AlignCenter)
+        direct_title.setFont(FONTS['header'])
+        direct_title.setStyleSheet(f"color: {COLORS['text']};")
+        direct_title.setContentsMargins(0, 0, 0, 5)
+        direct_layout.addWidget(direct_title)
+        
         self.text_input = QLineEdit()
         self.text_input.setStyleSheet(INPUT_STYLE)
         self.text_input.setPlaceholderText("Enter comment to analyze")
+        
         self.analyze_button = QPushButton("Analyze Comment")
         self.analyze_button.setFont(FONTS['button'])
         self.analyze_button.setStyleSheet(BUTTON_STYLE)
         self.analyze_button.clicked.connect(self.analyze_single)
         
-        direct_layout.addWidget(direct_title)
         direct_layout.addWidget(self.text_input)
         direct_layout.addWidget(self.analyze_button)
         
