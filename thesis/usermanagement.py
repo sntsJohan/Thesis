@@ -244,9 +244,9 @@ class UserManagementDialog(QDialog):
                 width: 30px;
             }
             QComboBox::down-arrow {
-                image: url(assets/drop.png);
-                width: 12px;
-                height: 12px;
+                image: url(thesis/assets/drop.png);
+                width: 15px;
+                height: 15px;
             }
             QComboBox QAbstractItemView {
                 background-color: """ + COLORS['surface'] + """;
@@ -355,7 +355,7 @@ class UserManagementDialog(QDialog):
                     width: 30px;
                 }
                 QComboBox::down-arrow {
-                    image: url(assets/drop.png);
+                    image: url(thesis/assets/drop.png);
                     width: 12px;
                     height: 12px;
                 }
@@ -428,7 +428,7 @@ class UserManagementDialog(QDialog):
             # Toggle password section visibility
             def toggle_password_section():
                 if password_section.isHidden():
-                    dialog.setFixedHeight(500)  # Expanded height for password section
+                    dialog.setFixedHeight(420)  # Expanded height for password section
                     password_section.show()
                     reset_pwd_btn.setText("Cancel Password Reset")
                 else:
