@@ -173,6 +173,7 @@ class UserMainWindow(QMainWindow):
 
         # Facebook Post Section with enhanced styling
         fb_section = QWidget()
+        fb_section.setFixedHeight(200)  # Set fixed height
         fb_section.setStyleSheet(f"""
             QWidget {{
                 background-color: {COLORS['background']};
@@ -192,18 +193,22 @@ class UserMainWindow(QMainWindow):
         fb_title.setContentsMargins(0, 0, 0, 5)
         fb_layout.addWidget(fb_title)
 
-        # Enhanced URL input with checkbox
+        # URL input horizontal layout with checkbox
+        url_layout = QHBoxLayout()
+        url_layout.setSpacing(12)  # Increased spacing between URL input and checkbox
+        url_layout.setContentsMargins(0, 0, 0, 0)
+
         self.url_input = QLineEdit()
         self.url_input.setStyleSheet(INPUT_STYLE)
         self.url_input.setPlaceholderText("Enter Facebook Post URL")
-        fb_layout.addWidget(self.url_input)
-
+        
         self.include_replies = QCheckBox("Include Replies")
         self.include_replies.setStyleSheet(f"""
             QCheckBox {{
                 color: {COLORS['text']};
                 font-size: 13px;
                 padding: 5px;
+                margin-left: 5px;  # Added margin to separate from URL input
             }}
             QCheckBox::indicator {{
                 width: 18px;
@@ -217,7 +222,10 @@ class UserMainWindow(QMainWindow):
             }}
         """)
         self.include_replies.setChecked(True)
-        fb_layout.addWidget(self.include_replies)
+        
+        url_layout.addWidget(self.url_input, 1)  # Give URL input stretch factor of 1
+        url_layout.addWidget(self.include_replies, 0)  # Don't stretch checkbox
+        fb_layout.addLayout(url_layout)
 
         self.scrape_button = QPushButton("Scrape Comments")
         self.scrape_button.setFont(FONTS['button'])
@@ -235,6 +243,7 @@ class UserMainWindow(QMainWindow):
 
         # CSV File Section with matching styling
         csv_section = QWidget()
+        csv_section.setFixedHeight(200)  # Set fixed height
         csv_section.setStyleSheet(f"""
             QWidget {{
                 background-color: {COLORS['background']};
@@ -256,6 +265,7 @@ class UserMainWindow(QMainWindow):
 
         # File input with browse button
         file_browse_layout = QHBoxLayout()
+        file_browse_layout.setContentsMargins(0, 0, 0, 0)
         self.file_input = QLineEdit()
         self.file_input.setStyleSheet(INPUT_STYLE)
         self.file_input.setPlaceholderText("Select CSV file")
@@ -280,6 +290,7 @@ class UserMainWindow(QMainWindow):
 
         # Direct Input Section with matching styling
         direct_section = QWidget()
+        direct_section.setFixedHeight(200)  # Set fixed height
         direct_section.setStyleSheet(f"""
             QWidget {{
                 background-color: {COLORS['background']};
