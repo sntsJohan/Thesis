@@ -646,6 +646,10 @@ class MainWindow(QMainWindow):
 
         splitter.addWidget(details_container)
 
+        splitter.setSizes([900, 100])
+        splitter.setStretchFactor(0, 9)  
+        splitter.setStretchFactor(1, 1)
+
         # Add splitter to content layout
         self.content_layout.addWidget(splitter)
 
