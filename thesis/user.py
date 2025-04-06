@@ -208,7 +208,7 @@ class UserMainWindow(QMainWindow):
                 color: {COLORS['text']};
                 font-size: 13px;
                 padding: 5px;
-                margin-left: 5px;  # Added margin to separate from URL input
+                margin-left: 5px;
             }}
             QCheckBox::indicator {{
                 width: 18px;
@@ -219,6 +219,7 @@ class UserMainWindow(QMainWindow):
             QCheckBox::indicator:checked {{
                 background-color: {COLORS['primary']};
                 border: 2px solid {COLORS['primary']};
+                image: url(check.png);
             }}
         """)
         self.include_replies.setChecked(True)
