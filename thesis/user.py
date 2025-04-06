@@ -814,7 +814,12 @@ class UserMainWindow(QMainWindow):
             comments = df['Text'].tolist()
             self.populate_table(comments)
             
-            log_user_action(self.current_user, f"Scraped Facebook comments from URL: {url}")
+            try:
+                # Truncate URL if too long
+                short_url = url[:30] + "..." if len(url) > 30 else url
+                log_user_action(self.current_user, f"Scraped FB post: {short_url}")
+            except Exception as log_error:
+                print(f"Logging error: {log_error}")
             
         except Exception as e:
             display_message(self, "Error", f"Error scraping comments: {e}")
@@ -832,11 +837,16 @@ class UserMainWindow(QMainWindow):
         if not self.file_input.text():
             display_message(self, "Error", "Please select a CSV file first")
             return
+            
+        file_path = self.file_input.text()
         try:
+            # Get just the filename without path and log at the start
+            file_name = file_path.split('/')[-1].split('\\')[-1]
+            log_user_action(self.current_user, f"Started processing CSV file: {file_name}")
+            
             self.show_loading(True)
             QApplication.processEvents()
             
-            file_path = self.file_input.text()
             df = pd.read_csv(file_path)
             comments = df.iloc[:, 0].tolist()
             
@@ -852,9 +862,13 @@ class UserMainWindow(QMainWindow):
             
             self.populate_table(comments)
             
-            log_user_action(self.current_user, f"Processed CSV file: {file_path}")
+            # Log successful completion
+            log_user_action(self.current_user, f"Successfully processed CSV file: {file_name}")
             
         except Exception as e:
+            # Log failure
+            if 'file_name' in locals():
+                log_user_action(self.current_user, f"Failed to process CSV file: {file_name}")
             display_message(self, "Error", f"Error reading CSV file: {e}")
         finally:
             self.show_loading(False)
