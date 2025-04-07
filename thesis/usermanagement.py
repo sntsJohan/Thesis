@@ -46,6 +46,13 @@ class UserManagementDialog(QDialog):
         add_user_btn.clicked.connect(self.show_add_user_dialog)
         actions_layout.addWidget(add_user_btn)
         
+        # Clear Sessions Button
+        clear_sessions_btn = QPushButton("🗑️ Clear All Sessions")
+        clear_sessions_btn.setFont(FONTS['button'])
+        clear_sessions_btn.setStyleSheet(BUTTON_STYLE)
+        clear_sessions_btn.clicked.connect(self.clear_all_sessions)
+        actions_layout.addWidget(clear_sessions_btn)
+        
         # Refresh Button
         refresh_btn = QPushButton("↻ Refresh")
         refresh_btn.setFont(FONTS['button'])
@@ -524,3 +531,53 @@ class UserManagementDialog(QDialog):
                 
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to update user status: {str(e)}")
+
+    def clear_all_sessions(self):
+        """Clear all user sessions and their associated data"""
+        try:
+            # Show confirmation dialog
+            msg = QMessageBox(self)
+            msg.setIcon(QMessageBox.Warning)
+            msg.setWindowTitle("Clear All Sessions")
+            msg.setText("Are you sure you want to clear all user sessions?")
+            msg.setInformativeText("This will delete all session data including comments, predictions, and analysis results. This action cannot be undone.")
+            msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+            msg.setDefaultButton(QMessageBox.No)
+            
+            # Style the message box
+            msg.setStyleSheet(f"""
+                QMessageBox {{
+                    background-color: {COLORS['background']};
+                    color: {COLORS['text']};
+                }}
+                QPushButton {{
+                    {BUTTON_STYLE}
+                    min-width: 100px;
+                }}
+            """)
+            
+            if msg.exec_() == QMessageBox.Yes:
+                conn = get_db_connection()
+                cursor = conn.cursor()
+                
+                # Delete all session data
+                cursor.execute("DELETE FROM tab_comments")
+                cursor.execute("DELETE FROM session_tabs")
+                cursor.execute("DELETE FROM user_sessions")
+                
+                # Reset session IDs
+                cursor.execute("DBCC CHECKIDENT ('user_sessions', RESEED, 0)")
+                cursor.execute("DBCC CHECKIDENT ('session_tabs', RESEED, 0)")
+                cursor.execute("DBCC CHECKIDENT ('tab_comments', RESEED, 0)")
+                
+                conn.commit()
+                conn.close()
+                
+                # Show success message
+                QMessageBox.information(self, "Success", "All sessions and their data have been cleared successfully.")
+                
+                # Log the action
+                log_user_action("admin", "Cleared all user sessions and data")
+                
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to clear sessions: {str(e)}")
