@@ -87,22 +87,31 @@ class LoginWindow(QDialog):
             conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT role FROM users WHERE username=? AND password=?",
+                "SELECT role, is_active FROM users WHERE username=? AND password=?",
                 (username, password)
             )
             result = cursor.fetchone()
             
             if result:
-                self.role = result[0].strip()
-                self.username = username  # Store username
-                conn.close()
-                # Only log if role is user
-                if self.role.lower() == "user":
-                    log_user_action(username, "User Login")
-                self.accept()
+                role, is_active = result
+                if is_active:
+                    self.role = role.strip()
+                    self.username = username  # Store username
+                    conn.close()
+                    # Only log if role is user
+                    if self.role.lower() == "user":
+                        log_user_action(username, "User Login")
+                    self.accept()
+                else:
+                    # Account exists but is disabled
+                    self.error_label.setText("Account is disabled. Contact administrator.")
+                    conn.close()
             else:
+                # Invalid username or password
                 self.error_label.setText("Invalid username or password")
                 self.password_input.clear()
+                if conn: # Ensure connection is closed even on failure
+                    conn.close()
             
         except Exception as e:
             self.error_label.setText("Database connection error")
