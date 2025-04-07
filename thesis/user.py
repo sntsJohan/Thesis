@@ -2,10 +2,10 @@ from PyQt5.QtWidgets import (QMainWindow, QVBoxLayout, QHBoxLayout, QLabel,
                            QLineEdit, QPushButton, QTextEdit, QWidget, 
                            QFileDialog, QTableWidget, QTableWidgetItem, 
                            QHeaderView, QSplitter, QGridLayout, QComboBox, 
-                           QSizePolicy, QStackedWidget, QDialog, QTabWidget, 
+                           QSizePolicy, QStackedWidget, QDialog, QTabWidget, QTabBar,
                            QMessageBox, QCheckBox, QApplication)
-from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtGui import QColor, QFont, QPixmap, QImage, QIcon
+from PyQt5.QtCore import Qt, QSize, QRect
+from PyQt5.QtGui import QColor, QFont, QPixmap, QImage, QIcon, QPainter, QPen
 import numpy as np
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
@@ -31,6 +31,35 @@ from loading_overlay import LoadingOverlay
 from stopwords import TAGALOG_STOP_WORDS
 import re
 from db_config import log_user_action, get_db_connection
+
+class CustomTabBar(QTabBar):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setDrawBase(True)
+        
+    def tabSizeHint(self, index):
+        size = super().tabSizeHint(index)
+        size.setWidth(size.width() + 35)  # Add more space for X
+        return size
+        
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        
+        # Set font for X
+        font = QFont("Arial", 12, QFont.Bold)
+        painter.setFont(font)
+        
+        for index in range(self.count()):
+            rect = self.tabRect(index)
+            if not rect.isValid():
+                continue
+                
+            # Draw X text in white
+            painter.setPen(QColor('white'))
+            x_rect = rect.adjusted(rect.width() - 25, 0, 0, 0)
+            painter.drawText(x_rect, Qt.AlignCenter, "×")
 
 class UserMainWindow(QMainWindow):
     def __init__(self):
@@ -530,12 +559,14 @@ class UserMainWindow(QMainWindow):
 
     def init_ui(self):
         """Initialize the detailed UI components"""
-        # Add tab widget
+        # Add tab widget with custom tab bar
         self.tab_widget = QTabWidget()
+        custom_tab_bar = CustomTabBar()
+        self.tab_widget.setTabBar(custom_tab_bar)
         self.tab_widget.setStyleSheet(TAB_STYLE)
         self.tab_widget.setTabsClosable(True)
-        self.tab_widget.tabCloseRequested.connect(self.close_tab)  # Connect signal once here
-        
+        self.tab_widget.tabCloseRequested.connect(self.close_tab)
+
         # Create initial message
         self.initial_message = QLabel("No analysis performed yet.\nResults will appear here.")
         self.initial_message.setAlignment(Qt.AlignCenter)
@@ -878,8 +909,6 @@ class UserMainWindow(QMainWindow):
                 table.setRowHidden(row, search_text not in comment)
         
         search_bar.textChanged.connect(filter_table)
-        table.search_bar = search_bar
-        
         # Add tab to widget and store reference
         self.tab_widget.addTab(tab, tab_type)
         self.tabs[tab_type] = tab
@@ -993,7 +1022,7 @@ class UserMainWindow(QMainWindow):
                     self.details_text_edit.append(make_text("Row #", f"{i+1}\n"))
                     self.details_text_edit.append(make_text("Replying to: ", f"{parent_metadata.get('profile_name', 'Unknown')}\n"))
                     self.details_text_edit.append(make_text("Original Comment: ", f"{metadata['reply_to']}\n"))
-                    self.details_text_edit.append(make_text("Date: ", f"{parent_metadata.get('date', 'N/A')}\n"))
+                    self.details_text_edit.append(make_text("Date: ", f"{parent_metadata['date']}\n"))
                     break
             else:
                 self.details_text_edit.append("\n" + make_text("Reply Information:\n", ""))

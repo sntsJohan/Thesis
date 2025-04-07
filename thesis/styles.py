@@ -144,17 +144,14 @@ TAB_STYLE = f"""
         background: {COLORS['hover']};
     }}
     QTabBar::close-button {{
-        image: url(./assets/close.png);
-        width: 12px;
-        height: 12px;
-        subcontrol-position: right;
-        subcontrol-origin: padding;
+        color: white;
+        background: transparent;
+        image: none;
+        border: none;
+        padding: 4px;
         margin-right: 4px;
     }}
-    QTabBar::close-button:hover {{
-        background: {COLORS['hover']};
-        border-radius: 6px;
-    }}
+
 """
 
 # New styles for additional elements
