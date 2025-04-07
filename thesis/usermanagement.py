@@ -94,6 +94,11 @@ class UserManagementDialog(QDialog):
         self.table.setColumnWidth(4, 120)  # Action Count
         self.table.setColumnWidth(5, 180)  # Account Created
         
+        # Make table read-only
+        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+        
+        self.table.setColumnWidth(6, 120)  # Actions column
+        
         layout.addWidget(self.table)
 
         # Close Button
@@ -161,7 +166,10 @@ class UserManagementDialog(QDialog):
                 self.table.setItem(i, 4, count_item)
                 
                 # Created At
-                self.table.setItem(i, 5, QTableWidgetItem(str(created_at)))
+                created_at_str = created_at.strftime('%Y-%m-%d') if created_at else "N/A"
+                created_at_item = QTableWidgetItem(created_at_str)
+                created_at_item.setTextAlignment(Qt.AlignCenter) # Center align date
+                self.table.setItem(i, 5, created_at_item)
                 
                 # Action Buttons Container
                 actions_widget = QWidget()

@@ -370,7 +370,7 @@ class UserMainWindow(QMainWindow):
                         metadata.get('date'),
                         likes_count,
                         metadata.get('profile_id'),
-                        bool(metadata.get('is_reply', False)),
+                        float(bool(metadata.get('is_reply', False))),
                         clean_reply_to,
                         comment in self.selected_comments
                     ))
