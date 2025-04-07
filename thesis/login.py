@@ -1,8 +1,9 @@
-from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton, QApplication
+from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton, QApplication, QHBoxLayout
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 from styles import COLORS, FONTS, BUTTON_STYLE, INPUT_STYLE
 from db_config import get_db_connection, log_user_action
+from werkzeug.security import check_password_hash
 import os
 
 class LoginWindow(QDialog):
@@ -66,13 +67,29 @@ class LoginWindow(QDialog):
         self.login_button.clicked.connect(self.validate_login)
         layout.addWidget(self.login_button)
 
+        # Sign Up / Forgot Password Links Container
+        links_layout = QHBoxLayout()
+        links_layout.setContentsMargins(0, 10, 0, 0) # Add some top margin
+
+        # Forgot Password Link
+        self.forgot_password_label = QLabel("Forgot Password?")
+        self.forgot_password_label.setFont(FONTS['body'])
+        self.forgot_password_label.setStyleSheet(f"color: {COLORS['text_secondary']}; text-decoration: underline; cursor: pointer;") # Use secondary text color
+        self.forgot_password_label.setAlignment(Qt.AlignLeft)
+        self.forgot_password_label.mousePressEvent = lambda e: self.open_forgot_password()
+        links_layout.addWidget(self.forgot_password_label)
+
+        links_layout.addStretch() # Push sign up link to the right
+
         # Sign Up Text Link
-        self.signup_label = QLabel("New User? Create Account.")
+        self.signup_label = QLabel("New User? Create Account")
         self.signup_label.setFont(FONTS['body'])
-        self.signup_label.setStyleSheet("text-decoration: underline; color: blue; cursor: pointer;")
-        self.signup_label.setAlignment(Qt.AlignCenter)
+        self.signup_label.setStyleSheet(f"color: {COLORS['text_secondary']}; text-decoration: underline; cursor: pointer;") # Use secondary text color
+        self.signup_label.setAlignment(Qt.AlignRight)
         self.signup_label.mousePressEvent = lambda e: self.open_register()
-        layout.addWidget(self.signup_label)
+        links_layout.addWidget(self.signup_label)
+
+        layout.addLayout(links_layout) # Add the horizontal layout for links
 
         self.error_label = QLabel("")
         self.error_label.setStyleSheet(f"color: {COLORS['error']};")
@@ -87,14 +104,14 @@ class LoginWindow(QDialog):
             conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT role, is_active FROM users WHERE username=? AND password=?",
-                (username, password)
+                "SELECT password, role, is_active FROM users WHERE username=?",
+                (username,)
             )
             result = cursor.fetchone()
             
             if result:
-                role, is_active = result
-                if is_active:
+                stored_hash, role, is_active = result
+                if is_active and check_password_hash(stored_hash, password):
                     self.role = role.strip()
                     self.username = username  # Store username
                     conn.close()
@@ -102,15 +119,20 @@ class LoginWindow(QDialog):
                     if self.role.lower() == "user":
                         log_user_action(username, "User Login")
                     self.accept()
-                else:
+                elif not is_active:
                     # Account exists but is disabled
                     self.error_label.setText("Account is disabled. Contact administrator.")
                     conn.close()
+                else:
+                    # Password doesn't match
+                    self.error_label.setText("Invalid username or password")
+                    self.password_input.clear()
+                    conn.close()
             else:
-                # Invalid username or password
+                # User not found
                 self.error_label.setText("Invalid username or password")
                 self.password_input.clear()
-                if conn: # Ensure connection is closed even on failure
+                if conn:
                     conn.close()
             
         except Exception as e:
@@ -122,6 +144,11 @@ class LoginWindow(QDialog):
         register_window = RegisterWindow(self)
         if register_window.exec_() == QDialog.Accepted:
             self.username_input.setText(register_window.get_username())
+
+    def open_forgot_password(self):
+        from forgot_password import ForgotPasswordDialog
+        forgot_password_dialog = ForgotPasswordDialog(self)
+        forgot_password_dialog.exec_()
 
     def get_role(self):
         return self.role

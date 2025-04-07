@@ -6,6 +6,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon, QColor
 from styles import COLORS, FONTS, BUTTON_STYLE, INPUT_STYLE, DIALOG_STYLE, TABLE_STYLE
 from db_config import get_db_connection, log_user_action
+from werkzeug.security import generate_password_hash, check_password_hash
 import os
 import re
 
@@ -465,11 +466,12 @@ class AddEditUserDialog(QDialog):
             if self.edit_mode:
                 # Update existing user
                 if password:
-                    # Update password only if provided
+                    # Hash the new password before updating
+                    hashed_password = generate_password_hash(password)
                     cursor.execute("""
                         UPDATE users SET username=?, email=?, password=?, role=?, is_active=?
                         WHERE username=?
-                    """, (username, email if email else None, password, role, is_active, self.existing_username))
+                    """, (username, email if email else None, hashed_password, role, is_active, self.existing_username))
                 else:
                     # Don't update password
                     cursor.execute("""
@@ -483,10 +485,12 @@ class AddEditUserDialog(QDialog):
                     self.error_label.setText("Password is required for new users.")
                     conn.close()
                     return
+                # Hash the password for the new user
+                hashed_password = generate_password_hash(password)
                 cursor.execute("""
                     INSERT INTO users (username, email, password, role, is_active)
                     VALUES (?, ?, ?, ?, ?)
-                """, (username, email if email else None, password, role, is_active))
+                """, (username, email if email else None, hashed_password, role, is_active))
                 log_action = "User Added"
 
             conn.commit()

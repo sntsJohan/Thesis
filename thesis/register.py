@@ -2,6 +2,7 @@ from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 from styles import COLORS, FONTS, BUTTON_STYLE, INPUT_STYLE
+from werkzeug.security import generate_password_hash
 import json
 import os
 import re
@@ -158,9 +159,10 @@ class RegisterWindow(QDialog):
                 return
 
             # Add new user with email
+            hashed_password = generate_password_hash(password)
             cursor.execute(
                 "INSERT INTO users (username, password, email, role) VALUES (?, ?, ?, ?)",
-                (username, password, email, "user")
+                (username, hashed_password, email, "user")
             )
             conn.commit()
             conn.close()
