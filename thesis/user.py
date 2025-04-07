@@ -418,32 +418,42 @@ class UserMainWindow(QMainWindow):
             tab_name = self.tab_widget.tabText(index)
             
             # Remove tab data from database
-            conn = get_db_connection()
-            cursor = conn.cursor()
+            try:
+                conn = get_db_connection()
+                cursor = conn.cursor()
+                
+                # Get tab_id for this session and tab name
+                cursor.execute("""
+                    SELECT tab_id 
+                    FROM session_tabs 
+                    WHERE session_id = ? AND tab_name = ?
+                """, (self.session_id, tab_name))
+                
+                row = cursor.fetchone()
+                if row:
+                    tab_id = row[0]
+                    # Delete comments first (foreign key constraint)
+                    cursor.execute("DELETE FROM tab_comments WHERE tab_id = ?", (tab_id,))
+                    # Then delete the tab
+                    cursor.execute("DELETE FROM session_tabs WHERE tab_id = ?", (tab_id,))
+                    conn.commit()
+                
+                conn.close()
+            except Exception as e:
+                print(f"Database cleanup error: {e}")
             
-            # Get tab_id for this session and tab name
-            cursor.execute("""
-                SELECT tab_id 
-                FROM session_tabs 
-                WHERE session_id = ? AND tab_name = ?
-            """, (self.session_id, tab_name))
+            # Get widget reference before removing
+            tab_widget = self.tabs.get(tab_name)
             
-            row = cursor.fetchone()
-            if row:
-                tab_id = row[0]
-                # Delete comments first (foreign key constraint)
-                cursor.execute("DELETE FROM tab_comments WHERE tab_id = ?", (tab_id,))
-                # Then delete the tab
-                cursor.execute("DELETE FROM session_tabs WHERE tab_id = ?", (tab_id,))
-                conn.commit()
-            
-            conn.close()
-            
-            # Remove from UI
-            self.tab_widget.removeTab(index)
+            # Remove from UI and dictionary
             if tab_name in self.tabs:
                 del self.tabs[tab_name]
-                
+            self.tab_widget.removeTab(index)
+            
+            # Clean up the widget
+            if tab_widget:
+                tab_widget.deleteLater()
+            
             # Update UI state if no tabs left
             if self.tab_widget.count() == 0:
                 self.tab_widget.hide()
@@ -520,6 +530,24 @@ class UserMainWindow(QMainWindow):
 
     def init_ui(self):
         """Initialize the detailed UI components"""
+        # Add tab widget
+        self.tab_widget = QTabWidget()
+        self.tab_widget.setStyleSheet(TAB_STYLE)
+        self.tab_widget.setTabsClosable(True)
+        self.tab_widget.tabCloseRequested.connect(self.close_tab)  # Connect signal once here
+        
+        # Create initial message
+        self.initial_message = QLabel("No analysis performed yet.\nResults will appear here.")
+        self.initial_message.setAlignment(Qt.AlignCenter)
+        self.initial_message.setStyleSheet(f"color: {COLORS['text']}; font-size: 14px;")
+        
+        # Initialize tabs dictionary
+        self.tabs = {}
+        
+        # Initialize tab counters
+        self.csv_tab_count = 1
+        self.url_tab_count = 1
+        
         # Input Container
         input_container = QWidget()
         input_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
@@ -644,20 +672,9 @@ class UserMainWindow(QMainWindow):
         table_layout.setContentsMargins(0, 0, 0, 0)
 
         # Add tab widget
-        self.tab_widget = QTabWidget()
-        self.tab_widget.setStyleSheet(TAB_STYLE)
-        self.initial_message = QLabel("No analysis performed yet.\nResults will appear here.")
-        self.initial_message.setAlignment(Qt.AlignCenter)
-        self.initial_message.setStyleSheet(f"color: {COLORS['text']}; font-size: 14px;")
         table_layout.addWidget(self.initial_message)
-        
         table_layout.addWidget(self.tab_widget)
         self.tab_widget.hide()  # Hide tab widget initially
-
-        # Initialize tab counters and dictionary to store tab references
-        self.csv_tab_count = 1
-        self.url_tab_count = 1
-        self.tabs = {}
 
         splitter.addWidget(table_container)
 
@@ -863,12 +880,9 @@ class UserMainWindow(QMainWindow):
         search_bar.textChanged.connect(filter_table)
         table.search_bar = search_bar
         
-        # Add tab to widget
+        # Add tab to widget and store reference
         self.tab_widget.addTab(tab, tab_type)
         self.tabs[tab_type] = tab
-        
-        self.tab_widget.setTabsClosable(True)
-        self.tab_widget.tabCloseRequested.connect(self.close_tab)
 
         # Show table widget and enable operations
         if self.tab_widget.isHidden():
