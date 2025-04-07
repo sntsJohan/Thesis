@@ -1111,7 +1111,8 @@ class UserMainWindow(QMainWindow):
             QApplication.processEvents()
             
             df = pd.read_csv(file_path)
-            comments = df.iloc[:, 0].tolist()
+            # Convert all values to strings to handle numeric values
+            comments = df.iloc[:, 0].astype(str).tolist()
             
             self.comment_metadata = {}
             for comment in comments:

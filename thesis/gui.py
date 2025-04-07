@@ -665,7 +665,8 @@ class MainWindow(QMainWindow):
             QApplication.processEvents()  # Ensure the UI updates
             
             df = pd.read_csv(self.file_input.text())
-            comments = df.iloc[:, 0].tolist()
+            # Convert all values to strings to handle numeric values
+            comments = df.iloc[:, 0].astype(str).tolist()
             
             # Create metadata for CSV comments
             self.comment_metadata = {}
