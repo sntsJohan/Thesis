@@ -9,12 +9,11 @@ from datetime import datetime
 import re
 
 class ResetPasswordDialog(QDialog):
-    def __init__(self, token, parent=None):
+    def __init__(self, username, parent=None):
         super().__init__(parent)
-        self.token = token
-        self.username = None  # Will be set after validating token
+        self.username = username
         
-        self.setWindowTitle("Reset Password")
+        self.setWindowTitle("Set New Password")
         self.setStyleSheet(f"background-color: {COLORS['background']}; color: {COLORS['text']};")
         self.setMinimumWidth(400)
         
@@ -22,59 +21,7 @@ class ResetPasswordDialog(QDialog):
         base_path = os.path.dirname(os.path.abspath(__file__))
         self.setWindowIcon(QIcon(os.path.join(base_path, "assets", "applogo.png")))
         
-        if not self.validate_token():
-            self.reject()
-            return
-            
         self.setup_ui()
-
-    def validate_token(self):
-        """Validate the reset token and get associated username"""
-        try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            
-            # Check if token exists and is not expired or used
-            cursor.execute("""
-                SELECT username, expires_at 
-                FROM password_resets 
-                WHERE reset_token = ? AND used = 0
-            """, (self.token,))
-            
-            result = cursor.fetchone()
-            if not result:
-                QMessageBox.critical(
-                    self,
-                    "Invalid Token",
-                    "This password reset link is invalid or has already been used."
-                )
-                return False
-                
-            username, expires_at = result
-            
-            # Check if token is expired
-            if expires_at < datetime.now():
-                QMessageBox.critical(
-                    self,
-                    "Expired Token",
-                    "This password reset link has expired. Please request a new one."
-                )
-                return False
-                
-            self.username = username
-            return True
-            
-        except Exception as e:
-            QMessageBox.critical(
-                self,
-                "Error",
-                "An error occurred while validating your reset token."
-            )
-            print(f"Token validation error: {str(e)}")
-            return False
-        finally:
-            if 'conn' in locals():
-                conn.close()
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
@@ -88,18 +35,30 @@ class ResetPasswordDialog(QDialog):
         title.setAlignment(Qt.AlignCenter)
         layout.addWidget(title)
 
+        # Verification Code input
+        code_label = QLabel("Verification Code")
+        code_label.setFont(FONTS['body'])
+        self.code_input = QLineEdit()
+        self.code_input.setStyleSheet(INPUT_STYLE)
+        self.code_input.setPlaceholderText("Enter the 6-digit code from your email")
+        self.code_input.setMaxLength(6)
+        layout.addWidget(code_label)
+        layout.addWidget(self.code_input)
+
         # Password requirements
-        requirements = QLabel(
-            "Password must:\n"
-            "• Be at least 8 characters long\n"
-            "• Contain at least one uppercase letter\n"
-            "• Contain at least one lowercase letter\n"
-            "• Contain at least one number\n"
-            "• Contain at least one special character"
+        # Use HTML for more reliable line breaks in QLabel
+        requirements_text = (
+            "<b>Password must:</b><br>"
+            "&bull; Be at least 8 characters long<br>"
+            "&bull; Contain at least one uppercase letter<br>"
+            "&bull; Contain at least one lowercase letter<br>"
+            "&bull; Contain at least one number<br>"
+            "&bull; Contain at least one special character"
         )
+        requirements = QLabel(requirements_text)
+        requirements.setTextFormat(Qt.RichText) # Tell QLabel to interpret as HTML
         requirements.setFont(FONTS['body'])
         requirements.setStyleSheet(f"color: {COLORS['text_secondary']};")
-        requirements.setWordWrap(True)
         layout.addWidget(requirements)
 
         # New password input
@@ -150,25 +109,55 @@ class ResetPasswordDialog(QDialog):
         return True, ""
 
     def reset_password(self):
-        """Handle password reset submission"""
+        """Handle password reset submission after code verification"""
+        code = self.code_input.text().strip()
         password = self.password_input.text()
         confirm = self.confirm_input.text()
+
+        if not code:
+            self.error_label.setText("Please enter the verification code")
+            return
+            
+        if len(code) != 6 or not code.isdigit():
+             self.error_label.setText("Invalid verification code format")
+             return
 
         if password != confirm:
             self.error_label.setText("Passwords do not match")
             return
 
-        # Validate password
-        is_valid, message = self.validate_password(password)
-        if not is_valid:
-            self.error_label.setText(message)
-            return
-
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
+
+            # 1. Validate the verification code (stored in token_hash)
+            cursor.execute("""
+                SELECT TOP 1 token_hash, expires_at
+                FROM password_resets 
+                WHERE username = ?  -- Removed used = 0 condition
+                ORDER BY created_at DESC
+            """, (self.username,))
+            result = cursor.fetchone()
+
+            if not result:
+                self.error_label.setText("Invalid or expired verification code. Please request again.")
+                conn.close()
+                return
+
+            stored_code, expires_at = result
             
-            # Hash the new password
+            # Check if token is expired
+            if expires_at < datetime.now():
+                self.error_label.setText("Verification code has expired. Please request again.")
+                conn.close()
+                return
+
+            if stored_code != code:
+                self.error_label.setText("Incorrect verification code.")
+                conn.close()
+                return
+
+            # 2. If code is valid, proceed to update password
             hashed_password = generate_password_hash(password)
             
             # Update the user's password
@@ -177,10 +166,10 @@ class ResetPasswordDialog(QDialog):
                 (hashed_password, self.username)
             )
             
-            # Mark the reset token as used
+            # Delete the used verification code instead of marking it as used
             cursor.execute(
-                "UPDATE password_resets SET used = 1 WHERE reset_token = ?",
-                (self.token,)
+                "DELETE FROM password_resets WHERE username = ? AND token_hash = ?",
+                (self.username, code)
             )
             
             conn.commit()
@@ -196,5 +185,5 @@ class ResetPasswordDialog(QDialog):
             self.error_label.setText("An error occurred. Please try again later.")
             print(f"Password reset error: {str(e)}")
         finally:
-            if 'conn' in locals():
+            if 'conn' in locals() and conn.is_connected():
                 conn.close() 

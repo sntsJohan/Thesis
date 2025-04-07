@@ -7,11 +7,9 @@ import os
 import secrets
 import string
 from datetime import datetime, timedelta
-import smtplib
-from email.message import EmailMessage
-from email_config import (SMTP_SERVER, SMTP_PORT, EMAIL_USERNAME, 
-                          EMAIL_APP_PASSWORD, SENDER_EMAIL, EMAIL_SUBJECT, 
-                          EMAIL_TEMPLATE)
+from smtplib import SMTPException
+from utils import send_email  # Assuming send_email utility exists in utils.py
+from reset_password import ResetPasswordDialog # Import the reset dialog
 
 class ForgotPasswordDialog(QDialog):
     def __init__(self, parent=None):
@@ -39,7 +37,7 @@ class ForgotPasswordDialog(QDialog):
         layout.addWidget(title)
 
         # Description
-        description = QLabel("Enter your username to receive a password reset link.")
+        description = QLabel("Enter your username to receive a verification code.")
         description.setFont(FONTS['body'])
         description.setStyleSheet(f"color: {COLORS['text_secondary']};")
         description.setWordWrap(True)
@@ -65,7 +63,7 @@ class ForgotPasswordDialog(QDialog):
         layout.addWidget(self.email_input)
 
         # Submit button
-        self.submit_button = QPushButton("Request Reset Link")
+        self.submit_button = QPushButton("Send Verification Code")
         self.submit_button.setStyleSheet(BUTTON_STYLE)
         self.submit_button.setFont(FONTS['button'])
         self.submit_button.clicked.connect(self.request_reset)
@@ -85,7 +83,6 @@ class ForgotPasswordDialog(QDialog):
             self.error_label.setText("Please enter both username and email")
             return
 
-        conn = None # Initialize conn to None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
@@ -99,73 +96,55 @@ class ForgotPasswordDialog(QDialog):
 
             if not result:
                 self.error_label.setText("Username not found")
-                conn.close()
                 return
 
             stored_email = result[0]
-            if not stored_email or stored_email.lower() != email.lower():
+            if stored_email.lower() != email.lower():
                 self.error_label.setText("Email does not match our records")
-                conn.close()
                 return
 
-            # Generate reset token
-            token = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(32))
-            expires_at = datetime.now() + timedelta(hours=24)  # Token expires in 24 hours
+            # Generate 6-digit verification code
+            verification_code = ''.join(secrets.choice(string.digits) for _ in range(6))
+            expires_at = datetime.now() + timedelta(minutes=15)  # Code expires in 15 minutes
 
-            # Store reset token
+            # Store verification code in token_hash column
             cursor.execute("""
-                INSERT INTO password_resets (username, reset_token, expires_at)
+                DELETE FROM password_resets WHERE username = ?
+            """, (username,)) # Delete any existing codes for the user
+            cursor.execute("""
+                INSERT INTO password_resets (username, token_hash, expires_at) -- Use token_hash
                 VALUES (?, ?, ?)
-            """, (username, token, expires_at))
+            """, (username, verification_code, expires_at))
             conn.commit()
 
-            # --- Send Email ---
+            # Send email with verification code
+            subject = "Your Password Reset Code"
+            body = f"Hello {username},\n\nPlease find your password reset verification code below:\n\nVerification Code: {verification_code}\n\nThis code will expire in 15 minutes.\n\nIf you did not request this, please ignore this email.\n\nBest regards,\nYour Application Name" # Added app name
+            
             try:
-                # Create the reset link (adjust URL as needed)
-                # Assuming your app handles this URL scheme, e.g., myapp://reset?token=...
-                # For now, we'll just include the token in the email body.
-                # A better approach would be a web link like http://yourdomain.com/reset?token=...
-                reset_link = f"Your reset token is: {token}" # Placeholder - replace with actual link logic if applicable
-
-                # Format the email body
-                email_body = EMAIL_TEMPLATE.format(username=username, reset_link=reset_link)
-
-                # Create email message
-                msg = EmailMessage()
-                msg.set_content(email_body)
-                msg['Subject'] = EMAIL_SUBJECT
-                msg['From'] = SENDER_EMAIL
-                msg['To'] = email # Send to the user's provided email
-
-                # Send the email
-                with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-                    server.starttls()  # Secure the connection
-                    server.login(EMAIL_USERNAME, EMAIL_APP_PASSWORD)
-                    server.send_message(msg)
-                    
+                send_email(email, subject, body) # Use the utility function
                 QMessageBox.information(
                     self,
-                    "Reset Link Sent",
-                    "A password reset link has been sent to your email address.\\n"
-                    "Please check your inbox and follow the instructions."
+                    "Verification Code Sent",
+                    "A verification code has been sent to your email address.\n"
+                    "Please check your inbox (and spam/junk folder) and enter the code in the next step."
                 )
-                self.accept()
+                # Open the ResetPasswordDialog, passing the username
+                self.accept() # Close the current dialog first
+                reset_dialog = ResetPasswordDialog(username=username, parent=self.parent()) # Pass username
+                reset_dialog.exec_() # Show the reset dialog modally
 
-            except smtplib.SMTPAuthenticationError:
-                self.error_label.setText("Email login failed. Check config.")
-                print("SMTP Authentication Error: Check EMAIL_USERNAME and EMAIL_APP_PASSWORD.")
-            except smtplib.SMTPConnectError:
-                self.error_label.setText("Could not connect to email server.")
-                print(f"SMTP Connect Error: Could not connect to {SMTP_SERVER}:{SMTP_PORT}.")
-            except Exception as email_error:
-                self.error_label.setText("Failed to send reset email.")
-                print(f"Email sending error: {str(email_error)}")
-                # Optionally rollback token insertion or notify admin
-                # For now, we proceed but the user won't get the email
+            except SMTPException as smtp_e:
+                 self.error_label.setText("Failed to send email. Check configuration.")
+                 print(f"SMTP error during password reset: {str(smtp_e)}")
+            except Exception as mail_e:
+                 self.error_label.setText("An error occurred sending the email.")
+                 print(f"Email sending error during password reset: {str(mail_e)}")
+
 
         except Exception as e:
-            self.error_label.setText("An error occurred. Please try again later.")
-            print(f"Password reset error: {str(e)}")
+            self.error_label.setText("An database error occurred. Please try again later.") # More specific error
+            print(f"Password reset DB error: {str(e)}")
         finally:
-            if conn: # Check if conn was successfully assigned
+            if 'conn' in locals() and conn: # Check if conn exists and is not None
                 conn.close() 
