@@ -128,6 +128,7 @@ class UserMainWindow(QMainWindow):
     def set_current_user(self, username):
         """Set the current user and create or restore their session"""
         self.current_user = username
+        self.app_name_label.setText(f"Cyberbullying Detection System - {username}")
         self.create_or_restore_session()
         log_user_action(username, "User login")
 
@@ -512,18 +513,19 @@ class UserMainWindow(QMainWindow):
         menu_layout.setSpacing(0)
 
         # Add app name to the left
-        app_name = QLabel("Cyberbullying Detection System - User View")
-        app_name.setStyleSheet(f"color: {COLORS['text']}; font-size: 14px; padding: 0 16px;")
-        app_name.setFont(FONTS['button'])
-        menu_layout.addWidget(app_name)
+        self.app_name_label = QLabel("Cyberbullying Detection System")
+        self.app_name_label.setStyleSheet(f"color: {COLORS['text']}; font-size: 14px; padding: 0 16px;")
+        self.app_name_label.setFont(FONTS['button'])
+        menu_layout.addWidget(self.app_name_label)
         
         # Add stretch to push remaining buttons to right
         menu_layout.addStretch()
         
-        # Add Username label
+        # Add Username label (hidden)
         self.username_label = QLabel()
         self.username_label.setStyleSheet(f"color: {COLORS['text']}; font-size: 14px; padding: 0 16px;")
         self.username_label.setFont(FONTS['button'])
+        self.username_label.hide()  # Hide the label instead of removing it
         menu_layout.addWidget(self.username_label)
         
         # About button
