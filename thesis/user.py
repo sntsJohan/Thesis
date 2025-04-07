@@ -48,7 +48,7 @@ class CustomTabBar(QTabBar):
         painter.setRenderHint(QPainter.Antialiasing)
         
         # Set font for X
-        font = QFont("Arial", 12, QFont.Bold)
+        font = QFont("Arial", 8, QFont.Bold)
         painter.setFont(font)
         
         for index in range(self.count()):
@@ -1208,8 +1208,19 @@ class UserMainWindow(QMainWindow):
                 tab_name = file_name
                 
         elif url:
+            # Find highest existing Facebook Post number
+            highest_num = 0
+            for existing_tab in self.tabs.keys():
+                if existing_tab.startswith("Facebook Post "):
+                    try:
+                        num = int(existing_tab.split("Facebook Post ")[1])
+                        highest_num = max(highest_num, num)
+                    except (ValueError, IndexError):
+                        continue
+            
+            # Set counter to next available number
+            self.url_tab_count = highest_num + 1
             tab_name = f"Facebook Post {self.url_tab_count}"
-            self.url_tab_count += 1
         else:
             tab_name = f"Analysis {self.csv_tab_count + self.url_tab_count}"
 
