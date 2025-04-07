@@ -272,8 +272,11 @@ def generate_report_from_window(window):
         # Content elements
         elements = []
 
+        # Determine the base path relative to this script
+        base_path = os.path.dirname(os.path.abspath(__file__))
+        logo_path = os.path.join(base_path, "assets", "logo.png")
+
         # Create header table for logo and title
-        logo_path = "assets/logo.png"
         if os.path.exists(logo_path):
             img = Image(logo_path)
             img.drawHeight = 0.8*inch
@@ -479,6 +482,10 @@ def generate_report_user(window):
 
         # Content elements
         elements = []
+
+        # Determine the base path relative to this script
+        base_path = os.path.dirname(os.path.abspath(__file__))
+        logo_path = os.path.join(base_path, "assets", "logo.png")
 
         # Title
         elements.append(Paragraph("Cyberbullying Detection Report", title_style))

@@ -4,6 +4,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 from styles import COLORS, FONTS, BUTTON_STYLE, INPUT_STYLE, DIALOG_STYLE
 import re
+import os
 
 class APIManagerDialog(QDialog):
     def __init__(self, parent=None):
@@ -13,7 +14,8 @@ class APIManagerDialog(QDialog):
         self.setMinimumWidth(650)
         
         # Set window icon
-        self.setWindowIcon(QIcon("assets/applogo.png"))
+        base_path = os.path.dirname(os.path.abspath(__file__))
+        self.setWindowIcon(QIcon(os.path.join(base_path, "assets", "applogo.png")))
         
         self.init_ui()
 

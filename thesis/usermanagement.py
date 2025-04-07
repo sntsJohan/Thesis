@@ -6,6 +6,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon, QColor
 from styles import COLORS, FONTS, BUTTON_STYLE, INPUT_STYLE, DIALOG_STYLE, TABLE_STYLE
 from db_config import get_db_connection, log_user_action
+import os
 
 class UserManagementDialog(QDialog):
     def __init__(self, parent=None):
@@ -16,7 +17,8 @@ class UserManagementDialog(QDialog):
         self.setMinimumHeight(800)  # Increased height
         
         # Set window icon
-        self.setWindowIcon(QIcon("assets/applogo.png"))
+        base_path = os.path.dirname(os.path.abspath(__file__))
+        self.setWindowIcon(QIcon(os.path.join(base_path, "assets", "applogo.png")))
         
         self.init_ui()
         self.load_users()
@@ -244,7 +246,7 @@ class UserManagementDialog(QDialog):
                 width: 30px;
             }
             QComboBox::down-arrow {
-                image: url(thesis/assets/drop.png);
+                image: url(./assets/drop.png);
                 width: 15px;
                 height: 15px;
             }
@@ -355,7 +357,7 @@ class UserManagementDialog(QDialog):
                     width: 30px;
                 }
                 QComboBox::down-arrow {
-                    image: url(thesis/assets/drop.png);
+                    image: url(./assets/drop.png);
                     width: 12px;
                     height: 12px;
                 }

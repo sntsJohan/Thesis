@@ -5,6 +5,7 @@ from PyQt5.QtGui import QIcon
 from styles import COLORS, FONTS, BUTTON_STYLE, TABLE_STYLE
 from db_config import get_db_connection
 from datetime import datetime
+import os
 
 class HistoryDialog(QDialog):
     def __init__(self, parent=None):
@@ -14,7 +15,8 @@ class HistoryDialog(QDialog):
         self.resize(800, 600)
         
         # Set window icon
-        self.setWindowIcon(QIcon("assets/applogo.png"))
+        base_path = os.path.dirname(os.path.abspath(__file__))
+        self.setWindowIcon(QIcon(os.path.join(base_path, "assets", "applogo.png")))
         
         # Create layout
         layout = QVBoxLayout(self)

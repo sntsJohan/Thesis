@@ -4,6 +4,7 @@ from PyQt5.QtGui import QIcon
 from styles import COLORS, FONTS, BUTTON_STYLE, INPUT_STYLE
 import json
 import os
+import re
 from db_config import get_db_connection, log_user_action
 
 class RegisterWindow(QDialog):
@@ -22,7 +23,8 @@ class RegisterWindow(QDialog):
         self.setGeometry(qr)
         
         # Set window icon
-        self.setWindowIcon(QIcon("assets/applogo.png"))
+        base_path = os.path.dirname(os.path.abspath(__file__))
+        self.setWindowIcon(QIcon(os.path.join(base_path, "assets", "applogo.png")))
         
         self.username = ""
         self.setup_ui()
@@ -38,6 +40,12 @@ class RegisterWindow(QDialog):
         title.setStyleSheet(f"color: {COLORS['primary']}; font-size: 24px;")
         title.setAlignment(Qt.AlignCenter)
         layout.addWidget(title)
+
+        # Password requirements label
+        requirements = QLabel("Password must contain:\n• 8+ characters\n• Uppercase letter\n• Lowercase letter\n• Number\n• Special character")
+        requirements.setFont(FONTS['body'])
+        requirements.setStyleSheet(f"color: {COLORS['text']}; font-size: 12px;")
+        layout.addWidget(requirements)
 
         # Username
         username_label = QLabel("Username")
@@ -80,6 +88,19 @@ class RegisterWindow(QDialog):
         self.error_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.error_label)
 
+    def validate_password(self, password):
+        if len(password) < 8:
+            return "Password must be at least 8 characters long"
+        if not re.search(r"[A-Z]", password):
+            return "Password must contain at least one uppercase letter"
+        if not re.search(r"[a-z]", password):
+            return "Password must contain at least one lowercase letter"
+        if not re.search(r"\d", password):
+            return "Password must contain at least one number"
+        if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
+            return "Password must contain at least one special character"
+        return None
+
     def register_user(self):
         username = self.username_input.text()
         password = self.password_input.text()
@@ -87,6 +108,14 @@ class RegisterWindow(QDialog):
 
         if not username or not password:
             self.error_label.setText("Please fill in all fields")
+            return
+
+        # Validate password requirements
+        password_error = self.validate_password(password)
+        if password_error:
+            self.error_label.setText(password_error)
+            self.password_input.clear()
+            self.confirm_input.clear()
             return
 
         if password != confirm:

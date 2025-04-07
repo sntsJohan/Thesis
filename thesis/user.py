@@ -31,6 +31,7 @@ from loading_overlay import LoadingOverlay
 from stopwords import TAGALOG_STOP_WORDS
 import re
 from db_config import log_user_action, get_db_connection
+import os
 
 class CustomTabBar(QTabBar):
     def __init__(self, parent=None):
@@ -74,7 +75,8 @@ class UserMainWindow(QMainWindow):
         self.setStyleSheet(f"background-color: {COLORS['background']}; color: {COLORS['text']};")
 
         # Set window icon
-        app_icon = QIcon("assets/applogo.png")
+        base_path = os.path.dirname(os.path.abspath(__file__))
+        app_icon = QIcon(os.path.join(base_path, "assets", "applogo.png"))
         self.setWindowIcon(app_icon)
 
         # Initialize UI elements

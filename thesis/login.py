@@ -3,6 +3,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 from styles import COLORS, FONTS, BUTTON_STYLE, INPUT_STYLE
 from db_config import get_db_connection, log_user_action
+import os
 
 class LoginWindow(QDialog):
     def __init__(self, parent=None):
@@ -20,7 +21,8 @@ class LoginWindow(QDialog):
         self.setGeometry(qr)
         
         # Set window icon
-        self.setWindowIcon(QIcon("assets/applogo.png"))
+        base_path = os.path.dirname(os.path.abspath(__file__))
+        self.setWindowIcon(QIcon(os.path.join(base_path, "assets", "applogo.png")))
         
         self.role = None  # Store the user role
         self.username = None  # Store the username

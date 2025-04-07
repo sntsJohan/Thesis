@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon, QPixmap
 from styles import COLORS, FONTS, DIALOG_STYLE, CONTAINER_STYLE
+import os
 
 class AboutDialog(QDialog):
     def __init__(self, parent=None):
@@ -21,7 +22,8 @@ class AboutDialog(QDialog):
         self.setGeometry(qr)
         
         # Set window icon
-        self.setWindowIcon(QIcon("assets/applogo.png"))
+        base_path = os.path.dirname(os.path.abspath(__file__))
+        self.setWindowIcon(QIcon(os.path.join(base_path, "assets", "applogo.png")))
         
         self.init_ui()
 
@@ -49,7 +51,8 @@ class AboutDialog(QDialog):
         # Title with logo
         title_layout = QHBoxLayout()
         logo = QLabel()
-        logo_pixmap = QPixmap("assets/applogo.png")
+        base_path = os.path.dirname(os.path.abspath(__file__))
+        logo_pixmap = QPixmap(os.path.join(base_path, "assets", "applogo.png"))
         logo.setPixmap(logo_pixmap.scaled(64, 64, Qt.KeepAspectRatio, Qt.SmoothTransformation))
         title_layout.addWidget(logo)
         
@@ -93,10 +96,10 @@ class AboutDialog(QDialog):
         
         # Team member data
         team_members = [
-            {"name": "Anioay, Kenneth", "role": "Project Lead & ML Engineer", "image": "assets/placeholder.png"},
-            {"name": "De Vera, Nathan", "role": "Backend Developer", "image": "assets/placeholder.png"},
-            {"name": "Evangelista, Danielle", "role": "Frontend Developer", "image": "assets/placeholder.png"},
-            {"name": "Santos, Johan", "role": "Frontend Developer", "image": "assets/santos.png"}
+            {"name": "Anioay, Kenneth", "role": "Project Lead & ML Engineer", "image": "./assets/placeholder.png"},
+            {"name": "De Vera, Nathan", "role": "Backend Developer", "image": "./assets/placeholder.png"},
+            {"name": "Evangelista, Danielle", "role": "Frontend Developer", "image": "./assets/placeholder.png"},
+            {"name": "Santos, Johan", "role": "Frontend Developer", "image": "./assets/santos.png.jfif"}
         ]
         
         # Create team member cards
