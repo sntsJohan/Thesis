@@ -7,13 +7,14 @@ from PyQt5.QtGui import QIcon, QColor
 from styles import COLORS, FONTS, BUTTON_STYLE, INPUT_STYLE, DIALOG_STYLE, TABLE_STYLE
 from db_config import get_db_connection, log_user_action
 import os
+import re
 
 class UserManagementDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("User Management")
         self.setStyleSheet(DIALOG_STYLE)
-        self.setMinimumWidth(1200)  # Increased width
+        self.setMinimumWidth(1400)  # Increased width
         self.setMinimumHeight(800)  # Increased height
         
         # Set window icon
@@ -68,9 +69,9 @@ class UserManagementDialog(QDialog):
         self.table.setStyleSheet(TABLE_STYLE + """
 
         """)
-        self.table.setColumnCount(7)
+        self.table.setColumnCount(8)
         self.table.setHorizontalHeaderLabels([
-            "Username", "Role", "Last Login", "Status", 
+            "Username", "Email", "Role", "Last Login", "Status",
             "Action Count", "Account Created", "Actions"
         ])
         
@@ -85,19 +86,21 @@ class UserManagementDialog(QDialog):
         header.setSectionResizeMode(3, QHeaderView.Fixed)
         header.setSectionResizeMode(4, QHeaderView.Fixed)
         header.setSectionResizeMode(5, QHeaderView.Fixed)
-        header.setSectionResizeMode(6, QHeaderView.Stretch)
+        header.setSectionResizeMode(6, QHeaderView.Fixed)
+        header.setSectionResizeMode(7, QHeaderView.Stretch)
         
         self.table.setColumnWidth(0, 150)  # Username
-        self.table.setColumnWidth(1, 100)  # Role
-        self.table.setColumnWidth(2, 180)  # Last Login
-        self.table.setColumnWidth(3, 100)   # Status
-        self.table.setColumnWidth(4, 120)  # Action Count
-        self.table.setColumnWidth(5, 180)  # Account Created
+        self.table.setColumnWidth(1, 200)  # Email
+        self.table.setColumnWidth(2, 100)  # Role
+        self.table.setColumnWidth(3, 180)  # Last Login
+        self.table.setColumnWidth(4, 100)  # Status
+        self.table.setColumnWidth(5, 120)  # Action Count
+        self.table.setColumnWidth(6, 120)  # Account Created
         
         # Make table read-only
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         
-        self.table.setColumnWidth(6, 120)  # Actions column
+        self.table.setColumnWidth(7, 120)  # Actions column
         
         layout.addWidget(self.table)
 
@@ -118,6 +121,7 @@ class UserManagementDialog(QDialog):
             cursor.execute("""
                 SELECT 
                     u.username,
+                    u.email,
                     u.role,
                     (SELECT TOP 1 timestamp FROM user_logs 
                      WHERE username = u.username 
@@ -134,22 +138,26 @@ class UserManagementDialog(QDialog):
             self.table.setRowCount(len(users))
             for i, user in enumerate(users):
                 username = user[0]
-                role = user[1]
-                last_login = user[2] if user[2] else "Never"
-                is_active = user[3]
-                action_count = user[4]
-                created_at = user[5]
+                email = user[1] if user[1] else "N/A"
+                role = user[2]
+                last_login = user[3] if user[3] else "Never"
+                is_active = user[4]
+                action_count = user[5]
+                created_at = user[6]
 
                 # Username
                 self.table.setItem(i, 0, QTableWidgetItem(username))
                 
+                # Email
+                self.table.setItem(i, 1, QTableWidgetItem(email))
+                
                 # Role
                 role_item = QTableWidgetItem(role)
                 role_item.setTextAlignment(Qt.AlignCenter)
-                self.table.setItem(i, 1, role_item)
+                self.table.setItem(i, 2, role_item)
                 
                 # Last Login
-                self.table.setItem(i, 2, QTableWidgetItem(str(last_login)))
+                self.table.setItem(i, 3, QTableWidgetItem(str(last_login)))
                 
                 # Status
                 status_item = QTableWidgetItem("Active" if is_active else "Disabled")
@@ -158,18 +166,18 @@ class UserManagementDialog(QDialog):
                     status_item.setForeground(QColor(COLORS['success']))
                 else:
                     status_item.setForeground(QColor(COLORS['error']))
-                self.table.setItem(i, 3, status_item)
+                self.table.setItem(i, 4, status_item)
                 
                 # Action Count
                 count_item = QTableWidgetItem(str(action_count))
                 count_item.setTextAlignment(Qt.AlignCenter)
-                self.table.setItem(i, 4, count_item)
+                self.table.setItem(i, 5, count_item)
                 
                 # Created At
                 created_at_str = created_at.strftime('%Y-%m-%d') if created_at else "N/A"
                 created_at_item = QTableWidgetItem(created_at_str)
                 created_at_item.setTextAlignment(Qt.AlignCenter) # Center align date
-                self.table.setItem(i, 5, created_at_item)
+                self.table.setItem(i, 6, created_at_item)
                 
                 # Action Buttons Container
                 actions_widget = QWidget()
@@ -205,7 +213,7 @@ class UserManagementDialog(QDialog):
                 actions_layout.addWidget(edit_btn)
                 actions_layout.addWidget(toggle_btn)
                 
-                self.table.setCellWidget(i, 6, actions_widget)
+                self.table.setCellWidget(i, 7, actions_widget)
             
             conn.close()
             
@@ -214,302 +222,15 @@ class UserManagementDialog(QDialog):
 
     def show_add_user_dialog(self):
         """Show dialog to add new user"""
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Add New User")
-        dialog.setStyleSheet(DIALOG_STYLE)
-        dialog.setMinimumWidth(400)
-        
-        layout = QVBoxLayout(dialog)
-        layout.setSpacing(15)  # Increased spacing
-        layout.setContentsMargins(20, 20, 20, 20)  # Increased margins
-        
-        # Username
-        username_label = QLabel("Username:")
-        username_label.setFont(FONTS['body'])
-        username_input = QLineEdit()
-        username_input.setStyleSheet(INPUT_STYLE)
-        username_input.setFixedHeight(35)  # Consistent height
-        layout.addWidget(username_label)
-        layout.addWidget(username_input)
-        
-        # Password
-        password_label = QLabel("Password:")
-        password_label.setFont(FONTS['body'])
-        password_input = QLineEdit()
-        password_input.setStyleSheet(INPUT_STYLE)
-        password_input.setFixedHeight(35)
-        password_input.setEchoMode(QLineEdit.Password)
-        layout.addWidget(password_label)
-        layout.addWidget(password_input)
-        
-        # Role
-        role_label = QLabel("Role:")
-        role_label.setFont(FONTS['body'])
-        role_combo = QComboBox()
-        role_combo.addItems(["user", "admin"])
-        role_combo.setStyleSheet("""
-            QComboBox {
-                background-color: """ + COLORS['surface'] + """;
-                color: """ + COLORS['text'] + """;
-                border: 1px solid """ + COLORS['border'] + """;
-                border-radius: 4px;
-                padding: 8px;
-                min-width: 100px;
-            }
-            QComboBox::drop-down {
-                border: none;
-                width: 30px;
-            }
-            QComboBox::down-arrow {
-                image: url(./assets/drop.png);
-                width: 15px;
-                height: 15px;
-            }
-            QComboBox QAbstractItemView {
-                background-color: """ + COLORS['surface'] + """;
-                color: """ + COLORS['text'] + """;
-                selection-background-color: """ + COLORS['primary'] + """;
-                selection-color: """ + COLORS['text'] + """;
-                border: 1px solid """ + COLORS['border'] + """;
-            }
-        """)
-        role_combo.setFixedHeight(35)
-        layout.addWidget(role_label)
-        layout.addWidget(role_combo)
-        
-        # Buttons
-        btn_layout = QHBoxLayout()
-        save_btn = QPushButton("Save")
-        save_btn.setStyleSheet(BUTTON_STYLE)
-        cancel_btn = QPushButton("Cancel")
-        cancel_btn.setStyleSheet(BUTTON_STYLE)
-        
-        btn_layout.addWidget(save_btn)
-        btn_layout.addWidget(cancel_btn)
-        layout.addLayout(btn_layout)
-        
-        # Error Label
-        error_label = QLabel()
-        error_label.setStyleSheet(f"color: {COLORS['error']}")
-        error_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(error_label)
-        
-        def save_user():
-            username = username_input.text().strip()
-            password = password_input.text().strip()
-            role = role_combo.currentText()
-            
-            if not username or not password:
-                error_label.setText("Please fill all fields")
-                return
-                
-            try:
-                conn = get_db_connection()
-                cursor = conn.cursor()
-                
-                # Check if username exists
-                cursor.execute("SELECT username FROM users WHERE username=?", (username,))
-                if cursor.fetchone():
-                    error_label.setText("Username already exists")
-                    return
-                
-                # Add new user
-                cursor.execute(
-                    """INSERT INTO users (username, password, role, is_active, created_at) 
-                       VALUES (?, ?, ?, 1, CURRENT_TIMESTAMP)""",
-                    (username, password, role)
-                )
-                conn.commit()
-                conn.close()
-                
-                self.load_users()
-                dialog.accept()
-                
-            except Exception as e:
-                error_label.setText(f"Error: {str(e)}")
-        
-        save_btn.clicked.connect(save_user)
-        cancel_btn.clicked.connect(dialog.reject)
-        
-        dialog.exec_()
+        dialog = AddEditUserDialog(self)
+        if dialog.exec_():
+            self.load_users()
 
     def edit_user(self, username):
         """Show dialog to edit user"""
-        try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            cursor.execute("SELECT role FROM users WHERE username=?", (username,))
-            current_role = cursor.fetchone()[0]
-            conn.close()
-            
-            dialog = QDialog(self)
-            dialog.setWindowTitle(f"Edit User - {username}")
-            dialog.setStyleSheet(DIALOG_STYLE)
-            dialog.setMinimumWidth(400)
-            dialog.setFixedHeight(200)  # Set initial fixed height
-            
-            layout = QVBoxLayout(dialog)
-            layout.setSpacing(15)
-            layout.setContentsMargins(20, 20, 20, 20)
-            
-            # Role
-            role_label = QLabel("Role:")
-            role_label.setFont(FONTS['body'])
-            role_combo = QComboBox()
-            role_combo.addItems(["user", "admin"])
-            role_combo.setCurrentText(current_role)
-            role_combo.setStyleSheet("""
-                QComboBox {
-                    background-color: """ + COLORS['surface'] + """;
-                    color: """ + COLORS['text'] + """;
-                    border: 1px solid """ + COLORS['border'] + """;
-                    border-radius: 4px;
-                    padding: 8px;
-                    min-width: 100px;
-                }
-                QComboBox::drop-down {
-                    border: none;
-                    width: 30px;
-                }
-                QComboBox::down-arrow {
-                    image: url(./assets/drop.png);
-                    width: 12px;
-                    height: 12px;
-                }
-                QComboBox QAbstractItemView {
-                    background-color: """ + COLORS['surface'] + """;
-                    color: """ + COLORS['text'] + """;
-                    selection-background-color: """ + COLORS['primary'] + """;
-                    selection-color: """ + COLORS['text'] + """;
-                    border: 1px solid """ + COLORS['border'] + """;
-                }
-            """)
-            role_combo.setFixedHeight(35)
-            layout.addWidget(role_label)
-            layout.addWidget(role_combo)
-            
-            # Reset Password Button
-            reset_pwd_btn = QPushButton("Reset Password")
-            reset_pwd_btn.setStyleSheet(BUTTON_STYLE)
-            reset_pwd_btn.setFixedHeight(35)
-            layout.addWidget(reset_pwd_btn)
-            
-            # Password Reset Section (initially hidden)
-            password_section = QWidget()
-            password_section.hide()
-            password_layout = QVBoxLayout(password_section)
-            password_layout.setSpacing(15)
-            password_layout.setContentsMargins(0, 0, 0, 0)  # Remove margins to prevent layout shifts
-            
-            # New Password
-            password_label = QLabel("New Password:")
-            password_label.setFont(FONTS['body'])
-            password_input = QLineEdit()
-            password_input.setStyleSheet(INPUT_STYLE)
-            password_input.setFixedHeight(35)
-            password_input.setEchoMode(QLineEdit.Password)
-            password_layout.addWidget(password_label)
-            password_layout.addWidget(password_input)
-            
-            # Confirm Password
-            confirm_label = QLabel("Confirm Password:")
-            confirm_label.setFont(FONTS['body'])
-            confirm_input = QLineEdit()
-            confirm_input.setStyleSheet(INPUT_STYLE)
-            confirm_input.setFixedHeight(35)
-            confirm_input.setEchoMode(QLineEdit.Password)
-            password_layout.addWidget(confirm_label)
-            password_layout.addWidget(confirm_input)
-            
-            layout.addWidget(password_section)
-            
-            # Error Label
-            error_label = QLabel()
-            error_label.setStyleSheet(f"color: {COLORS['error']}")
-            error_label.setAlignment(Qt.AlignCenter)
-            layout.addWidget(error_label)
-            
-            # Buttons
-            btn_layout = QHBoxLayout()
-            save_btn = QPushButton("Save")
-            save_btn.setStyleSheet(BUTTON_STYLE)
-            save_btn.setFixedHeight(35)
-            cancel_btn = QPushButton("Cancel")
-            cancel_btn.setStyleSheet(BUTTON_STYLE)
-            cancel_btn.setFixedHeight(35)
-            
-            btn_layout.addWidget(save_btn)
-            btn_layout.addWidget(cancel_btn)
-            layout.addLayout(btn_layout)
-            
-            # Toggle password section visibility
-            def toggle_password_section():
-                if password_section.isHidden():
-                    dialog.setFixedHeight(420)  # Expanded height for password section
-                    password_section.show()
-                    reset_pwd_btn.setText("Cancel Password Reset")
-                else:
-                    dialog.setFixedHeight(200)  # Original height
-                    password_section.hide()
-                    reset_pwd_btn.setText("Reset Password")
-                    password_input.clear()
-                    confirm_input.clear()
-            
-            reset_pwd_btn.clicked.connect(toggle_password_section)
-            
-            def save_changes():
-                try:
-                    new_role = role_combo.currentText()
-                    
-                    # Validate passwords if section is visible
-                    if not password_section.isHidden():
-                        password = password_input.text()
-                        confirm = confirm_input.text()
-                        
-                        if not password:
-                            error_label.setText("Please enter a new password")
-                            return
-                        if password != confirm:
-                            error_label.setText("Passwords do not match")
-                            return
-                    
-                    conn = get_db_connection()
-                    cursor = conn.cursor()
-                    
-                    # Update role
-                    cursor.execute(
-                        "UPDATE users SET role=? WHERE username=?",
-                        (new_role, username)
-                    )
-                    
-                    # Update password if reset section is visible
-                    if not password_section.isHidden():
-                        cursor.execute(
-                            "UPDATE users SET password=? WHERE username=?",
-                            (password, username)
-                        )
-                    
-                    conn.commit()
-                    conn.close()
-                    
-                    self.load_users()
-                    dialog.accept()
-                    
-                    if not password_section.isHidden():
-                        QMessageBox.information(self, "Success", "User information and password updated")
-                    else:
-                        QMessageBox.information(self, "Success", "User information updated")
-                    
-                except Exception as e:
-                    error_label.setText(f"Error: {str(e)}")
-            
-            save_btn.clicked.connect(save_changes)
-            cancel_btn.clicked.connect(dialog.reject)
-            
-            dialog.exec_()
-            
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to edit user: {str(e)}")
+        dialog = AddEditUserDialog(self, username)
+        if dialog.exec_():
+            self.load_users()
 
     def toggle_user_status(self, username, current_status):
         """Toggle user active status"""
@@ -589,3 +310,201 @@ class UserManagementDialog(QDialog):
                 
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to clear sessions: {str(e)}")
+
+class AddEditUserDialog(QDialog):
+    def __init__(self, parent, username=None):
+        super().__init__(parent)
+        self.edit_mode = username is not None
+        self.existing_username = username
+
+        self.setWindowTitle("Edit User" if self.edit_mode else "Add New User")
+        self.setStyleSheet(DIALOG_STYLE)
+        self.setMinimumWidth(400)
+
+        layout = QVBoxLayout(self)
+        layout.setSpacing(15)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        # Username
+        username_label = QLabel("Username:")
+        username_label.setFont(FONTS['body'])
+        self.username_input = QLineEdit()
+        self.username_input.setStyleSheet(INPUT_STYLE)
+        self.username_input.setFixedHeight(35)
+        layout.addWidget(username_label)
+        layout.addWidget(self.username_input)
+
+        # Email
+        email_label = QLabel("Email:")
+        email_label.setFont(FONTS['body'])
+        self.email_input = QLineEdit()
+        self.email_input.setStyleSheet(INPUT_STYLE)
+        self.email_input.setFixedHeight(35)
+        layout.addWidget(email_label)
+        layout.addWidget(self.email_input)
+
+        # Password
+        password_label = QLabel("Password (leave blank to keep unchanged in edit mode):")
+        password_label.setFont(FONTS['body'])
+        self.password_input = QLineEdit()
+        self.password_input.setStyleSheet(INPUT_STYLE)
+        self.password_input.setFixedHeight(35)
+        self.password_input.setEchoMode(QLineEdit.Password)
+        layout.addWidget(password_label)
+        layout.addWidget(self.password_input)
+
+        # Role
+        role_label = QLabel("Role:")
+        role_label.setFont(FONTS['body'])
+        self.role_combo = QComboBox()
+        self.role_combo.addItems(["user", "admin"])
+        self.role_combo.setStyleSheet("""
+            QComboBox {
+                background-color: """ + COLORS['surface'] + """;
+                color: """ + COLORS['text'] + """;
+                border: 1px solid """ + COLORS['border'] + """;
+                border-radius: 4px;
+                padding: 8px;
+                min-width: 100px;
+            }
+            QComboBox QAbstractItemView { /* Style the dropdown list */
+                background-color: """ + COLORS['surface'] + """;
+                color: """ + COLORS['text'] + """;
+                border: 1px solid """ + COLORS['border'] + """;
+                selection-background-color: """ + COLORS['primary'] + """;
+            }
+        """)
+        layout.addWidget(role_label)
+        layout.addWidget(self.role_combo)
+
+        # Active Status Checkbox
+        self.active_checkbox = QCheckBox("Account Active")
+        self.active_checkbox.setFont(FONTS['body'])
+        self.active_checkbox.setStyleSheet("QCheckBox { spacing: 5px; }")
+        layout.addWidget(self.active_checkbox)
+
+        # Error Label
+        self.error_label = QLabel("")
+        self.error_label.setStyleSheet(f"color: {COLORS['error']};")
+        layout.addWidget(self.error_label)
+
+        # Buttons
+        button_layout = QHBoxLayout()
+        save_btn = QPushButton("Save")
+        save_btn.setFont(FONTS['button'])
+        save_btn.setStyleSheet(BUTTON_STYLE)
+        save_btn.clicked.connect(self.save_user)
+
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.setFont(FONTS['button'])
+        cancel_btn.setStyleSheet(BUTTON_STYLE)
+        cancel_btn.clicked.connect(self.reject)
+
+        button_layout.addWidget(save_btn)
+        button_layout.addWidget(cancel_btn)
+        layout.addLayout(button_layout)
+
+        if self.edit_mode:
+            self.load_user_data()
+        else:
+            # Default for new user
+            self.active_checkbox.setChecked(True)
+
+    def load_user_data(self):
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT username, email, role, is_active FROM users WHERE username=?",
+                           (self.existing_username,))
+            user = cursor.fetchone()
+            conn.close()
+
+            if user:
+                self.username_input.setText(user[0])
+                self.email_input.setText(user[1] if user[1] else "")
+                self.role_combo.setCurrentText(user[2])
+                self.active_checkbox.setChecked(bool(user[3]))
+            else:
+                self.error_label.setText("User not found.")
+
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to load user data: {str(e)}")
+
+    def save_user(self):
+        username = self.username_input.text().strip()
+        email = self.email_input.text().strip()
+        password = self.password_input.text() # Don't strip password
+        role = self.role_combo.currentText()
+        is_active = self.active_checkbox.isChecked()
+
+        if not username:
+            self.error_label.setText("Username cannot be empty.")
+            return
+        if email and not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+            self.error_label.setText("Invalid email format.")
+            return
+
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+
+            # Check for username/email conflicts (only if username/email changed or adding new)
+            if not self.edit_mode or username != self.existing_username:
+                cursor.execute("SELECT username FROM users WHERE username=?", (username,))
+                if cursor.fetchone():
+                    self.error_label.setText("Username already exists.")
+                    conn.close()
+                    return
+            if email and (not self.edit_mode or email != self.get_original_email()):
+                cursor.execute("SELECT email FROM users WHERE email=?", (email,))
+                if cursor.fetchone():
+                    self.error_label.setText("Email already registered.")
+                    conn.close()
+                    return
+
+            if self.edit_mode:
+                # Update existing user
+                if password:
+                    # Update password only if provided
+                    cursor.execute("""
+                        UPDATE users SET username=?, email=?, password=?, role=?, is_active=?
+                        WHERE username=?
+                    """, (username, email if email else None, password, role, is_active, self.existing_username))
+                else:
+                    # Don't update password
+                    cursor.execute("""
+                        UPDATE users SET username=?, email=?, role=?, is_active=?
+                        WHERE username=?
+                    """, (username, email if email else None, role, is_active, self.existing_username))
+                log_action = "User Edited"
+            else:
+                # Add new user
+                if not password:
+                    self.error_label.setText("Password is required for new users.")
+                    conn.close()
+                    return
+                cursor.execute("""
+                    INSERT INTO users (username, email, password, role, is_active)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (username, email if email else None, password, role, is_active))
+                log_action = "User Added"
+
+            conn.commit()
+            conn.close()
+            log_user_action(self.existing_username if self.edit_mode else username, f"{log_action}: {username}")
+            self.accept()
+
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to save user: {str(e)}")
+
+    def get_original_email(self):
+        # Helper to get original email for comparison during edit
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT email FROM users WHERE username=?", (self.existing_username,))
+            result = cursor.fetchone()
+            conn.close()
+            return result[0] if result else None
+        except Exception:
+            return None

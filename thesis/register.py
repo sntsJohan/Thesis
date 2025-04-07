@@ -56,6 +56,15 @@ class RegisterWindow(QDialog):
         layout.addWidget(username_label)
         layout.addWidget(self.username_input)
 
+        # Email
+        email_label = QLabel("Email")
+        email_label.setFont(FONTS['body'])
+        self.email_input = QLineEdit()
+        self.email_input.setStyleSheet(INPUT_STYLE)
+        self.email_input.setPlaceholderText("Enter your email address")
+        layout.addWidget(email_label)
+        layout.addWidget(self.email_input)
+
         # Password
         password_label = QLabel("Password")
         password_label.setFont(FONTS['body'])
@@ -105,9 +114,15 @@ class RegisterWindow(QDialog):
         username = self.username_input.text()
         password = self.password_input.text()
         confirm = self.confirm_input.text()
+        email = self.email_input.text()
 
-        if not username or not password:
+        if not username or not password or not email:
             self.error_label.setText("Please fill in all fields")
+            return
+
+        # Simple email format validation
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+            self.error_label.setText("Invalid email format")
             return
 
         # Validate password requirements
@@ -135,10 +150,17 @@ class RegisterWindow(QDialog):
                 conn.close()
                 return
 
-            # Add new user
+            # Check if email exists
+            cursor.execute("SELECT email FROM users WHERE email=?", (email,))
+            if cursor.fetchone():
+                self.error_label.setText("Email already registered")
+                conn.close()
+                return
+
+            # Add new user with email
             cursor.execute(
-                "INSERT INTO users (username, password, role) VALUES (?, ?, ?)",
-                (username, password, "user")
+                "INSERT INTO users (username, password, email, role) VALUES (?, ?, ?, ?)",
+                (username, password, email, "user")
             )
             conn.commit()
             conn.close()
