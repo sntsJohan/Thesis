@@ -290,16 +290,37 @@ class UserMainWindow(QMainWindow):
                         continue
                     
                     metadata = self.comment_metadata.get(comment, {})
-                    confidence_text = self.get_current_table().item(row, 2).text()
-                    confidence_value = float(confidence_text.strip('%')) / 100  # Convert percentage to decimal
                     
-                    # Get prediction value
+                    # Get table values
                     prediction = self.get_current_table().item(row, 1).text()
+                    confidence_text = self.get_current_table().item(row, 2).text().strip('%')
+                    confidence_value = float(confidence_text) / 100
                     
-                    # Convert likes_count to None if it's "N/A"
+                    # Handle likes_count - ensure it's a valid float or NULL
                     likes_count = metadata.get('likes_count')
-                    if likes_count == 'N/A':
+                    try:
+                        likes_count = float(likes_count) if likes_count not in ('N/A', '', None) else None
+                    except (ValueError, TypeError):
                         likes_count = None
+                    
+                    # Clean up text fields to handle emojis and special characters
+                    # Ensure values are strings before encoding
+                    def clean_text(value):
+                        if value is None:
+                            return ''
+                        # Convert float/int to string if needed
+                        if isinstance(value, (float, int)):
+                            value = str(value)
+                        # Handle string encoding
+                        try:
+                            return value.encode('ascii', 'ignore').decode()
+                        except AttributeError:
+                            return str(value)
+                    
+                    clean_comment = clean_text(comment)
+                    clean_profile_name = clean_text(metadata.get('profile_name', ''))
+                    clean_profile_picture = clean_text(metadata.get('profile_picture', ''))
+                    clean_reply_to = clean_text(metadata.get('reply_to', ''))
                     
                     cursor.execute("""
                         INSERT INTO tab_comments (
@@ -308,14 +329,17 @@ class UserMainWindow(QMainWindow):
                             likes_count, profile_id, is_reply, reply_to, is_selected
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, (
-                        tab_id, comment, prediction, confidence_value,
-                        metadata.get('profile_name'),
-                        metadata.get('profile_picture'),
+                        tab_id,
+                        clean_comment,
+                        prediction,
+                        confidence_value,
+                        clean_profile_name,
+                        clean_profile_picture,
                         metadata.get('date'),
                         likes_count,
                         metadata.get('profile_id'),
-                        metadata.get('is_reply', False),
-                        metadata.get('reply_to'),
+                        bool(metadata.get('is_reply', False)),
+                        clean_reply_to,
                         comment in self.selected_comments
                     ))
                     
@@ -387,6 +411,47 @@ class UserMainWindow(QMainWindow):
                 conn.close()
             except Exception as e:
                 print(f"Session close error: {e}")
+
+    def close_tab(self, index):
+        """Close a tab and remove its data from the database"""
+        try:
+            tab_name = self.tab_widget.tabText(index)
+            
+            # Remove tab data from database
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            # Get tab_id for this session and tab name
+            cursor.execute("""
+                SELECT tab_id 
+                FROM session_tabs 
+                WHERE session_id = ? AND tab_name = ?
+            """, (self.session_id, tab_name))
+            
+            row = cursor.fetchone()
+            if row:
+                tab_id = row[0]
+                # Delete comments first (foreign key constraint)
+                cursor.execute("DELETE FROM tab_comments WHERE tab_id = ?", (tab_id,))
+                # Then delete the tab
+                cursor.execute("DELETE FROM session_tabs WHERE tab_id = ?", (tab_id,))
+                conn.commit()
+            
+            conn.close()
+            
+            # Remove from UI
+            self.tab_widget.removeTab(index)
+            if tab_name in self.tabs:
+                del self.tabs[tab_name]
+                
+            # Update UI state if no tabs left
+            if self.tab_widget.count() == 0:
+                self.tab_widget.hide()
+                self.initial_message.show()
+                self.enable_dataset_operations(False)
+                
+        except Exception as e:
+            print(f"Error closing tab: {e}")
 
     def init_main_ui(self):
         """Initialize the main user interface"""
@@ -812,18 +877,6 @@ class UserMainWindow(QMainWindow):
             self.enable_dataset_operations(True)
             
         return table
-
-    def close_tab(self, index):
-        """Close a tab and clean up"""
-        tab_name = self.tab_widget.tabText(index)
-        self.tab_widget.removeTab(index)
-        if tab_name in self.tabs:
-            del self.tabs[tab_name]
-            
-        if self.tab_widget.count() == 0:
-            self.tab_widget.hide()
-            self.initial_message.show()
-            self.enable_dataset_operations(False)
 
     def enable_dataset_operations(self, enable=True):
         """Enable or disable dataset operation buttons"""
