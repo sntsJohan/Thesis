@@ -226,12 +226,16 @@ class MainWindow(QMainWindow):
                 self.showFullScreen()
             elif role and role.lower() == "user":
                 try:
+                    # Create new user window instance
                     self.user_window = UserMainWindow()
-                    self.user_window.set_current_user(username)  # Set username first
-                    self.user_window.set_main_window(self)      # Set main window reference
-                    self.hide()                                 # Hide main window
-                    self.user_window.init_main_ui()             # Initialize UI
-                    self.user_window.showFullScreen()           # Show window last
+                    # Set references
+                    self.user_window.main_window = self
+                    self.user_window.username_label.setText(f"👤 {username}")
+                    # Initialize session first
+                    self.user_window.set_current_user(username)
+                    # Show user window
+                    self.hide()
+                    self.user_window.showFullScreen()
                 except Exception as e:
                     display_message(self, "Error", f"Error initializing user interface: {e}")
                     self.central_widget.setCurrentIndex(0)

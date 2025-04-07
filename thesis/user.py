@@ -30,15 +30,16 @@ from comment_operations import generate_report_user
 from loading_overlay import LoadingOverlay
 from stopwords import TAGALOG_STOP_WORDS
 import re
-from db_config import log_user_action
+from db_config import log_user_action, get_db_connection
 
 class UserMainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.selected_comments = []
         self.comment_metadata = {}
-        self.current_user = None  # Store current user
-        self.main_window = None  # Reference to main window
+        self.current_user = None
+        self.main_window = None
+        self.session_id = None  # Add session ID property
         self.setWindowTitle("Cyberbullying Detection - User View")
         self.showFullScreen()
         self.setStyleSheet(f"background-color: {COLORS['background']}; color: {COLORS['text']};")
@@ -94,20 +95,298 @@ class UserMainWindow(QMainWindow):
         self.init_main_ui()
 
     def set_current_user(self, username):
-        """Set the current user for logging purposes"""
+        """Set the current user and create or restore their session"""
         self.current_user = username
+        self.create_or_restore_session()
         log_user_action(username, "User login")
 
-    def set_main_window(self, window):
-        """Set reference to main window"""
-        self.main_window = window
+    def create_or_restore_session(self):
+        """Create a new session or restore the last active one"""
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
 
-    def show_about(self):
-        """Show About dialog and log the action"""
-        from about import AboutDialog
-        about_dialog = AboutDialog(self)
-        about_dialog.exec_()
-        log_user_action(self.current_user, "Viewed About dialog")
+            # First deactivate any existing active sessions
+            cursor.execute("""
+                UPDATE user_sessions 
+                SET is_active = 0 
+                WHERE username = ? AND is_active = 1
+            """, (self.current_user,))
+            
+            # Create new session
+            cursor.execute("""
+                INSERT INTO user_sessions (username, is_active)
+                VALUES (?, 1)
+            """, (self.current_user,))
+            conn.commit()
+            
+            # Get the new session ID
+            self.session_id = cursor.execute("SELECT @@IDENTITY").fetchval()
+            
+            # Get the most recent session's tabs and comments
+            cursor.execute("""
+                SELECT TOP 1 session_id 
+                FROM user_sessions 
+                WHERE username = ? AND session_id != ?
+                ORDER BY created_at DESC
+            """, (self.current_user, self.session_id))
+            
+            last_session = cursor.fetchone()
+            
+            if last_session:
+                # Copy tabs and comments from the last session
+                old_session_id = last_session[0]
+                
+                # Copy tabs
+                cursor.execute("""
+                    INSERT INTO session_tabs (session_id, tab_name, tab_type)
+                    SELECT ?, tab_name, tab_type
+                    FROM session_tabs
+                    WHERE session_id = ?
+                """, (self.session_id, old_session_id))
+                
+                # Get the mapping of old tab_ids to new tab_ids
+                cursor.execute("""
+                    SELECT t1.tab_id as old_tab_id, t2.tab_id as new_tab_id
+                    FROM session_tabs t1
+                    JOIN session_tabs t2 ON t1.tab_name = t2.tab_name
+                    WHERE t1.session_id = ? AND t2.session_id = ?
+                """, (old_session_id, self.session_id))
+                
+                tab_mapping = {old: new for old, new in cursor.fetchall()}
+                
+                # Copy comments for each tab
+                for old_tab_id, new_tab_id in tab_mapping.items():
+                    cursor.execute("""
+                        INSERT INTO tab_comments (
+                            tab_id, comment_text, prediction, confidence,
+                            profile_name, profile_picture, comment_date,
+                            likes_count, profile_id, is_reply, reply_to, is_selected
+                        )
+                        SELECT 
+                            ?, comment_text, prediction, confidence,
+                            profile_name, profile_picture, comment_date,
+                            likes_count, profile_id, is_reply, reply_to, is_selected
+                        FROM tab_comments
+                        WHERE tab_id = ?
+                    """, (new_tab_id, old_tab_id))
+                
+                conn.commit()
+            
+            conn.close()
+            
+            # Now restore the UI state
+            self.restore_session()
+            
+        except Exception as e:
+            print(f"Session creation/restoration error: {e}")
+
+    def restore_session(self):
+        """Restore tabs and comments from saved session"""
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+
+            # Get all tabs for this session
+            cursor.execute("""
+                SELECT tab_id, tab_name, tab_type 
+                FROM session_tabs 
+                WHERE session_id = ?
+            """, (self.session_id,))
+            
+            tabs = cursor.fetchall()
+            
+            for tab_id, tab_name, tab_type in tabs:
+                # Create tab in UI
+                table = self.create_empty_tab(tab_name)
+                
+                # Get comments for this tab
+                cursor.execute("""
+                    SELECT comment_text, prediction, confidence,
+                           profile_name, profile_picture, comment_date,
+                           likes_count, profile_id, is_reply, reply_to, is_selected
+                    FROM tab_comments 
+                    WHERE tab_id = ?
+                """, (tab_id,))
+                
+                comments = cursor.fetchall()
+                
+                for comment_data in comments:
+                    (comment_text, prediction, confidence, profile_name, 
+                     profile_picture, comment_date, likes_count, profile_id, 
+                     is_reply, reply_to, is_selected) = comment_data
+                    
+                    # Store metadata
+                    self.comment_metadata[comment_text] = {
+                        'profile_name': profile_name,
+                        'profile_picture': profile_picture,
+                        'date': comment_date,
+                        'likes_count': likes_count,
+                        'profile_id': profile_id,
+                        'is_reply': is_reply,
+                        'reply_to': reply_to
+                    }
+                    
+                    # Add to selected comments if selected
+                    if is_selected:
+                        self.selected_comments.append(comment_text)
+                    
+                    # Add row to table
+                    row_position = table.rowCount()
+                    table.insertRow(row_position)
+                    
+                    display_text = f" [↪ Reply] {comment_text}" if is_reply else comment_text
+                    
+                    comment_item = QTableWidgetItem(display_text)
+                    comment_item.setData(Qt.UserRole, comment_text)
+                    
+                    prediction_item = QTableWidgetItem(prediction)
+                    prediction_item.setTextAlignment(Qt.AlignCenter)
+                    
+                    # Convert decimal confidence to percentage string
+                    confidence_str = f"{float(confidence):.2%}"
+                    confidence_item = QTableWidgetItem(confidence_str)
+                    confidence_item.setTextAlignment(Qt.AlignCenter)
+                    
+                    if prediction == "Cyberbullying":
+                        prediction_item.setForeground(QColor(COLORS['bullying']))
+                    else:
+                        prediction_item.setForeground(QColor(COLORS['normal']))
+                    
+                    table.setItem(row_position, 0, comment_item)
+                    table.setItem(row_position, 1, prediction_item)
+                    table.setItem(row_position, 2, confidence_item)
+                    
+                    if is_selected:
+                        for col in range(table.columnCount()):
+                            table.item(row_position, col).setBackground(QColor(COLORS['highlight']))
+                    
+                    table.resizeRowToContents(row_position)
+            
+            conn.close()
+            
+        except Exception as e:
+            print(f"Session restoration error: {e}")
+
+    def save_tab_state(self, tab_name, comments):
+        """Save tab and its comments to the database"""
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            # Create tab record
+            cursor.execute("""
+                INSERT INTO session_tabs (session_id, tab_name, tab_type)
+                VALUES (?, ?, ?)
+            """, (self.session_id, tab_name, "analysis"))
+            
+            tab_id = cursor.execute("SELECT @@IDENTITY").fetchval()
+            
+            # Save each comment
+            for comment in comments:
+                try:
+                    row = self.get_row_by_comment(comment)
+                    if row is None:
+                        continue
+                    
+                    metadata = self.comment_metadata.get(comment, {})
+                    confidence_text = self.get_current_table().item(row, 2).text()
+                    confidence_value = float(confidence_text.strip('%')) / 100  # Convert percentage to decimal
+                    
+                    # Get prediction value
+                    prediction = self.get_current_table().item(row, 1).text()
+                    
+                    # Convert likes_count to None if it's "N/A"
+                    likes_count = metadata.get('likes_count')
+                    if likes_count == 'N/A':
+                        likes_count = None
+                    
+                    cursor.execute("""
+                        INSERT INTO tab_comments (
+                            tab_id, comment_text, prediction, confidence,
+                            profile_name, profile_picture, comment_date,
+                            likes_count, profile_id, is_reply, reply_to, is_selected
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        tab_id, comment, prediction, confidence_value,
+                        metadata.get('profile_name'),
+                        metadata.get('profile_picture'),
+                        metadata.get('date'),
+                        likes_count,
+                        metadata.get('profile_id'),
+                        metadata.get('is_reply', False),
+                        metadata.get('reply_to'),
+                        comment in self.selected_comments
+                    ))
+                    
+                except Exception as e:
+                    print(f"Error saving comment {comment}: {e}")
+                    continue
+            
+            conn.commit()
+            conn.close()
+            
+        except Exception as e:
+            print(f"Tab save error: {e}")
+
+    def get_row_by_comment(self, comment_text):
+        """Helper function to find row number by comment text"""
+        table = self.get_current_table()
+        if not table:
+            return None
+            
+        for row in range(table.rowCount()):
+            # Check both display text and stored data
+            item = table.item(row, 0)
+            if not item:
+                continue
+                
+            stored_text = item.data(Qt.UserRole)
+            if stored_text == comment_text:
+                return row
+                
+        return None
+
+    def confirm_sign_out(self):
+        """Show confirmation dialog before signing out and close session"""
+        msg = QMessageBox(self)
+        msg.setIcon(QMessageBox.Question)
+        msg.setWindowTitle("Sign Out")
+        msg.setText("Are you sure you want to sign out?")
+        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        
+        msg.setStyleSheet(f"""
+            QMessageBox {{
+                background-color: {COLORS['background']};
+                color: {COLORS['text']};
+            }}
+            QPushButton {{
+                {BUTTON_STYLE}
+                min-width: 100px;
+            }}
+        """)
+        
+        if msg.exec_() == QMessageBox.Yes:
+            self.close_session()
+            log_user_action(self.current_user, "User signed out")
+            self.main_window.show()
+            self.close()
+
+    def close_session(self):
+        """Close the current session"""
+        if self.session_id:
+            try:
+                conn = get_db_connection()
+                cursor = conn.cursor()
+                cursor.execute("""
+                    UPDATE user_sessions 
+                    SET is_active = 0, last_accessed = GETDATE()
+                    WHERE session_id = ?
+                """, (self.session_id,))
+                conn.commit()
+                conn.close()
+            except Exception as e:
+                print(f"Session close error: {e}")
 
     def init_main_ui(self):
         """Initialize the main user interface"""
@@ -427,34 +706,12 @@ class UserMainWindow(QMainWindow):
         # Add splitter to content layout
         self.content_layout.addWidget(splitter)
 
-    def confirm_sign_out(self):
-        """Show confirmation dialog before signing out"""
-        msg = QMessageBox(self)
-        msg.setIcon(QMessageBox.Question)
-        msg.setWindowTitle("Sign Out")
-        msg.setText("Are you sure you want to sign out?")
-        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-        
-        msg.setStyleSheet(f"""
-            QMessageBox {{
-                background-color: {COLORS['background']};
-                color: {COLORS['text']};
-            }}
-            QPushButton {{
-                {BUTTON_STYLE}
-                min-width: 100px;
-            }}
-        """)
-        
-        if msg.exec_() == QMessageBox.Yes:
-            log_user_action(self.current_user, "User signed out")
-            self.main_window.show()
-            self.close()
-
-    def closeEvent(self, event):
-        """Handle window close event"""
-        log_user_action(self.current_user, "Application closed")
-        event.accept()
+    def show_about(self):
+        """Show About dialog and log the action"""
+        from about import AboutDialog
+        about_dialog = AboutDialog(self)
+        about_dialog.exec_()
+        log_user_action(self.current_user, "Viewed About dialog")
 
     def show_loading(self, show=True):
         """Show or hide the loading overlay"""
@@ -908,6 +1165,9 @@ class UserMainWindow(QMainWindow):
 
         tab_index = self.tab_widget.indexOf(self.tabs[tab_name])
         self.tab_widget.setCurrentIndex(tab_index)
+
+        # Save the tab state after populating
+        self.save_tab_state(tab_name, comments)
 
     def show_summary(self):
         """Show summary of comment analysis"""
