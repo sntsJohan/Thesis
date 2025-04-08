@@ -442,56 +442,36 @@ class UserMainWindow(QMainWindow):
                 print(f"Session close error: {e}")
 
     def close_tab(self, index):
-        """Close a tab and remove its data from the database"""
-        try:
-            tab_name = self.tab_widget.tabText(index)
+        """Close the tab and clean up resources"""
+        # Get tab name before removing
+        tab_name = self.tab_widget.tabText(index)
+        
+        # Remove tab and its reference
+        self.tab_widget.removeTab(index)
+        if tab_name in self.tabs:
+            del self.tabs[tab_name]
             
-            # Remove tab data from database
-            try:
-                conn = get_db_connection()
-                cursor = conn.cursor()
-                
-                # Get tab_id for this session and tab name
-                cursor.execute("""
-                    SELECT tab_id 
-                    FROM session_tabs 
-                    WHERE session_id = ? AND tab_name = ?
-                """, (self.session_id, tab_name))
-                
-                row = cursor.fetchone()
-                if row:
-                    tab_id = row[0]
-                    # Delete comments first (foreign key constraint)
-                    cursor.execute("DELETE FROM tab_comments WHERE tab_id = ?", (tab_id,))
-                    # Then delete the tab
-                    cursor.execute("DELETE FROM session_tabs WHERE tab_id = ?", (tab_id,))
-                    conn.commit()
-                
-                conn.close()
-            except Exception as e:
-                print(f"Database cleanup error: {e}")
+        # If no tabs left, show initial message and disable dataset operations
+        if self.tab_widget.count() == 0:
+            self.tab_widget.hide()
+            self.initial_message.show()
+            self.enable_dataset_operations(False)
+            self.add_remove_button.setEnabled(False)  # Disable row operations
+            self.export_selected_button.setEnabled(False) # Disable row operations
+            self.details_text_edit.clear() # Clear details panel
             
-            # Get widget reference before removing
-            tab_widget = self.tabs.get(tab_name)
+        # Clean up the widget
+        if tab_name in self.tabs:
+            tab_widget = self.tabs[tab_name]
+            tab_widget.deleteLater()
+            del self.tabs[tab_name]
             
-            # Remove from UI and dictionary
-            if tab_name in self.tabs:
-                del self.tabs[tab_name]
-            self.tab_widget.removeTab(index)
+        # Update UI state if no tabs left
+        if self.tab_widget.count() == 0:
+            self.tab_widget.hide()
+            self.initial_message.show()
+            self.enable_dataset_operations(False)
             
-            # Clean up the widget
-            if tab_widget:
-                tab_widget.deleteLater()
-            
-            # Update UI state if no tabs left
-            if self.tab_widget.count() == 0:
-                self.tab_widget.hide()
-                self.initial_message.show()
-                self.enable_dataset_operations(False)
-                
-        except Exception as e:
-            print(f"Error closing tab: {e}")
-
     def init_main_ui(self):
         """Initialize the main user interface"""
         # Create main widget
@@ -524,12 +504,6 @@ class UserMainWindow(QMainWindow):
         self.username_label.setFont(FONTS['button'])
         self.username_label.hide()  # Hide the label instead of removing it
         menu_layout.addWidget(self.username_label)
-        
-        # About button
-        about_button = QPushButton("About")
-        about_button.clicked.connect(self.show_about)
-        about_button.setFont(FONTS['button'])
-        menu_layout.addWidget(about_button)
         
         # Create sign out button
         sign_out_button = QPushButton("Sign Out")

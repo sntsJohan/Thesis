@@ -822,6 +822,9 @@ class MainWindow(QMainWindow):
             self.tab_widget.hide()
             self.initial_message.show()
             self.enable_dataset_operations(False)
+            self.add_remove_button.setEnabled(False)  # Disable row operations
+            self.export_selected_button.setEnabled(False) # Disable row operations
+            self.details_text_edit.clear() # Clear details panel
 
     def enable_dataset_operations(self, enable=True):
         """Enable or disable dataset operation buttons"""
