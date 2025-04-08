@@ -1,6 +1,7 @@
-from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton, QApplication
+from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton, 
+                           QApplication, QHBoxLayout, QWidget)
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QIcon
+from PyQt5.QtGui import QIcon, QPixmap, QPalette, QColor
 from styles import COLORS, FONTS, BUTTON_STYLE, INPUT_STYLE
 from werkzeug.security import generate_password_hash
 import json
@@ -15,12 +16,24 @@ class RegisterWindow(QDialog):
         self.setStyleSheet(f"background-color: {COLORS['background']}; color: {COLORS['text']};")
         self.setMinimumWidth(400)
         
+        # Set tooltip style
+        self.setStyleSheet(f"""
+            QToolTip {{
+                background-color: {COLORS['surface']};
+                color: {COLORS['text']};
+                border: 1px solid {COLORS['border']};
+                padding: 5px;
+                border-radius: 4px;
+                font-size: 12px;
+            }}
+        """)
+        
         # Position window on the right side and center it vertically
         screen = QApplication.desktop().screenGeometry()
-        self.setGeometry(0, 0, 400, 500)  # Set initial size
+        self.setGeometry(0, 0, 400, 600)
         qr = self.frameGeometry()
-        qr.moveCenter(screen.center())  # Center the window
-        qr.moveRight(screen.right() - 350)  # Move to right side with 200px margin
+        qr.moveCenter(screen.center())
+        qr.moveRight(screen.right() - 350)
         self.setGeometry(qr)
         
         # Set window icon
@@ -41,12 +54,6 @@ class RegisterWindow(QDialog):
         title.setStyleSheet(f"color: {COLORS['primary']}; font-size: 24px;")
         title.setAlignment(Qt.AlignCenter)
         layout.addWidget(title)
-
-        # Password requirements label
-        requirements = QLabel("Password must contain:\n• 8+ characters\n• Uppercase letter\n• Lowercase letter\n• Number\n• Special character")
-        requirements.setFont(FONTS['body'])
-        requirements.setStyleSheet(f"color: {COLORS['text']}; font-size: 12px;")
-        layout.addWidget(requirements)
 
         # Username
         username_label = QLabel("Username")
@@ -73,6 +80,17 @@ class RegisterWindow(QDialog):
         self.password_input.setStyleSheet(INPUT_STYLE)
         self.password_input.setPlaceholderText("Enter your password")
         self.password_input.setEchoMode(QLineEdit.Password)
+        
+        # Set tooltip with password requirements
+        self.password_input.setToolTip(
+            "<b>Password Requirements:</b><br>"
+            "• At least 8 characters<br>"
+            "• One uppercase letter<br>"
+            "• One lowercase letter<br>"
+            "• One number<br>"
+            "• One special character (!@#$%^&*(),.?\":{}|<>)"
+        )
+        
         layout.addWidget(password_label)
         layout.addWidget(self.password_input)
 
@@ -97,6 +115,103 @@ class RegisterWindow(QDialog):
         self.error_label.setStyleSheet(f"color: {COLORS['error']};")
         self.error_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.error_label)
+
+    def show_status_container(self, event):
+        """Show the status container when password field is focused"""
+        QLineEdit.focusInEvent(self.password_input, event)
+        self.status_container.show()
+
+    def hide_status_container(self, event):
+        """Hide the status container when password field loses focus"""
+        QLineEdit.focusOutEvent(self.password_input, event)
+        self.status_container.hide()
+
+    def update_password_requirements(self, password):
+        """Update the visual status of password requirements"""
+        # Length requirement
+        length_icon, length_label = self.requirement_labels['length']
+        if len(password) >= 8:
+            length_icon.setStyleSheet(f"""
+                QLabel {{
+                    background-color: {COLORS['success']};
+                    border-radius: 8px;
+                }}
+            """)
+        else:
+            length_icon.setStyleSheet(f"""
+                QLabel {{
+                    background-color: {COLORS['error']};
+                    border-radius: 8px;
+                }}
+            """)
+
+        # Uppercase requirement
+        upper_icon, upper_label = self.requirement_labels['uppercase']
+        if re.search(r"[A-Z]", password):
+            upper_icon.setStyleSheet(f"""
+                QLabel {{
+                    background-color: {COLORS['success']};
+                    border-radius: 8px;
+                }}
+            """)
+        else:
+            upper_icon.setStyleSheet(f"""
+                QLabel {{
+                    background-color: {COLORS['error']};
+                    border-radius: 8px;
+                }}
+            """)
+
+        # Lowercase requirement
+        lower_icon, lower_label = self.requirement_labels['lowercase']
+        if re.search(r"[a-z]", password):
+            lower_icon.setStyleSheet(f"""
+                QLabel {{
+                    background-color: {COLORS['success']};
+                    border-radius: 8px;
+                }}
+            """)
+        else:
+            lower_icon.setStyleSheet(f"""
+                QLabel {{
+                    background-color: {COLORS['error']};
+                    border-radius: 8px;
+                }}
+            """)
+
+        # Number requirement
+        number_icon, number_label = self.requirement_labels['number']
+        if re.search(r"\d", password):
+            number_icon.setStyleSheet(f"""
+                QLabel {{
+                    background-color: {COLORS['success']};
+                    border-radius: 8px;
+                }}
+            """)
+        else:
+            number_icon.setStyleSheet(f"""
+                QLabel {{
+                    background-color: {COLORS['error']};
+                    border-radius: 8px;
+                }}
+            """)
+
+        # Special character requirement
+        special_icon, special_label = self.requirement_labels['special']
+        if re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
+            special_icon.setStyleSheet(f"""
+                QLabel {{
+                    background-color: {COLORS['success']};
+                    border-radius: 8px;
+                }}
+            """)
+        else:
+            special_icon.setStyleSheet(f"""
+                QLabel {{
+                    background-color: {COLORS['error']};
+                    border-radius: 8px;
+                }}
+            """)
 
     def validate_password(self, password):
         if len(password) < 8:
