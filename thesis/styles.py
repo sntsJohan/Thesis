@@ -304,7 +304,7 @@ TABLE_ALTERNATE_STYLE = f"""
 # Welcome Screen Styles
 WELCOME_TITLE_STYLE = f"""
     font-size: 42px; 
-    color: {COLORS['primary']};
+    color: {COLORS['text']};
     letter-spacing: 1px;
 """
 
@@ -316,57 +316,58 @@ WELCOME_SUBTITLE_STYLE = f"""
 
 WELCOME_DESCRIPTION_STYLE = f"""
     font-size: 15px; 
-    color: {COLORS['secondary']};
+    color: {COLORS['text_secondary']};
     letter-spacing: 0.2px;
 """
 
 WELCOME_VERSION_STYLE = f"""
-    color: {COLORS['surface']}; 
+    color: {COLORS['text_secondary']}; 
     font-size: 18px;
 """
 
-WELCOME_BACKGROUND_STYLE = f"background-color: {COLORS['primary']};"
+WELCOME_BACKGROUND_STYLE = f"background-color: {COLORS['background']};"
 
 WELCOME_CONTAINER_STYLE = "background-color: transparent;"
 
-WELCOME_TITLE_FONT = QFont('Times New Roman', 96)
+WELCOME_TITLE_FONT = QFont('Segoe UI', 96)
 WELCOME_TITLE_FONT.setBold(True)
 WELCOME_TITLE_FONT.setStyle(QFont.StyleItalic)
 
-WELCOME_TITLE_STYLE_DARK = """
-    color: #222222;
+WELCOME_TITLE_STYLE_DARK = f"""
+    color: {COLORS['text']};
 """
 
 WELCOME_SUBTITLE_FONT = QFont('Segoe UI', 24)
 
-GET_STARTED_BUTTON_DARK_STYLE = """
-    QPushButton {
-        background-color: #222222;
+GET_STARTED_BUTTON_DARK_STYLE = f"""
+    QPushButton {{
+        background-color: {COLORS['primary']};
         color: white;
         border: none;
         padding: 12px 24px;
         border-radius: 4px;
         min-width: 150px;
         font-weight: 600;
-    }
-    QPushButton:hover {
-        background-color: #333333;
-    }
+    }}
+    QPushButton:hover {{
+        background-color: {COLORS['hover']};
+    }}
 """
 
-ABOUT_BUTTON_OUTLINE_STYLE = """
-    QPushButton {
+ABOUT_BUTTON_OUTLINE_STYLE = f"""
+    QPushButton {{
         background-color: transparent;
-        color: #222222;
-        border: 1px solid #222222;
+        color: {COLORS['text']};
+        border: 1px solid {COLORS['text']};
         padding: 12px 24px;
         border-radius: 4px;
         min-width: 100px;
         font-weight: 600;
-    }
-    QPushButton:hover {
-        background-color: rgba(34, 34, 34, 0.1);
-    }
+    }}
+    QPushButton:hover {{
+        background-color: {COLORS['text']};
+        color: {COLORS['background']};
+    }}
 """
 
 DETAIL_TEXT_SPAN_STYLE = "font-size: 16px;"
