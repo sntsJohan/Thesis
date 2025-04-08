@@ -2,7 +2,6 @@ from sample_data import SAMPLE_COMMENTS
 import random
 
 class CyberbullyingModel:
-    """Interface for cyberbullying detection model"""
     
     def __init__(self, model_path=None):
         """Initialize model with optional path to saved model"""

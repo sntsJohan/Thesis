@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import (QMainWindow, QVBoxLayout, QHBoxLayout, QLabel,
                            QFileDialog, QTableWidget, QTableWidgetItem, 
                            QHeaderView, QSplitter, QGridLayout, QComboBox, 
                            QSizePolicy, QStackedWidget, QDialog, QTabWidget, QTabBar,
-                           QMessageBox, QCheckBox, QApplication)
+                           QMessageBox, QCheckBox, QApplication, QRadioButton)
 from PyQt5.QtCore import Qt, QSize, QRect
 from PyQt5.QtGui import QColor, QFont, QPixmap, QImage, QIcon, QPainter, QPen
 import numpy as np
@@ -118,6 +118,9 @@ class UserMainWindow(QMainWindow):
         # Initialize tab counters
         self.csv_tab_count = 1
         self.url_tab_count = 1
+
+        # Initialize input stack
+        self.input_stack = QStackedWidget()
 
         # Create loading overlay
         self.loading_overlay = LoadingOverlay(self)
@@ -540,7 +543,7 @@ class UserMainWindow(QMainWindow):
         content_container = QWidget()
         self.content_layout = QVBoxLayout(content_container)
         self.content_layout.setSpacing(15)
-        self.content_layout.setContentsMargins(25, 50, 25, 35)
+        self.content_layout.setContentsMargins(25, 25, 25, 35)
         
         # Initialize the rest of the UI
         self.init_ui()
@@ -577,121 +580,186 @@ class UserMainWindow(QMainWindow):
         self.csv_tab_count = 1
         self.url_tab_count = 1
         
-        # Input Container
+        # Main input container with better organization
         input_container = QWidget()
         input_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
         input_container.setStyleSheet("background: transparent;")
 
-        # Main horizontal layout
-        input_layout = QHBoxLayout(input_container)
-        input_layout.setSpacing(20)
+        # Main vertical layout for inputs
+        input_layout = QVBoxLayout(input_container)
+        input_layout.setSpacing(10)
         input_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Facebook Post Section
+        # Input method selection
+        method_label = QLabel("Choose Input Method:")
+        method_label.setFont(FONTS['header'])
+        method_label.setStyleSheet(f"color: {COLORS['text']}; margin-bottom: 5px;")
+        input_layout.addWidget(method_label)
+
+        # Create radio button group for input selection
+        radio_group = QWidget()
+        radio_layout = QHBoxLayout(radio_group)
+        radio_layout.setSpacing(20)
+        radio_layout.setContentsMargins(0, 0, 0, 10)
+
+        # Create radio buttons
+        self.fb_radio = QRadioButton("Facebook Post")
+        self.csv_radio = QRadioButton("CSV File")
+        self.direct_radio = QRadioButton("Single Comment")
+
+        # Style the radio buttons
+        radio_style = f"""
+            QRadioButton {{
+                color: {COLORS['text']};
+                font-size: 14px;
+                padding: 8px;
+                spacing: 8px;
+            }}
+            QRadioButton::indicator {{
+                width: 16px;
+                height: 16px;
+            }}
+            QRadioButton::indicator:unchecked {{
+                border: 2px solid {COLORS['border']};
+                border-radius: 8px;
+                background-color: {COLORS['surface']};
+            }}
+            QRadioButton::indicator:checked {{
+                border: 2px solid {COLORS['highlight']};
+                border-radius: 8px;
+                background-color: {COLORS['highlight']};
+            }}
+        """
+        self.fb_radio.setStyleSheet(radio_style)
+        self.csv_radio.setStyleSheet(radio_style)
+        self.direct_radio.setStyleSheet(radio_style)
+
+        # Add radio buttons to layout
+        radio_layout.addWidget(self.fb_radio)
+        radio_layout.addWidget(self.csv_radio)
+        radio_layout.addWidget(self.direct_radio)
+        radio_layout.addStretch()
+
+        # Connect radio buttons to stack widget
+        self.fb_radio.toggled.connect(lambda checked: self.input_stack.setCurrentIndex(0) if checked else None)
+        self.csv_radio.toggled.connect(lambda checked: self.input_stack.setCurrentIndex(1) if checked else None)
+        self.direct_radio.toggled.connect(lambda checked: self.input_stack.setCurrentIndex(2) if checked else None)
+
+        # Set default selection
+        self.fb_radio.setChecked(True)
+
+        input_layout.addWidget(radio_group)
+
+        # Create stacked widget for different input methods
+        self.input_stack = QStackedWidget()
+        input_layout.addWidget(self.input_stack)
+
+        # Facebook Post Input
         fb_section = QWidget()
-        fb_section.setFixedHeight(200)
         fb_section.setStyleSheet(SECTION_CONTAINER_STYLE)
         fb_layout = QVBoxLayout(fb_section)
         fb_layout.setSpacing(8)
         fb_layout.setContentsMargins(12, 12, 12, 12)
 
-        # Facebook section components
-        fb_title = QLabel("Facebook Post")
+        fb_title = QLabel("Facebook Post Analysis")
         fb_title.setFont(FONTS['header'])
         fb_title.setStyleSheet(f"color: {COLORS['text']};")
-        fb_title.setContentsMargins(0, 0, 0, 5)
         fb_layout.addWidget(fb_title)
 
-        url_layout = QHBoxLayout()
-        url_layout.setSpacing(12)
-        url_layout.setContentsMargins(0, 0, 0, 0)
+        fb_description = QLabel("Enter a Facebook post URL to analyze its comments")
+        fb_description.setStyleSheet(f"color: {COLORS['text']}; font-size: 12px; margin-bottom: 5px;")
+        fb_layout.addWidget(fb_description)
 
+        url_layout = QHBoxLayout()
         self.url_input.setStyleSheet(INPUT_STYLE)
-        self.url_input.setPlaceholderText("Enter Facebook Post URL")
+        self.url_input.setPlaceholderText("Paste Facebook post URL here...")
+        self.url_input.setToolTip("Enter the full URL of a Facebook post to analyze its comments")
+        url_layout.addWidget(self.url_input)
         
         self.include_replies.setStyleSheet(CHECKBOX_REPLY_STYLE)
-        self.include_replies.setChecked(True)
-        
-        url_layout.addWidget(self.url_input, 1)
-        url_layout.addWidget(self.include_replies, 0)
+        self.include_replies.setToolTip("Include reply comments in the analysis")
+        url_layout.addWidget(self.include_replies)
         fb_layout.addLayout(url_layout)
 
         self.scrape_button.setFont(FONTS['button'])
         self.scrape_button.setStyleSheet(BUTTON_STYLE)
+        self.scrape_button.setToolTip("Start analyzing comments from the Facebook post")
         fb_layout.addWidget(self.scrape_button)
+        self.input_stack.addWidget(fb_section)
 
-        input_layout.addWidget(fb_section)
-
-        # CSV File Section
+        # CSV File Input
         csv_section = QWidget()
-        csv_section.setFixedHeight(200)
         csv_section.setStyleSheet(SECTION_CONTAINER_STYLE)
         csv_layout = QVBoxLayout(csv_section)
         csv_layout.setSpacing(8)
         csv_layout.setContentsMargins(12, 12, 12, 12)
         
-        csv_title = QLabel("CSV File")
+        csv_title = QLabel("CSV File Analysis")
         csv_title.setFont(FONTS['header'])
         csv_title.setStyleSheet(f"color: {COLORS['text']};")
-        csv_title.setContentsMargins(0, 0, 0, 5)
         csv_layout.addWidget(csv_title)
 
+        csv_description = QLabel("Upload a CSV file containing comments to analyze")
+        csv_description.setStyleSheet(f"color: {COLORS['text']}; font-size: 12px; margin-bottom: 5px;")
+        csv_layout.addWidget(csv_description)
+
         file_browse_layout = QHBoxLayout()
-        file_browse_layout.setContentsMargins(0, 0, 0, 0)
         self.file_input.setStyleSheet(INPUT_STYLE)
-        self.file_input.setPlaceholderText("Select CSV file")
+        self.file_input.setPlaceholderText("Select CSV file...")
+        self.file_input.setToolTip("Choose a CSV file containing comments to analyze")
+        file_browse_layout.addWidget(self.file_input)
         
         self.browse_button.setFont(FONTS['button'])
         self.browse_button.setStyleSheet(BUTTON_STYLE)
         self.browse_button.setFixedWidth(80)
-        
-        file_browse_layout.addWidget(self.file_input)
+        self.browse_button.setToolTip("Browse for a CSV file")
         file_browse_layout.addWidget(self.browse_button)
         csv_layout.addLayout(file_browse_layout)
         
         self.process_csv_button.setFont(FONTS['button'])
         self.process_csv_button.setStyleSheet(BUTTON_STYLE)
+        self.process_csv_button.setToolTip("Start analyzing comments from the CSV file")
         csv_layout.addWidget(self.process_csv_button)
-        
-        input_layout.addWidget(csv_section)
+        self.input_stack.addWidget(csv_section)
 
-        # Direct Input Section
+        # Direct Input
         direct_section = QWidget()
-        direct_section.setFixedHeight(200)
         direct_section.setStyleSheet(SECTION_CONTAINER_STYLE)
         direct_layout = QVBoxLayout(direct_section)
         direct_layout.setSpacing(8)
         direct_layout.setContentsMargins(12, 12, 12, 12)
         
-        direct_title = QLabel("Direct Input")
+        direct_title = QLabel("Single Comment Analysis")
         direct_title.setFont(FONTS['header'])
         direct_title.setStyleSheet(f"color: {COLORS['text']};")
-        direct_title.setContentsMargins(0, 0, 0, 5)
         direct_layout.addWidget(direct_title)
+
+        direct_description = QLabel("Enter a single comment to analyze")
+        direct_description.setStyleSheet(f"color: {COLORS['text']}; font-size: 12px; margin-bottom: 5px;")
+        direct_layout.addWidget(direct_description)
         
         self.text_input.setStyleSheet(INPUT_STYLE)
-        self.text_input.setPlaceholderText("Enter comment to analyze")
+        self.text_input.setPlaceholderText("Type or paste a comment here...")
+        self.text_input.setToolTip("Enter a single comment to analyze")
+        direct_layout.addWidget(self.text_input)
         
         self.analyze_button.setFont(FONTS['button'])
         self.analyze_button.setStyleSheet(BUTTON_STYLE)
-        
-        direct_layout.addWidget(self.text_input)
+        self.analyze_button.setToolTip("Analyze the entered comment")
         direct_layout.addWidget(self.analyze_button)
-        
-        input_layout.addWidget(direct_section)
+        self.input_stack.addWidget(direct_section)
 
         self.content_layout.addWidget(input_container)
 
         # Create responsive splitter for table and details
         splitter = QSplitter(Qt.Horizontal)
-        splitter.setHandleWidth(0)  # Make handle invisible
+        splitter.setHandleWidth(0)
         splitter.setStyleSheet(f"""
             QSplitter::handle {{
                 background: none;
                 width: 0px;
             }}
         """)
-        # Make splitter immovable
         splitter.setChildrenCollapsible(False)
 
         # Table Container
@@ -703,25 +771,24 @@ class UserMainWindow(QMainWindow):
         # Add tab widget
         table_layout.addWidget(self.initial_message)
         table_layout.addWidget(self.tab_widget)
-        self.tab_widget.hide()  # Hide tab widget initially
+        self.tab_widget.hide()
 
         splitter.addWidget(table_container)
 
-        # Details Panel with enhanced styling
+        # Details Panel
         details_container = QWidget()
         details_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
         details_layout = QVBoxLayout(details_container)
         details_layout.setSpacing(15)
         details_layout.setContentsMargins(15, 0, 0, 0)
 
-        # Details section with better visual hierarchy
+        # Details section
         details_section = QWidget()
         details_section.setStyleSheet(DETAILS_SECTION_STYLE)
         details_section_layout = QVBoxLayout(details_section)
         details_section_layout.setSpacing(10)
         details_section_layout.setContentsMargins(15, 15, 15, 15)
 
-        # Details header with icon
         details_header = QHBoxLayout()
         details_title = QLabel("Comment Details")
         details_title.setFont(FONTS['header'])
@@ -730,27 +797,24 @@ class UserMainWindow(QMainWindow):
         details_header.addStretch()
         details_section_layout.addLayout(details_header)
 
-        # Enhanced details text area
         self.details_text_edit = QTextEdit()
         self.details_text_edit.setReadOnly(True)
         self.details_text_edit.setStyleSheet(TEXT_EDIT_STYLE)
         details_section_layout.addWidget(self.details_text_edit)
         details_layout.addWidget(details_section)
 
-        # Row Operations Section - Enhanced styling
+        # Row Operations Section
         row_ops_section = QWidget()
         row_ops_section.setStyleSheet(DETAILS_SECTION_STYLE)
         row_ops_layout = QVBoxLayout(row_ops_section)
         row_ops_layout.setSpacing(12)
         row_ops_layout.setContentsMargins(15, 15, 15, 15)
 
-        # Row operations title
         row_ops_title = QLabel("Row Operations")
         row_ops_title.setFont(FONTS['header'])
         row_ops_title.setStyleSheet(f"color: {COLORS['text']};")
         row_ops_layout.addWidget(row_ops_title)
 
-        # Row operation buttons grid
         row_grid = QGridLayout()
         row_grid.setSpacing(10)
         row_grid.setContentsMargins(0, 5, 0, 5)
@@ -769,7 +833,7 @@ class UserMainWindow(QMainWindow):
         row_ops_layout.addLayout(row_grid)
         details_layout.addWidget(row_ops_section)
 
-        # Dataset Operations Section - Better organization and spacing
+        # Dataset Operations Section
         dataset_ops_section = QWidget()
         dataset_ops_section.setStyleSheet(DETAILS_SECTION_STYLE)
         dataset_ops_layout = QVBoxLayout(dataset_ops_section)
@@ -781,26 +845,24 @@ class UserMainWindow(QMainWindow):
         dataset_ops_title.setStyleSheet(f"color: {COLORS['text']};")
         dataset_ops_layout.addWidget(dataset_ops_title)
 
-        # Create grid layout for operation buttons with proper spacing
         ops_grid = QGridLayout()
         ops_grid.setSpacing(10)
         ops_grid.setContentsMargins(0, 5, 0, 5)
 
-        # Dataset operation buttons with icons
         button_configs = [
             (self.show_summary_button, "📊 Summary", 0, 0),
             (self.word_cloud_button, "☁️ Word Cloud", 0, 1),
             (self.export_all_button, "📤 Export All", 0, 2),
-            (self.generate_report_button, "📝 Generate Report", 1, 0, 3)  # span 3 columns
+            (self.generate_report_button, "📝 Generate Report", 1, 0, 3)
         ]
 
         for button, text, row, col, *span in button_configs:
             button.setText(text)
             button.setFont(FONTS['button'])
             button.setStyleSheet(BUTTON_STYLE)
-            button.setEnabled(False)  # Initially disabled
+            button.setEnabled(False)
             if span:
-                ops_grid.addWidget(button, row, col, 1, span[0])  # Use column span if provided
+                ops_grid.addWidget(button, row, col, 1, span[0])
             else:
                 ops_grid.addWidget(button, row, col)
 
@@ -809,12 +871,10 @@ class UserMainWindow(QMainWindow):
 
         splitter.addWidget(details_container)
         
-        # Set splitter sizes (90% for table, 10% for details)
         splitter.setSizes([900, 100])
         splitter.setStretchFactor(0, 9)
         splitter.setStretchFactor(1, 1)
 
-        # Add splitter to content layout
         self.content_layout.addWidget(splitter)
 
     def show_about(self):
