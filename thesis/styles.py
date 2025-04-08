@@ -2,21 +2,21 @@ from PyQt5.QtGui import QColor, QFont
 
 # Enhanced Color scheme (Dark Mode with better contrast)
 COLORS = {
-    'primary': '#8A2BE2',      # Brighter purple for better visibility
-    'secondary': '#555555',    # Lighter gray for better contrast
-    'background': '#1A1A1A',   # Slightly lighter background
-    'surface': '#252525',      # More distinct from background
-    'error': '#FF5252',        # Brighter red for better visibility
-    'success': '#00E676',      # Kept the bright green
-    'text': '#FFFFFF',         # White text
-    'text_secondary': '#CCCCCC',  # Lighter gray text for better readability
-    'bullying': '#FF1744',     # Bright red
-    'normal': '#00E676',       # Bright green
-    'highlight': '#673AB7',    # Lighter purple for highlighting
-    'border': '#3D3D3D',       # Lighter border for better definition
-    'hover': '#9C27B0',        # Brighter hover color
-    'active': '#B39DDB',       # New color for active elements
-    'disabled': '#757575',     # New distinct color for disabled elements
+    'primary': '#00BCD4',      # Vibrant cyan (brand color)
+    'secondary': '#A0A0A0',    # Muted gray for less emphasis
+    'background': '#121212',   # Deep dark gray; reduces eye strain
+    'surface': '#1E1E1E',      # Slightly lighter for depth
+    'error': '#EF5350',        # Red for errors and warnings
+    'success': '#66BB6A',      # Green for success messages
+    'text': '#E0E0E0',         # Light gray for readability
+    'text_secondary': '#A0A0A0',  # Muted gray for less emphasis
+    'bullying': '#EF5350',     # Error red
+    'normal': '#66BB6A',       # Success green
+    'highlight': '#00BCD4',    # Primary color for highlighting
+    'border': '#2C2C2C',       # Subtle border color
+    'hover': '#26C6DA',        # Lighter shade of accent for hover
+    'active': '#00BCD4',       # Primary color for active elements
+    'disabled': '#555555',     # Desaturated, low-contrast for disabled states
 }
 
 # Enhanced Fonts with better readability
@@ -31,7 +31,7 @@ FONTS = {
 BUTTON_STYLE = f"""
     QPushButton {{
         background-color: {COLORS['primary']};
-        color: {COLORS['text']};
+        color: {COLORS['background']};
         border: none;
         padding: 12px 24px;
         border-radius: 6px;
@@ -43,7 +43,7 @@ BUTTON_STYLE = f"""
     }}
     QPushButton:pressed {{
         background-color: {COLORS['active']};
-        color: #121212;
+        color: {COLORS['background']};
     }}
     QPushButton:disabled {{
         background-color: {COLORS['disabled']};
@@ -342,7 +342,7 @@ WELCOME_SUBTITLE_FONT = QFont('Segoe UI', 24)
 GET_STARTED_BUTTON_DARK_STYLE = f"""
     QPushButton {{
         background-color: {COLORS['primary']};
-        color: white;
+        color: {COLORS['background']};
         border: none;
         padding: 12px 24px;
         border-radius: 4px;
