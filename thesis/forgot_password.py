@@ -10,7 +10,6 @@ from datetime import datetime, timedelta
 from smtplib import SMTPException
 from utils import send_email  # Assuming send_email utility exists in utils.py
 from reset_password import ResetPasswordDialog # Import the reset dialog
-from PyQt5.QtWidgets import QApplication
 
 class ForgotPasswordDialog(QDialog):
     def __init__(self, parent=None):
@@ -130,23 +129,10 @@ class ForgotPasswordDialog(QDialog):
                     "A verification code has been sent to your email address.\n"
                     "Please check your inbox (and spam/junk folder) and enter the code in the next step."
                 )
-                
-                # Hide this dialog first
-                self.hide()
-                
-                # Create and show reset dialog
-                reset_dialog = ResetPasswordDialog(username=username, parent=None)
-                result = reset_dialog.exec_()
-                
-                # Show this dialog again
-                self.show()
-                
-                # If reset was successful, close this dialog
-                if result == QDialog.Accepted:
-                    self.accept()
-                else:
-                    # If reset was cancelled, keep this dialog open
-                    pass
+                # Open the ResetPasswordDialog, passing the username
+                self.accept() # Close the current dialog first
+                reset_dialog = ResetPasswordDialog(username=username, parent=self.parent()) # Pass username
+                reset_dialog.exec_() # Show the reset dialog modally
 
             except SMTPException as smtp_e:
                  self.error_label.setText("Failed to send email. Check configuration.")

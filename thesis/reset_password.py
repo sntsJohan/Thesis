@@ -7,7 +7,6 @@ from werkzeug.security import generate_password_hash
 import os
 from datetime import datetime
 import re
-from PyQt5.QtWidgets import QApplication
 
 class ResetPasswordDialog(QDialog):
     def __init__(self, username, parent=None):
@@ -180,15 +179,7 @@ class ResetPasswordDialog(QDialog):
                 "Success",
                 "Your password has been reset successfully.\nYou can now log in with your new password."
             )
-            
-            # Close all windows
-            self.close()
-            
-            # Restart the main application
-            import sys
-            import os
-            python = sys.executable
-            os.execl(python, python, *sys.argv)
+            self.accept()
             
         except Exception as e:
             self.error_label.setText("An error occurred. Please try again later.")

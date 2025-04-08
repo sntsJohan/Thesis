@@ -148,11 +148,7 @@ class LoginWindow(QDialog):
     def open_forgot_password(self):
         from forgot_password import ForgotPasswordDialog
         forgot_password_dialog = ForgotPasswordDialog(self)
-        # Show the dialog modally
-        result = forgot_password_dialog.exec_()
-        
-        # Don't do anything with the result, just let the dialogs handle themselves
-        pass
+        forgot_password_dialog.exec_()
 
     def get_role(self):
         return self.role
