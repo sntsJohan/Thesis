@@ -275,11 +275,6 @@ class UserMainWindow(QMainWindow):
                     prediction_item = QTableWidgetItem(prediction)
                     prediction_item.setTextAlignment(Qt.AlignCenter)
                     
-                    # Convert decimal confidence to percentage string
-                    confidence_str = f"{float(confidence):.2%}"
-                    confidence_item = QTableWidgetItem(confidence_str)
-                    confidence_item.setTextAlignment(Qt.AlignCenter)
-                    
                     if prediction == "Cyberbullying":
                         prediction_item.setForeground(QColor(COLORS['bullying']))
                     else:
@@ -287,7 +282,6 @@ class UserMainWindow(QMainWindow):
                     
                     table.setItem(row_position, 0, comment_item)
                     table.setItem(row_position, 1, prediction_item)
-                    table.setItem(row_position, 2, confidence_item)
                     
                     if is_selected:
                         for col in range(table.columnCount()):
@@ -871,8 +865,6 @@ class UserMainWindow(QMainWindow):
             "Sort by Comments (A-Z)",
             "Sort by Comments (Z-A)",
             "Sort by Prediction (A-Z)",
-            "Sort by Confidence (High to Low)",
-            "Sort by Confidence (Low to High)",
             "Show Replies Only"
         ])
         header_layout.addWidget(sort_combo)
@@ -882,17 +874,17 @@ class UserMainWindow(QMainWindow):
         table = QTableWidget()
         table.setSortingEnabled(True)
         table.setStyleSheet(TABLE_ALTERNATE_STYLE)
-        table.setColumnCount(3)
-        table.setHorizontalHeaderLabels(["Comment", "Prediction", "Confidence"])
+        table.setColumnCount(2)
+        table.setHorizontalHeaderLabels(["Comment", "Prediction"])
         table.setAlternatingRowColors(True)
         table.setEditTriggers(QTableWidget.NoEditTriggers)
 
+        # Adjust column sizes
         header = table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.Stretch)
         header.setSectionResizeMode(1, QHeaderView.Fixed)
-        header.setSectionResizeMode(2, QHeaderView.Fixed)
+        header.resizeSection(1, 150)  # Increased width for prediction column
         table.setColumnWidth(1, 150)
-        table.setColumnWidth(2, 100)
 
         table.setWordWrap(True)
         table.setSelectionBehavior(QTableWidget.SelectRows)
@@ -949,12 +941,12 @@ class UserMainWindow(QMainWindow):
         index = sort_combo.currentIndex()
         
         # Show all rows when not filtering replies
-        if index != 5:
+        if index != 3:
             for row in range(table.rowCount()):
                 table.setRowHidden(row, False)
         
         # Handle replies filter
-        if index == 5:  # "Show Replies Only"
+        if index == 3:  # "Show Replies Only"
             for row in range(table.rowCount()):
                 text = table.item(row, 0).text()
                 is_reply = text.startswith(" [↪ Reply]")
@@ -968,10 +960,6 @@ class UserMainWindow(QMainWindow):
             table.sortItems(0, Qt.DescendingOrder)
         elif index == 2:  # Prediction A-Z
             table.sortItems(1, Qt.AscendingOrder)
-        elif index == 3:  # Confidence High-Low
-            table.sortItems(2, Qt.DescendingOrder)
-        elif index == 4:  # Confidence Low-High
-            table.sortItems(2, Qt.AscendingOrder)
 
     def update_details_panel(self):
         """Update the details panel with selected comment information"""
@@ -991,7 +979,6 @@ class UserMainWindow(QMainWindow):
         row = selected_items[0].row()
         comment = self.get_current_table().item(row, 0).data(Qt.UserRole) or self.get_current_table().item(row, 0).text()
         prediction = self.get_current_table().item(row, 1).text()
-        confidence = self.get_current_table().item(row, 2).text()
         
         metadata = self.comment_metadata.get(comment, {})
         
@@ -1000,9 +987,6 @@ class UserMainWindow(QMainWindow):
             self.add_remove_button.setText("➖ Remove from List")
         else:
             self.add_remove_button.setText("➕ Add to List")
-
-        # Determine rules broken for cyberbullying comments
-        rules_broken = ["Harassment", "Hate Speech", "Threatening Language"] if prediction == "Cyberbullying" else []
         
         # Update details text
         self.details_text_edit.clear()
@@ -1034,15 +1018,7 @@ class UserMainWindow(QMainWindow):
 
         # Add classification details
         self.details_text_edit.append(make_text("Classification: ", f"{prediction}\n"))
-        self.details_text_edit.append(make_text("Confidence: ", f"{confidence}\n"))
         self.details_text_edit.append(make_text("Status: ", f"{'In List' if comment in self.selected_comments else 'Not in List'}\n"))
-        
-        # Add rules broken
-        self.details_text_edit.append(make_text("Rules Broken:", ""))
-        cursor = self.details_text_edit.textCursor()
-        for rule in rules_broken:
-            cursor.insertHtml(f'<span style="font-size: 16px; background-color: {COLORS["secondary"]}; border-radius: 4px; padding: 2px 4px; margin: 2px; display: inline-block;">{rule}</span> ')
-        self.details_text_edit.setTextCursor(cursor)
 
     def scrape_comments(self):
         """Scrape and process Facebook comments"""
@@ -1262,12 +1238,8 @@ class UserMainWindow(QMainWindow):
             else:
                 prediction_item.setForeground(QColor(COLORS['normal']))
 
-            confidence_item = QTableWidgetItem(f"{confidence:.2%}")
-            confidence_item.setTextAlignment(Qt.AlignCenter)
-
             table.setItem(row_position, 0, comment_item)
             table.setItem(row_position, 1, prediction_item)
-            table.setItem(row_position, 2, confidence_item)
 
             table.resizeRowToContents(row_position)
 

@@ -995,98 +995,63 @@ class MainWindow(QMainWindow):
             table.sortItems(2, Qt.AscendingOrder)
 
     def update_details_panel(self):
+        """Update the details panel with selected comment information"""
         selected_items = self.get_current_table().selectedItems()
         if not selected_items:
             self.details_text_edit.clear()
-            # Disable row operations
             self.add_remove_button.setEnabled(False)
             self.export_selected_button.setEnabled(False)
-            
-            # Keep dataset operations enabled if there's data
             has_data = self.tab_widget.count() > 0
             self.enable_dataset_operations(has_data)
             return
 
-        # Enable row operation buttons when row is selected
         self.add_remove_button.setEnabled(True)
         self.export_selected_button.setEnabled(True)
-
-        # Make sure dataset operations are enabled when there's data
         self.enable_dataset_operations(True)
 
         row = selected_items[0].row()
-        comment = self.get_current_table().item(row, 0).text()
+        comment = self.get_current_table().item(row, 0).data(Qt.UserRole) or self.get_current_table().item(row, 0).text()
         prediction = self.get_current_table().item(row, 1).text()
-        confidence = self.get_current_table().item(row, 2).text()
         
-        # Get metadata for the comment if available
-        metadata = self.comment_metadata.get(comment, {
-            'profile_name': 'N/A',
-            'profile_picture': '',
-            'date': 'N/A',
-            'likes_count': 'N/A',
-            'profile_id': 'N/A',
-            'is_reply': False,
-            'reply_to': ''
-        })
+        metadata = self.comment_metadata.get(comment, {})
         
-        commenter = metadata.get('profile_name', 'N/A')
-        date = metadata.get('date', 'N/A')
-        likes = metadata.get('likes_count', 'N/A')
-        is_reply = metadata.get('is_reply', False)
-        reply_to = metadata.get('reply_to', '')
-
-        # Update add/remove button text based on list status
+        # Update add/remove button text
         if comment in self.selected_comments:
             self.add_remove_button.setText("➖ Remove from List")
         else:
             self.add_remove_button.setText("➕ Add to List")
-
-        # Rules text
-        rules_broken = ["Harassment", "Hate Speech", "Threatening Language"] if prediction == "Cyberbullying" else []
-
-        # Set text contents with additional metadata and larger font size
-        self.details_text_edit.clear()
         
-        # Create spans with larger font size
+        # Update details text
+        self.details_text_edit.clear()
         def make_text(label, value):
             return f'<span style="{DETAIL_TEXT_SPAN_STYLE}"><b>{label}</b>{value}</span>'
 
+        # Add comment details
         self.details_text_edit.append(make_text("Comment:\n", f"{comment}\n"))
-        self.details_text_edit.append(make_text("Commenter: ", f"{commenter}\n"))
-        self.details_text_edit.append(make_text("Date: ", f"{date}\n"))
-        self.details_text_edit.append(make_text("Likes: ", f"{likes}\n"))
+        self.details_text_edit.append(make_text("Commenter: ", f"{metadata.get('profile_name', 'N/A')}\n"))
+        self.details_text_edit.append(make_text("Date: ", f"{metadata.get('date', 'N/A')}\n"))
+        self.details_text_edit.append(make_text("Likes: ", f"{metadata.get('likes_count', 'N/A')}\n"))
         
-        # Add reply information if it's a reply
-        if is_reply and reply_to:
-            # Find row number and parent comment details
+        # Add reply information if applicable
+        if metadata.get('is_reply', False) and metadata.get('reply_to'):
             current_table = self.get_current_table()
             for i in range(current_table.rowCount()):
                 parent_text = current_table.item(i, 0).data(Qt.UserRole)
-                if parent_text == reply_to:
-                    parent_metadata = self.comment_metadata.get(reply_to, {})
-                    parent_name = parent_metadata.get('profile_name', 'Unknown')
-                    parent_date = parent_metadata.get('date', 'N/A')
-                    
+                if parent_text == metadata['reply_to']:
+                    parent_metadata = self.comment_metadata.get(metadata['reply_to'], {})
                     self.details_text_edit.append("\n" + make_text("Reply Information:\n", ""))
                     self.details_text_edit.append(make_text("Row #", f"{i+1}\n"))
-                    self.details_text_edit.append(make_text("Replying to: ", f"{parent_name}\n"))
-                    self.details_text_edit.append(make_text("Original Comment: ", f"{reply_to}\n"))
-                    self.details_text_edit.append(make_text("Date: ", f"{parent_date}\n"))
+                    self.details_text_edit.append(make_text("Replying to: ", f"{parent_metadata.get('profile_name', 'Unknown')}\n"))
+                    self.details_text_edit.append(make_text("Original Comment: ", f"{metadata['reply_to']}\n"))
+                    self.details_text_edit.append(make_text("Date: ", f"{parent_metadata['date']}\n"))
                     break
             else:
                 self.details_text_edit.append("\n" + make_text("Reply Information:\n", ""))
-                self.details_text_edit.append(make_text("Replying to: ", f"{reply_to}\n"))
+                self.details_text_edit.append(make_text("Replying to: ", f"{metadata['reply_to']}\n"))
 
+        # Add classification details
         self.details_text_edit.append(make_text("Classification: ", f"{prediction}\n"))
-        self.details_text_edit.append(make_text("Confidence: ", f"{confidence}\n"))
         self.details_text_edit.append(make_text("Status: ", f"{'In List' if comment in self.selected_comments else 'Not in List'}\n"))
-        self.details_text_edit.append(make_text("Rules Broken:", ""))
-
-        cursor = self.details_text_edit.textCursor()
-        for rule in rules_broken:
-            cursor.insertHtml(f'<span style="font-size: 16px; background-color: {COLORS["secondary"]}; border-radius: 4px; padding: 2px 4px; margin: 2px; display: inline-block;">{rule}</span> ')
-        self.details_text_edit.setTextCursor(cursor)
 
     def show_summary(self):
         total_comments = self.get_current_table().rowCount()
