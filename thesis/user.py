@@ -289,19 +289,11 @@ class UserMainWindow(QMainWindow):
             
             tabs = cursor.fetchall()
             
-            # Create a set of processed tabs to avoid duplicates
-            processed_tabs = set()
+            # Create a dictionary to collect comments for each tab name
+            all_tab_comments = {}
             
+            # First, collect all comments for all tabs
             for tab_id, tab_name, tab_type in tabs:
-                # Skip if we've already processed this tab name
-                if tab_name in processed_tabs:
-                    continue
-                    
-                processed_tabs.add(tab_name)
-                
-                # Create tab in UI
-                table = self.create_empty_tab(tab_name)
-                
                 # Get comments for this tab
                 cursor.execute("""
                     SELECT comment_text, prediction, confidence,
@@ -312,15 +304,19 @@ class UserMainWindow(QMainWindow):
                 """, (tab_id,))
                 
                 comments = cursor.fetchall()
-                comments_data = []
                 
+                # Initialize list for this tab name if not exists
+                if tab_name not in all_tab_comments:
+                    all_tab_comments[tab_name] = []
+                
+                # Process each comment
                 for comment_data in comments:
                     (comment_text, prediction, confidence, profile_name, 
                      profile_picture, comment_date, likes_count, profile_id, 
                      is_reply, reply_to, is_selected) = comment_data
                     
-                    # Add to data list for populating table
-                    comments_data.append({
+                    # Create comment dictionary
+                    comment_dict = {
                         'comment_text': comment_text,
                         'prediction': prediction,
                         'confidence': confidence,
@@ -331,7 +327,11 @@ class UserMainWindow(QMainWindow):
                         'profile_id': profile_id,
                         'is_reply': is_reply,
                         'reply_to': reply_to
-                    })
+                    }
+                    
+                    # Add to list for this tab (avoid duplicates)
+                    if comment_dict not in all_tab_comments[tab_name]:
+                        all_tab_comments[tab_name].append(comment_dict)
                     
                     # Store metadata
                     self.comment_metadata[comment_text] = {
@@ -346,12 +346,23 @@ class UserMainWindow(QMainWindow):
                     }
                     
                     # Add to selected comments if selected
-                    if is_selected:
+                    if is_selected and comment_text not in self.selected_comments:
                         self.selected_comments.append(comment_text)
+            
+            # Now create tabs and populate them with the collected comments
+            for tab_name, comments_data in all_tab_comments.items():
+                if not comments_data:  # Skip empty tabs
+                    continue
+                    
+                # Create tab in UI
+                table = self.create_empty_tab(tab_name)
                 
-                # Clear and populate the table
+                # Populate the table with all comments for this tab
                 table.setRowCount(0)
                 self.populate_table(table, comments_data)
+                
+                # Log the restored tab
+                print(f"Restored tab '{tab_name}' with {len(comments_data)} comments")
             
             conn.close()
             
@@ -367,6 +378,8 @@ class UserMainWindow(QMainWindow):
             
         except Exception as e:
             print(f"Session restoration error: {e}")
+            import traceback
+            traceback.print_exc()  # Print full stack trace for debugging
 
     def save_tab_state(self, tab_name, comments):
         """Save tab and its comments to the database"""
@@ -512,6 +525,63 @@ class UserMainWindow(QMainWindow):
         """Close the current session"""
         if self.session_id:
             try:
+                # First, we need to ensure all tab state is saved
+                for tab_name, tab_widget in self.tabs.items():
+                    try:
+                        # Get the table from this tab
+                        table = tab_widget.findChild(QTableWidget)
+                        if not table:
+                            continue
+                            
+                        # Gather all comments from this tab
+                        tab_comments = []
+                        for row in range(table.rowCount()):
+                            row_comment_item = table.item(row, 0)
+                            row_prediction_item = table.item(row, 1)
+                            row_confidence_item = table.item(row, 2)
+                            
+                            if row_comment_item and row_prediction_item and row_confidence_item:
+                                # Get the stored comment text (using UserRole if available)
+                                row_comment_text = row_comment_item.data(Qt.UserRole) or row_comment_item.text()
+                                row_prediction = row_prediction_item.text()
+                                
+                                # Get confidence
+                                try:
+                                    row_confidence_text = row_confidence_item.text()
+                                    row_confidence = float(row_confidence_text.strip('%'))
+                                except:
+                                    row_confidence = 0.0
+                                
+                                # Get metadata
+                                metadata = self.comment_metadata.get(row_comment_text, {})
+                                
+                                # Create data dictionary
+                                row_data = {
+                                    'comment_text': row_comment_text,
+                                    'prediction': row_prediction,
+                                    'confidence': row_confidence,
+                                    'profile_name': metadata.get('profile_name', 'Direct Input'),
+                                    'profile_picture': metadata.get('profile_picture', ''),
+                                    'comment_date': metadata.get('date', time.strftime('%Y-%m-%d %H:%M:%S')),
+                                    'likes_count': metadata.get('likes_count', 'N/A'),
+                                    'profile_id': metadata.get('profile_id', 'N/A'),
+                                    'is_reply': metadata.get('is_reply', False),
+                                    'reply_to': metadata.get('reply_to', None)
+                                }
+                                
+                                tab_comments.append(row_data)
+                        
+                        # Save this tab's state
+                        if tab_comments:
+                            self.save_tab_state(tab_name, tab_comments)
+                            print(f"Saved state for tab '{tab_name}' with {len(tab_comments)} comments")
+                    
+                    except Exception as tab_error:
+                        print(f"Error saving tab '{tab_name}' before session close: {tab_error}")
+                        import traceback
+                        traceback.print_exc()
+                
+                # Now mark the session as inactive
                 conn = get_db_connection()
                 cursor = conn.cursor()
                 cursor.execute("""
@@ -521,8 +591,12 @@ class UserMainWindow(QMainWindow):
                 """, (self.session_id,))
                 conn.commit()
                 conn.close()
+                
+                print(f"Successfully closed session {self.session_id}")
             except Exception as e:
                 print(f"Session close error: {e}")
+                import traceback
+                traceback.print_exc()
 
     def close_tab(self, index):
         """Close the tab and clean up resources"""
@@ -559,10 +633,23 @@ class UserMainWindow(QMainWindow):
                 conn.commit()
                 print(f"Successfully deleted tab {tab_name} and its comments from database")
             
+            # Now update session last accessed time
+            cursor.execute("""
+                UPDATE user_sessions 
+                SET last_accessed = GETDATE()
+                WHERE session_id = ?
+            """, (self.session_id,))
+            conn.commit()
+            
             conn.close()
+            
+            # Log the action
+            log_user_action(self.current_user, f"Closed tab: {tab_name}")
             
         except Exception as e:
             print(f"Error removing tab data from database: {e}")
+            import traceback
+            traceback.print_exc()
             try:
                 conn.rollback()
                 conn.close()
@@ -1417,11 +1504,54 @@ class UserMainWindow(QMainWindow):
             else:
                 table = self.create_empty_tab(tab_name)
             
-            # Populate table
+            # Populate table with the new comment
             self.populate_table(table, comment_data, append=True)
             
-            # Save state for the "Direct Inputs" tab
-            self.save_tab_state(tab_name, comment_data)
+            # Clear the text input
+            self.text_input.clear()
+            
+            # Now gather ALL comments from the Direct Inputs tab to save the complete state
+            all_comments_data = []
+            
+            # Iterate through all rows in the table
+            for row in range(table.rowCount()):
+                row_comment_item = table.item(row, 0)
+                row_prediction_item = table.item(row, 1)
+                row_confidence_item = table.item(row, 2)
+                
+                if row_comment_item and row_prediction_item and row_confidence_item:
+                    # Get the stored comment text (using UserRole if available)
+                    row_comment_text = row_comment_item.data(Qt.UserRole) or row_comment_item.text()
+                    row_prediction = row_prediction_item.text()
+                    
+                    # Get confidence - strip "%" and convert to float
+                    try:
+                        row_confidence_text = row_confidence_item.text()
+                        row_confidence = float(row_confidence_text.strip('%'))
+                    except:
+                        row_confidence = 0.0
+                    
+                    # Get metadata for this comment
+                    metadata = self.comment_metadata.get(row_comment_text, {})
+                    
+                    # Create data dictionary for this row
+                    row_data = {
+                        'comment_text': row_comment_text,
+                        'prediction': row_prediction,
+                        'confidence': row_confidence,
+                        'profile_name': metadata.get('profile_name', 'Direct Input'),
+                        'profile_picture': metadata.get('profile_picture', ''),
+                        'comment_date': metadata.get('date', time.strftime('%Y-%m-%d %H:%M:%S')),
+                        'likes_count': metadata.get('likes_count', 'N/A'),
+                        'profile_id': metadata.get('profile_id', 'N/A'),
+                        'is_reply': metadata.get('is_reply', False),
+                        'reply_to': metadata.get('reply_to', None)
+                    }
+                    
+                    all_comments_data.append(row_data)
+            
+            # Save the complete tab state with ALL comments
+            self.save_tab_state(tab_name, all_comments_data)
             
             log_user_action(self.current_user, "Analyzed single comment")
             

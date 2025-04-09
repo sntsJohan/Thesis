@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QTableWidget, QTableWidgetItem,
-                           QHeaderView, QPushButton, QLabel, QHBoxLayout)
+                           QHeaderView, QPushButton, QLabel, QHBoxLayout, QMessageBox)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 from styles import COLORS, FONTS, BUTTON_STYLE, TABLE_STYLE
@@ -58,15 +58,105 @@ class HistoryDialog(QDialog):
         
         layout.addWidget(self.table)
         
+        # Add buttons container
+        buttons_layout = QHBoxLayout()
+        
+        # Add clear logs button
+        clear_button = QPushButton("🗑️ Clear Logs")
+        clear_button.setStyleSheet(BUTTON_STYLE)
+        clear_button.setFixedWidth(120)
+        clear_button.clicked.connect(self.confirm_clear_logs)
+        buttons_layout.addWidget(clear_button)
+        
+        # Add spacer to separate buttons
+        buttons_layout.addStretch()
+        
         # Add close button
         close_button = QPushButton("Close")
         close_button.setStyleSheet(BUTTON_STYLE)
         close_button.setFixedWidth(100)
         close_button.clicked.connect(self.close)
-        layout.addWidget(close_button, alignment=Qt.AlignCenter)
+        buttons_layout.addWidget(close_button)
+        
+        layout.addLayout(buttons_layout)
         
         # Load logs initially
         self.load_logs()
+    
+    def confirm_clear_logs(self):
+        """Show confirmation dialog before clearing logs"""
+        msg_box = QMessageBox(self)
+        msg_box.setWindowTitle("Confirm Clear Logs")
+        msg_box.setText("Are you sure you want to clear all user logs?")
+        msg_box.setInformativeText("This action cannot be undone.")
+        msg_box.setIcon(QMessageBox.Warning)
+        msg_box.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        msg_box.setDefaultButton(QMessageBox.No)
+        
+        # Style the message box
+        msg_box.setStyleSheet(f"""
+            QMessageBox {{
+                background-color: {COLORS['background']};
+                color: {COLORS['text']};
+            }}
+            QPushButton {{
+                {BUTTON_STYLE}
+                min-width: 100px;
+            }}
+        """)
+        
+        # Show the dialog and check result
+        if msg_box.exec_() == QMessageBox.Yes:
+            self.clear_logs()
+    
+    def clear_logs(self):
+        """Clear all logs from the database"""
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            # Delete all logs
+            cursor.execute("DELETE FROM user_logs")
+            conn.commit()
+            
+            # Also clear sessions data if needed
+            clear_sessions = QMessageBox.question(
+                self, 
+                "Clear Sessions Too?", 
+                "Do you also want to clear all user sessions data?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No
+            )
+            
+            if clear_sessions == QMessageBox.Yes:
+                # First delete all tab comments (due to foreign key constraints)
+                cursor.execute("""
+                    DELETE FROM tab_comments 
+                    WHERE tab_id IN (SELECT tab_id FROM session_tabs)
+                """)
+                
+                # Then delete all session tabs
+                cursor.execute("DELETE FROM session_tabs")
+                
+                # Finally delete all sessions
+                cursor.execute("DELETE FROM user_sessions")
+                conn.commit()
+                
+                # Show additional confirmation
+                QMessageBox.information(self, "Sessions Cleared", "All user sessions have been cleared.")
+            
+            conn.close()
+            
+            # Reload the now-empty table
+            self.load_logs()
+            
+            # Show success message
+            QMessageBox.information(self, "Success", "All logs have been cleared successfully.")
+            
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to clear logs: {str(e)}")
+            import traceback
+            traceback.print_exc()  # Print stack trace for debugging
     
     def load_logs(self):
         """Load logs from SQL database"""
