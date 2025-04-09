@@ -717,8 +717,17 @@ class MainWindow(QMainWindow):
         finally:
             self.show_loading(False)  # Hide loading overlay
 
+    def truncate_tab_name(self, name, max_length=15):
+        """Truncate tab name if it exceeds the maximum length"""
+        if len(name) > max_length:
+            return name[:max_length-3] + "..."
+        return name
+
     def create_empty_tab(self, tab_type):
         """Create a new empty tab with table"""
+        # Truncate tab name for consistent width
+        tab_display_name = self.truncate_tab_name(tab_type)
+        
         if tab_type == "Direct Inputs" and "Direct Inputs" in self.tabs:
             return self.tabs["Direct Inputs"].findChild(QTableWidget)
 
@@ -799,8 +808,8 @@ class MainWindow(QMainWindow):
         # Store search bar reference
         table.search_bar = search_bar
         
-        # Add tab to widget and store reference
-        self.tab_widget.addTab(tab, tab_type)
+        # Add tab to widget and store reference - use display name for UI but store full name in dict
+        self.tab_widget.addTab(tab, tab_display_name)
         self.tabs[tab_type] = tab
         
         # Enable close buttons for tabs

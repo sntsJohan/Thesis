@@ -135,6 +135,9 @@ TAB_STYLE = f"""
         border-top-left-radius: 4px;
         border-top-right-radius: 4px;
         min-width: 80px;
+        max-width: 120px;
+        font-size: 12px;
+        text-align: left;
     }}
     QTabBar::tab:selected {{
         background: {COLORS['primary']};
@@ -151,7 +154,6 @@ TAB_STYLE = f"""
         padding: 4px;
         margin-right: 4px;
     }}
-
 """
 
 # New styles for additional elements

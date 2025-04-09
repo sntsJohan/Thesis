@@ -997,8 +997,17 @@ class UserMainWindow(QMainWindow):
         else:
             self.loading_overlay.hide()
 
+    def truncate_tab_name(self, name, max_length=15):
+        """Truncate tab name if it exceeds the maximum length"""
+        if len(name) > max_length:
+            return name[:max_length-3] + "..."
+        return name
+
     def create_empty_tab(self, tab_type):
         """Create a new empty tab with a table"""
+        # Truncate tab name for consistent width
+        tab_display_name = self.truncate_tab_name(tab_type)
+        
         if tab_type in self.tabs:
             return self.tabs[tab_type].findChild(QTableWidget)
 
@@ -1074,8 +1083,8 @@ class UserMainWindow(QMainWindow):
                 table.setRowHidden(row, search_text not in comment)
         
         search_bar.textChanged.connect(filter_table)
-        # Add tab to widget and store reference
-        self.tab_widget.addTab(tab, tab_type)
+        # Add tab to widget and store reference - use display name for UI but store full name in dict
+        self.tab_widget.addTab(tab, tab_display_name)
         self.tabs[tab_type] = tab
 
         # Show table widget and enable operations
