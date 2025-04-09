@@ -72,9 +72,10 @@ class SummaryDialog(QDialog):
 
         layout = QVBoxLayout(self)
 
-        # Summary Text
-        text_label = QLabel(summary_text)
-        text_label.setTextFormat(Qt.RichText) # Allow rich text (bold)
+        # Summary Text - Make font larger
+        styled_summary_text = f'<div style="font-size: 14px;">{summary_text}</div>' # Increased font size using HTML
+        text_label = QLabel(styled_summary_text)
+        text_label.setTextFormat(Qt.RichText) # Allow rich text (bold, and styling)
         text_label.setWordWrap(True)
         layout.addWidget(text_label)
 
@@ -1595,7 +1596,8 @@ class UserMainWindow(QMainWindow):
 
         # --- Generate Pie Chart --- 
         chart_pixmap = None
-        if total_comments > 0:
+        # Only generate pie chart if both classes are present
+        if total_comments > 0 and cyberbullying_count > 0 and normal_count > 0:
             labels = ['Cyberbullying', 'Normal']
             sizes = [cyberbullying_count, normal_count]
             colors = [COLORS.get('bullying', '#FF6347'), COLORS.get('normal', '#90EE90')] # Use theme colors or fallbacks
@@ -1606,7 +1608,7 @@ class UserMainWindow(QMainWindow):
                 fig, ax = plt.subplots(figsize=(5, 3.5)) # Adjusted size
                 ax.pie(sizes, explode=explode, labels=labels, colors=colors,
                        autopct='%1.1f%%', shadow=False, startangle=90,
-                       textprops={'color': 'black'}) # Use black text for contrast
+                       textprops={'color': 'white'}) # Changed text color to white
                 ax.axis('equal')  # Equal aspect ratio ensures a circular pie chart
                 # Ensure background is transparent for better theme integration
                 fig.patch.set_alpha(0.0)

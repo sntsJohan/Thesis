@@ -1161,7 +1161,8 @@ class MainWindow(QMainWindow):
 
         # --- Generate Pie Chart --- 
         chart_pixmap = None
-        if total_comments > 0:
+        # Only generate pie chart if both classes are present
+        if total_comments > 0 and cyberbullying_count > 0 and normal_count > 0:
             labels = ['Cyberbullying', 'Normal']
             sizes = [cyberbullying_count, normal_count]
             colors = [COLORS.get('bullying', '#FF6347'), COLORS.get('normal', '#90EE90')] 
@@ -1171,7 +1172,7 @@ class MainWindow(QMainWindow):
                 fig, ax = plt.subplots(figsize=(5, 3.5))
                 ax.pie(sizes, explode=explode, labels=labels, colors=colors,
                        autopct='%1.1f%%', shadow=False, startangle=90,
-                       textprops={'color': 'black'})
+                       textprops={'color': 'white'}) # Changed text color to white
                 ax.axis('equal')
                 fig.patch.set_alpha(0.0)
                 ax.patch.set_alpha(0.0)
