@@ -1363,19 +1363,21 @@ class UserMainWindow(QMainWindow):
                 'reply_to': None
             }]
             
-            # Get or create table
-            table = self.get_current_table()
-            if not table:
-                tab_name = "Direct Inputs"
+            # Define the target tab name
+            tab_name = "Direct Inputs"
+            
+            # Get or create the "Direct Inputs" tab and its table
+            if tab_name in self.tabs:
+                tab_widget = self.tabs[tab_name]
+                table = tab_widget.findChild(QTableWidget)
+            else:
                 table = self.create_empty_tab(tab_name)
             
             # Populate table
             self.populate_table(table, comment_data, append=True)
             
-            # Save state if needed
-            if table.parent():
-                tab_name = self.tab_widget.tabText(self.tab_widget.indexOf(table.parent()))
-                self.save_tab_state(tab_name, comment_data)
+            # Save state for the "Direct Inputs" tab
+            self.save_tab_state(tab_name, comment_data)
             
             log_user_action(self.current_user, "Analyzed single comment")
             
