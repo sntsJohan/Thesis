@@ -15,6 +15,7 @@ import tempfile
 import time
 import re
 import os
+import hashlib # Add near other imports at the top of admin.py
 
 from model import classify_comment
 from scraper import scrape_comments
@@ -569,38 +570,54 @@ class AdminWindow(QMainWindow):
             return name[:max_length-3] + "..."
         return name
 
-    def create_empty_tab(self, tab_type):
+    def create_empty_tab(self, tab_type, is_restoring=False):
         """Create a new empty tab with table"""
-        # Truncate tab name for consistent width
-        tab_display_name = self.truncate_tab_name(tab_type)
-        
-        # Important: If tab already exists, just return the table widget from it
-        if tab_type in self.tabs:
-            return self.tabs[tab_type].findChild(QTableWidget)
+        # Truncate tab name for consistent width in the UI tab bar
+        tab_display_name = self.truncate_tab_name(tab_type, max_length=20) # Slightly longer truncation
 
+        # Important: During restoration, we *always* create a new tab widget,
+        # even if a tab with the same name was somehow left over or handled incorrectly before.
+        # The restore_session loop is responsible for generating unique names passed as tab_type.
+        # If *not* restoring, and the tab_type key exists in our internal dict, reuse/focus it.
+        if not is_restoring and tab_type in self.tabs:
+            # If not restoring, and tab exists, switch to it and return its table
+            existing_tab_widget = self.tabs[tab_type]
+            index = self.tab_widget.indexOf(existing_tab_widget)
+            if index != -1:
+                self.tab_widget.setCurrentIndex(index)
+            # Return the table from the existing tab
+            table = existing_tab_widget.findChild(QTableWidget)
+            print(f"Switched to existing tab '{tab_type}'")
+            return table
+
+        # --- Create New Tab Widget ---
+        # If restoring OR if tab_type not in self.tabs dictionary, create a new tab widget
         tab = QWidget()
+        # Give the tab widget an object name for easier debugging/identification
+        tab.setObjectName(f"tab_{tab_type.replace(' ', '_').replace('(', '').replace(')', '').replace('.', '_')}") # Sanitize name for object name
         tab_layout = QVBoxLayout(tab)
-        
+        tab_layout.setContentsMargins(5, 5, 5, 5) # Add some margins
+
         # Header layout with table title, search bar, and sort dropdown
         header_layout = QHBoxLayout()
-        table_title = QLabel("Comments")
+        table_title = QLabel("Comments") # Title could be dynamic if needed
         table_title.setFont(FONTS['header'])
         header_layout.addWidget(table_title)
-        
+
         # Add search bar
         search_container = QWidget()
         search_layout = QHBoxLayout(search_container)
         search_layout.setContentsMargins(0, 0, 0, 0)
-        
+
         search_bar = QLineEdit()
         search_bar.setPlaceholderText("Search comments...")
         search_bar.setStyleSheet(INPUT_STYLE)
         search_bar.setMaximumWidth(300)
         search_layout.addWidget(search_bar)
-        
+
         header_layout.addWidget(search_container)
         header_layout.addStretch()
-        
+
         sort_combo = QComboBox()
         sort_combo.addItems([
             "Sort by Comments (A-Z)",
@@ -608,14 +625,26 @@ class AdminWindow(QMainWindow):
             "Sort by Prediction (A-Z)",
             "Sort by Confidence (High to Low)",
             "Sort by Confidence (Low to High)",
-            "Show Replies Only"  # Add this option
+            "Show Replies Only"
         ])
+        sort_combo.setStyleSheet(f"""
+            QComboBox {{
+                {INPUT_STYLE}
+                padding: 5px;
+            }}
+            QComboBox QAbstractItemView {{
+                background-color: {COLORS['surface']};
+                color: {COLORS['text']};
+                selection-background-color: {COLORS['highlight']};
+            }}
+        """)
         header_layout.addWidget(sort_combo)
         tab_layout.addLayout(header_layout)
 
         # Create and configure table
         table = QTableWidget()
-        table.setSortingEnabled(True)
+        table.setObjectName(f"table_{tab_type.replace(' ', '_').replace('(', '').replace(')', '').replace('.', '_')}") # Sanitize name
+        table.setSortingEnabled(False) # Disable Qt sorting, use custom sort
         table.setStyleSheet(TABLE_ALTERNATE_STYLE)
         table.setColumnCount(3) # Set to 3 columns
         table.setHorizontalHeaderLabels(["Comment", "Prediction", "Confidence"]) # Update headers
@@ -629,143 +658,213 @@ class AdminWindow(QMainWindow):
         header.setSectionResizeMode(2, QHeaderView.Fixed) # Add resize mode for confidence
         header.resizeSection(1, 150)  # Width for prediction
         header.resizeSection(2, 100)  # Width for confidence
-        table.setColumnWidth(1, 150)
-        table.setColumnWidth(2, 100)
+        # table.setColumnWidth(1, 150) # setSectionResizeMode is preferred
+        # table.setColumnWidth(2, 100)
 
         table.setWordWrap(True)
         table.setSelectionBehavior(QTableWidget.SelectRows)
         table.setSelectionMode(QTableWidget.SingleSelection)
+        # Disconnect first to avoid multiple connections if called repeatedly
+        try: table.itemSelectionChanged.disconnect(self.update_details_panel)
+        except TypeError: pass
         table.itemSelectionChanged.connect(self.update_details_panel)
-        
-        # Store sort combo and connect it
+
+        # Store sort combo and connect it using a lambda specific to *this* table instance
         table.sort_combo = sort_combo
-        sort_combo.currentIndexChanged.connect(lambda: self.sort_table(table))
-        
+        # Disconnect first to avoid multiple connections
+        try: sort_combo.currentIndexChanged.disconnect() # Disconnect all slots
+        except TypeError: pass
+        # Use lambda to pass the specific table instance
+        sort_combo.currentIndexChanged.connect(lambda index, tbl=table: self.sort_table(tbl))
+
         tab_layout.addWidget(table)
-        
-        # Configure search functionality
-        def filter_table():
-            search_text = search_bar.text().lower()
-            for row in range(table.rowCount()):
-                comment = table.item(row, 0).text().lower()
-                table.setRowHidden(row, search_text not in comment)
-        
-        search_bar.textChanged.connect(filter_table)
-        
-        # Store search bar reference
+
+        # Configure search functionality specific to *this* table instance
+        def filter_table(text, tbl=table): # Pass table instance
+            search_text = text.lower()
+            for row in range(tbl.rowCount()):
+                comment_item = tbl.item(row, 0)
+                # Check if item exists and has text
+                if comment_item and comment_item.text():
+                     comment_content = comment_item.text().lower()
+                     # Use UserRole data as well if available
+                     user_data = comment_item.data(Qt.UserRole)
+                     if user_data:
+                          comment_content += user_data.lower()
+                     tbl.setRowHidden(row, search_text not in comment_content)
+                else:
+                     # Hide rows with missing comment items
+                     tbl.setRowHidden(row, True)
+
+        # Store search bar reference on the table itself
         table.search_bar = search_bar
-        
-        # Important: First add tab to the dictionary, then to tab widget
+        # Disconnect first to avoid multiple connections
+        try: search_bar.textChanged.disconnect()
+        except TypeError: pass
+        # Use lambda to pass text and table instance
+        search_bar.textChanged.connect(lambda text, tbl=table: filter_table(text, tbl))
+
+
+        # Store tab reference using the unique `tab_type` name (e.g., "data.csv (2)")
+        # This MUST use the name generated by restore_session to ensure uniqueness check works
         self.tabs[tab_type] = tab
-        
-        # Then add to tab widget - use display name for UI
+        print(f"Added tab to self.tabs dictionary with key: '{tab_type}'")
+
+
+        # Add the new tab widget to the tab bar using the (potentially truncated) display name
+        # This adds the QWidget `tab` to the QTabWidget
         self.tab_widget.addTab(tab, tab_display_name)
-        
-        # Enable close buttons for tabs
-        self.tab_widget.setTabsClosable(True)
-        self.tab_widget.tabCloseRequested.connect(self.close_tab)
+        print(f"Added tab to QTabWidget with display name: '{tab_display_name}'")
+
+        # Ensure close buttons are enabled (usually set once)
+        if not self.tab_widget.tabsClosable():
+             self.tab_widget.setTabsClosable(True)
+             # Connect the close signal *once* (maybe in __init__ or init_ui)
+             # If connecting here, ensure it's disconnected first
+             try: self.tab_widget.tabCloseRequested.disconnect(self.close_tab)
+             except TypeError: pass # Not connected yet
+             self.tab_widget.tabCloseRequested.connect(self.close_tab)
+
 
         # Show tab widget and hide initial message when first tab is created
-        if (self.tab_widget.isHidden()):
+        if self.tab_widget.isHidden() and self.tab_widget.count() > 0:
             self.initial_message.hide()
             self.tab_widget.show()
-            # Enable dataset operations when first tab is created
-            self.enable_dataset_operations(True)
-            
-        return table
+            # Only enable if not already enabled - avoid redundant calls
+            if not self.show_summary_button.isEnabled():
+                self.enable_dataset_operations(True)
 
-    def close_tab(self, index):
-        """Close the tab and clean up resources"""
-        # Get tab name before removing
-        tab_name = self.tab_widget.tabText(index)
-        
-        try:
-            # Remove tab data from database
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            
-            # First get the tab_id
-            cursor.execute("""
-                SELECT tab_id FROM session_tabs 
-                WHERE session_id = ? AND tab_name = ?
-            """, (self.session_id, tab_name))
-            
-            tab_result = cursor.fetchone()
-            if tab_result:
-                tab_id = tab_result[0]
-                
-                # Delete comments associated with this tab
-                cursor.execute("""
-                    DELETE FROM tab_comments 
-                    WHERE tab_id = ?
-                """, (tab_id,))
-                
-                # Delete the tab itself
-                cursor.execute("""
-                    DELETE FROM session_tabs 
-                    WHERE tab_id = ?
-                """, (tab_id,))
-                
-                conn.commit()
-                print(f"Successfully deleted tab {tab_name} and its comments from database")
-            
-            # Now update session last accessed time
-            cursor.execute("""
-                UPDATE user_sessions 
-                SET last_accessed = GETDATE()
-                WHERE session_id = ?
-            """, (self.session_id,))
-            conn.commit()
-            
-            conn.close()
-            
-            # Log the action
-            log_user_action(self.current_user, f"Closed tab: {tab_name}")
-            
-        except Exception as e:
-            print(f"Error removing tab data from database: {e}")
-            import traceback
-            traceback.print_exc()
+        # Set the newly added tab as the current one, especially during restoration
+        # This ensures the UI shows the tab being processed
+        new_index = self.tab_widget.indexOf(tab)
+        if new_index != -1:
+            self.tab_widget.setCurrentIndex(new_index)
+
+
+        return table # Return the newly created table
+
+
+    def close_tab(self, index, delete_from_db=True):
+        """Close the tab and clean up resources. Optionally skip DB deletion."""
+        # Get the widget *at the provided index*
+        tab_to_close = self.tab_widget.widget(index)
+        if not tab_to_close:
+            print(f"Error: Could not find widget at index {index} to close.")
+            return
+
+        # Find the *actual current index* of this widget right before removal
+        current_index = self.tab_widget.indexOf(tab_to_close)
+        if current_index == -1:
+            print(f"Error: Widget {tab_to_close} no longer found in tab widget.")
+            return
+
+        # Get the tab name using the *current index*
+        # Find the key in self.tabs that corresponds to this widget
+        tab_name = None
+        for name, widget in self.tabs.items():
+            if widget == tab_to_close:
+                tab_name = name
+                break
+
+        if not tab_name:
+             # Fallback if not found in self.tabs (shouldn't happen ideally)
+             tab_name = self.tab_widget.tabText(current_index)
+             print(f"Warning: Widget not found in self.tabs keys, using tabText: {tab_name}")
+
+        print(f"Attempting to close tab: Name='{tab_name}', Index={current_index}, DeleteDB={delete_from_db}")
+
+        # --- Database Operations (Conditional) ---
+        if delete_from_db:
             try:
-                conn.rollback()
+                conn = get_db_connection()
+                cursor = conn.cursor()
+
+                # Find tab_id based on session_id and tab_name
+                cursor.execute("""
+                    SELECT tab_id FROM session_tabs
+                    WHERE session_id = ? AND tab_name = ?
+                """, (self.session_id, tab_name))
+                tab_result = cursor.fetchone()
+
+                if tab_result:
+                    tab_id = tab_result[0]
+                    print(f"  Found tab_id {tab_id} for DB deletion.")
+                    # Delete comments associated with this tab
+                    cursor.execute("DELETE FROM tab_comments WHERE tab_id = ?", (tab_id,))
+                    # Delete the tab entry itself
+                    cursor.execute("DELETE FROM session_tabs WHERE tab_id = ?", (tab_id,))
+                    conn.commit()
+                    print(f"  Successfully deleted comments and tab entry for tab_id {tab_id}")
+
+                    # Now update session last accessed time
+                    cursor.execute("""
+                        UPDATE user_sessions
+                        SET last_accessed = GETDATE()
+                        WHERE session_id = ?
+                    """, (self.session_id,))
+                    conn.commit()
+                else:
+                    print(f"  Warning: Could not find tab_id for '{tab_name}' in session {self.session_id} for DB deletion.")
+
                 conn.close()
-            except:
-                pass
-        
-        # Get the widget for this tab before removing it from the UI
-        tab_widget = self.tab_widget.widget(index)
-        
-        # Clean up memory and references
+                log_user_action(self.current_user, f"Closed tab (with DB delete): {tab_name}")
+
+            except Exception as e:
+                print(f"Error removing tab data from database for '{tab_name}': {e}")
+                # Add proper rollback and connection closing in case of error
+                try: conn.rollback()
+                except: pass
+                try: conn.close()
+                except: pass
+        else:
+             print("  Skipping database deletion as requested.")
+             # Still log the UI action
+             log_user_action(self.current_user, f"Closed duplicate tab (UI only): {tab_name}")
+
+
+        # --- UI and Internal State Cleanup ---
         if tab_name in self.tabs:
-            # Get all comment text in this tab to clean up metadata and selected comments
-            comment_texts = []
+            # Clean up metadata and selected comments associated with this tab_name
+            # (Ensure this doesn't break things if called during deduplication)
+            # Maybe skip this part if delete_from_db is False? Or make it safe.
+            # Let's assume metadata/selection cleanup is okay even if DB isn't deleted.
             table_widget = self.tabs[tab_name].findChild(QTableWidget)
             if table_widget:
+                comments_in_tab = set()
                 for row in range(table_widget.rowCount()):
-                    comment_item = table_widget.item(row, 0)
-                    if comment_item:
-                        comment_text = comment_item.data(Qt.UserRole) or comment_item.text()
-                        comment_texts.append(comment_text)
-                        
-                        # Remove from selected comments if present
-                        if comment_text in self.selected_comments:
-                            self.selected_comments.remove(comment_text)
-                            
-                        # Remove metadata
-                        if comment_text in self.comment_metadata:
-                            del self.comment_metadata[comment_text]
-            
-            # Remove reference from tabs dictionary
+                     comment_item = table_widget.item(row, 0)
+                     if comment_item:
+                          comment_text = comment_item.data(Qt.UserRole) or comment_item.text()
+                          comments_in_tab.add(comment_text)
+
+                # Remove associated metadata
+                for comment_text in comments_in_tab:
+                     if comment_text in self.comment_metadata:
+                          del self.comment_metadata[comment_text]
+
+                # Remove from selected list
+                self.selected_comments = [
+                    item for item in self.selected_comments
+                    if not ((isinstance(item, dict) and item.get('comment') in comments_in_tab) or
+                            (isinstance(item, str) and item in comments_in_tab))
+                ]
+
+            # Remove reference from internal tabs dictionary using the tab_name
             del self.tabs[tab_name]
-        
-        # Now remove the tab from the UI
-        self.tab_widget.removeTab(index)
-        
-        # Properly delete the widget after removing it from the tab widget
-        if tab_widget:
-            tab_widget.deleteLater()
-        
-        # If no tabs left, show initial message and disable dataset operations
+            print(f"Removed '{tab_name}' from internal tabs dictionary.")
+        else:
+             print(f"Warning: Tab name '{tab_name}' not found in self.tabs dictionary during cleanup.")
+
+
+        # --- Remove from Tab Widget ---
+        self.tab_widget.removeTab(current_index)
+        print(f"Removed tab at index {current_index} from QTabWidget.")
+
+        # Schedule the closed widget for deletion
+        tab_to_close.deleteLater()
+        print(f"Scheduled widget for deletion: {tab_to_close}")
+
+        # Update UI if no tabs are left
         if self.tab_widget.count() == 0:
             self.tab_widget.hide()
             self.initial_message.show()
@@ -773,6 +872,91 @@ class AdminWindow(QMainWindow):
             self.add_remove_button.setEnabled(False)
             self.export_selected_button.setEnabled(False)
             self.details_text_edit.clear()
+            print("Last tab closed, updating UI.")
+        # Don't automatically select another tab when closing duplicates,
+        # as it might interfere with the deduplication loop. Selection can be handled
+        # after deduplication is complete if needed.
+
+
+    # Add the new deduplication method
+    def deduplicate_restored_tabs(self):
+        print("\nStarting post-restore tab deduplication...")
+        content_signatures = {} # hash -> list of (tab_widget, original_tab_id, index)
+
+        # 1. Calculate content signatures for all tabs
+        for i in range(self.tab_widget.count()):
+            tab_widget = self.tab_widget.widget(i)
+            if not tab_widget: continue
+
+            table = tab_widget.findChild(QTableWidget)
+            if not table: continue
+
+            original_tab_id = tab_widget.property("original_tab_id")
+            if original_tab_id is None:
+                 print(f"Warning: Tab at index {i} is missing 'original_tab_id' property.")
+                 # Assign a low number to prioritize keeping tabs with valid IDs
+                 original_tab_id = -1
+
+            comments = []
+            for row in range(table.rowCount()):
+                item = table.item(row, 0)
+                if item:
+                    # Use UserRole data preferentially as it's the original comment
+                    comment_text = item.data(Qt.UserRole)
+                    if comment_text is None:
+                         comment_text = item.text()
+                         # Strip potential reply prefix if UserRole wasn't used
+                         if isinstance(comment_text, str) and comment_text.startswith(" [↪ Reply] "):
+                              comment_text = comment_text[len(" [↪ Reply] "):]
+                    comments.append(str(comment_text)) # Ensure string conversion
+
+            if not comments: # Skip empty tabs
+                 continue
+
+            # Create a consistent signature
+            comments.sort()
+            content_string = "|".join(comments)
+            hasher = hashlib.sha256()
+            hasher.update(content_string.encode('utf-8'))
+            content_hash = hasher.hexdigest()
+
+            if content_hash not in content_signatures:
+                content_signatures[content_hash] = []
+            content_signatures[content_hash].append((tab_widget, original_tab_id, i))
+            print(f"  Tab index {i} (ID: {original_tab_id}): Content hash {content_hash[:8]}...")
+
+        # 2. Identify tabs to remove
+        tabs_to_remove_indices = set()
+        for content_hash, tab_list in content_signatures.items():
+            if len(tab_list) > 1:
+                print(f"  Found duplicate content (Hash: {content_hash[:8]}...): {len(tab_list)} tabs.")
+                # Sort by original_tab_id (descending) to keep the one saved most recently
+                # Tabs without a valid ID (assigned -1) will be sorted last (less likely to be kept)
+                tab_list.sort(key=lambda x: x[1], reverse=True)
+
+                tab_to_keep_widget, id_to_keep, index_to_keep = tab_list[0]
+                print(f"    Keeping Tab ID: {id_to_keep}, Index: {index_to_keep}")
+
+                # Mark others for removal
+                for i in range(1, len(tab_list)):
+                    tab_to_remove_widget, id_to_remove, index_to_remove = tab_list[i]
+                    # We need the index *at the time of removal*, store the index
+                    tabs_to_remove_indices.add(index_to_remove)
+                    print(f"    Marking Tab ID: {id_to_remove}, Index: {index_to_remove} for removal.")
+
+        # 3. Remove duplicates (iterate by index in reverse order to avoid index shifting issues)
+        if tabs_to_remove_indices:
+            print(f"  Removing {len(tabs_to_remove_indices)} duplicate tabs...")
+            sorted_indices_to_remove = sorted(list(tabs_to_remove_indices), reverse=True)
+
+            for index in sorted_indices_to_remove:
+                print(f"    Closing duplicate tab at index {index} (UI only)...")
+                self.close_tab(index, delete_from_db=False)
+            print("  Finished removing duplicate tabs.")
+        else:
+            print("  No duplicate tab content found.")
+
+        print("Tab deduplication complete.\n")
 
     def enable_dataset_operations(self, enable=True):
         """Enable or disable dataset operation buttons"""
@@ -1939,54 +2123,71 @@ class AdminWindow(QMainWindow):
     def restore_session(self):
         """Restore tabs and comments from saved session"""
         try:
-            # Clear existing tabs first to prevent duplicates
+            # Clear existing UI tabs and self.tabs dictionary
+            print("Starting session restore. Clearing UI tabs.")
+            while self.tab_widget.count() > 0:
+                 widget = self.tab_widget.widget(0)
+                 self.tab_widget.removeTab(0)
+                 if widget:
+                      widget.deleteLater()
+            self.tabs = {}
+            # Prepare data structures: clear selected_comments, comment_metadata
             self.selected_comments = []
             self.comment_metadata = {}
-            self.tabs = {}
-            
-            # Remove all tabs from the UI
-            while self.tab_widget.count() > 0:
-                self.tab_widget.removeTab(0)
-            
+
             conn = get_db_connection()
             cursor = conn.cursor()
-
-            # Get all tabs for this session
+            # Fetch tabs from DB
             cursor.execute("""
-                SELECT tab_id, tab_name, tab_type 
-                FROM session_tabs 
+                SELECT tab_id, tab_name, tab_type
+                FROM session_tabs
                 WHERE session_id = ?
+                ORDER BY tab_id
             """, (self.session_id,))
-            
-            tabs = cursor.fetchall()
-            
-            # Create a dictionary to collect comments for each tab name
-            all_tab_comments = {}
-            
-            # First, collect all comments for all tabs
-            for tab_id, tab_name, tab_type in tabs:
-                # Get comments for this tab
+            tabs_from_db = cursor.fetchall()
+            print(f"Found {len(tabs_from_db)} tabs in database for session {self.session_id}")
+
+            # Process tabs one by one
+            for tab_id, original_tab_name, tab_type in tabs_from_db:
+                print(f"Processing tab_id: {tab_id}, original_name: '{original_tab_name}'")
+                # Fetch comments for tab_id
                 cursor.execute("""
                     SELECT comment_text, prediction, confidence,
                            profile_name, profile_picture, comment_date,
                            likes_count, profile_id, is_reply, reply_to, is_selected
-                    FROM tab_comments 
+                    FROM tab_comments
                     WHERE tab_id = ?
                 """, (tab_id,))
-                
-                comments = cursor.fetchall()
-                
-                # Initialize list for this tab name if not exists
-                if tab_name not in all_tab_comments:
-                    all_tab_comments[tab_name] = []
-                
-                # Process each comment
-                for comment_data in comments:
-                    (comment_text, prediction, confidence, profile_name, 
-                     profile_picture, comment_date, likes_count, profile_id, 
+                comments_for_tab = cursor.fetchall()
+                print(f"  Found {len(comments_for_tab)} comments for this tab.")
+                if not comments_for_tab:
+                     print(f"  Skipping tab '{original_tab_name}' - no comments found.")
+                     continue
+
+                # --- Handle potential duplicate tab names ---
+                base_name = original_tab_name
+                final_tab_name = base_name
+                counter = 1
+                while final_tab_name in self.tabs:
+                     counter += 1
+                     final_tab_name = f"{base_name} ({counter})"
+                if final_tab_name != base_name:
+                     print(f"  Duplicate UI name detected. Using new name: '{final_tab_name}'")
+
+                # Process comments into list and update metadata/selected
+                comments_data_list = []
+                for db_row_index, comment_data in enumerate(comments_for_tab):
+                    # ... (Existing logic to parse comment_data into comment_dict) ...
+                    (comment_text, prediction, confidence, profile_name,
+                     profile_picture, comment_date, likes_count, profile_id,
                      is_reply, reply_to, is_selected) = comment_data
-                    
-                    # Create comment dictionary
+                    # ... (Validation/cleaning) ...
+                    comment_text = str(comment_text) if comment_text is not None else ""
+                    prediction = str(prediction) if prediction is not None else ""
+                    try:
+                        confidence = float(confidence) if confidence is not None else 0.0
+                    except (ValueError, TypeError):
+                        confidence = 0.0
                     comment_dict = {
                         'comment_text': comment_text,
                         'prediction': prediction,
@@ -1996,83 +2197,122 @@ class AdminWindow(QMainWindow):
                         'comment_date': comment_date,
                         'likes_count': likes_count,
                         'profile_id': profile_id,
-                        'is_reply': is_reply,
+                        'is_reply': bool(is_reply),
                         'reply_to': reply_to
                     }
-                    
-                    # Add to list for this tab (avoid duplicates)
-                    if comment_dict not in all_tab_comments[tab_name]:
-                        all_tab_comments[tab_name].append(comment_dict)
-                    
-                    # Store metadata
-                    self.comment_metadata[comment_text] = {
-                        'profile_name': profile_name,
-                        'profile_picture': profile_picture,
-                        'date': comment_date,
-                        'likes_count': likes_count,
-                        'profile_id': profile_id,
-                        'is_reply': is_reply,
-                        'reply_to': reply_to,
-                        'confidence': confidence  # Store confidence in metadata
-                    }
-                    
-                    # Add to selected comments if selected
-                    if is_selected and comment_text not in self.selected_comments:
-                        self.selected_comments.append(comment_text)
-            
-            # Now create tabs and populate them with the collected comments
-            for tab_name, comments_data in all_tab_comments.items():
-                if not comments_data:  # Skip empty tabs
-                    continue
-                    
-                # Create tab in UI
-                table = self.create_empty_tab(tab_name)
-                
-                # Populate the table with all comments for this tab
-                table.setRowCount(0)
-                self.populate_table_directly(table, comments_data)
-                
-                # Log the restored tab
-                print(f"Restored tab '{tab_name}' with {len(comments_data)} comments")
-            
+                    comments_data_list.append(comment_dict)
+                    # ... (Update self.comment_metadata and self.selected_comments) ...
+                    if comment_text and comment_text not in self.comment_metadata:
+                        self.comment_metadata[comment_text] = {
+                            'profile_name': profile_name,
+                            'profile_picture': profile_picture,
+                            'date': comment_date,
+                            'likes_count': likes_count,
+                            'profile_id': profile_id,
+                            'is_reply': bool(is_reply),
+                            'reply_to': reply_to,
+                            'confidence': confidence
+                        }
+                    if is_selected:
+                         is_already_selected = any(
+                              (isinstance(item, dict) and item.get('comment') == comment_text) or \
+                              (isinstance(item, str) and item == comment_text)
+                              for item in self.selected_comments
+                         )
+                         if not is_already_selected:
+                              self.selected_comments.append({
+                                   'comment': comment_text,
+                                   'prediction': prediction,
+                                   'confidence': confidence
+                              })
+                # Create tab in UI using the final name
+                print(f"  Calling create_empty_tab with name: '{final_tab_name}' (is_restoring=True)")
+                table = self.create_empty_tab(final_tab_name, is_restoring=True)
+
+                if table:
+                    # *** STORE ORIGINAL TAB ID ON THE PARENT TAB WIDGET ***
+                    # Navigate up from QTableWidget -> Layout -> QWidget (the actual tab page)
+                    parent_widget = table.parentWidget()
+                    tab_widget = parent_widget.parentWidget() if parent_widget else None
+
+                    if isinstance(tab_widget, QWidget) and self.tab_widget.indexOf(tab_widget) != -1:
+                         tab_widget.setProperty("original_tab_id", tab_id)
+                         print(f"  Stored original_tab_id ({tab_id}) on tab widget: {tab_widget.objectName()}")
+                    else:
+                         print(f"  Warning: Could not find parent tab widget for table in '{final_tab_name}' to store original_tab_id.")
+
+                    # Populate the table
+                    print(f"  Populating table for tab '{final_tab_name}' with {len(comments_data_list)} comments.")
+                    self.populate_table_directly(table, comments_data_list)
+                    print(f"  Finished populating table for '{final_tab_name}'.")
+                else:
+                    print(f"  Warning: create_empty_tab did not return a table for '{final_tab_name}'.")
+
+                print(f"Restored tab '{final_tab_name}' (Original DB ID: {tab_id}, Name: '{original_tab_name}') with {len(comments_data_list)} comments")
+
             conn.close()
-            
-            # Show/hide appropriate elements based on tab count
+            print("Finished processing all tabs from database.")
+
+            # *** CALL DEDUPLICATION AFTER PROCESSING ALL TABS ***
+            self.deduplicate_restored_tabs()
+
+            # --- Final UI State Update ---
             if self.tab_widget.count() > 0:
-                self.initial_message.hide()
-                self.tab_widget.show()
-                self.enable_dataset_operations(True)
+                 print("Tabs exist after deduplication. Finalizing UI.")
+                 self.initial_message.hide()
+                 self.tab_widget.show()
+                 self.enable_dataset_operations(True)
+                 if self.tab_widget.currentIndex() == -1: # Select first tab if none is selected
+                      self.tab_widget.setCurrentIndex(0)
+                 self.update_details_panel() # Update details for the currently selected tab
             else:
-                self.initial_message.show()
-                self.tab_widget.hide()
-                self.enable_dataset_operations(False)
-            
+                 print("No tabs remaining after deduplication. Showing initial message.")
+                 self.initial_message.show()
+                 self.tab_widget.hide()
+                 self.enable_dataset_operations(False)
+                 self.details_text_edit.clear()
+                 self.add_remove_button.setEnabled(False)
+                 self.export_selected_button.setEnabled(False)
+
+            print("Session restore complete.")
+
         except Exception as e:
             print(f"Session restoration error: {e}")
             import traceback
-            traceback.print_exc()  # Print full stack trace for debugging
+            traceback.print_exc()
 
     def populate_table_directly(self, table, comments):
-        """Directly populate table with comment data - used for restoring session"""
-        # Create a set of existing comments to avoid duplicates
-        existing_comments = set()
+        """Directly populate table with comment data - used for restoring session. Assumes table might already have content from previous restores in the same session, so checks for duplicates."""
+        # Create a set of existing comments IN THIS SPECIFIC TABLE to avoid duplicates within the same restore call
+        existing_comments_in_this_table = set()
         for row in range(table.rowCount()):
             comment_item = table.item(row, 0)
-            if comment_item and comment_item.data(Qt.UserRole):
-                existing_comments.add(comment_item.data(Qt.UserRole))
+            if comment_item:
+                # Use UserRole first, then text as fallback
+                text = comment_item.data(Qt.UserRole) or comment_item.text()
+                # Handle potential prefix if it's already displayed
+                if text.startswith(" [↪ Reply] "):
+                    text = text[len(" [↪ Reply] "):]
+                existing_comments_in_this_table.add(text)
 
         for comment in comments:
             # Skip if already in table
             comment_text = comment.get('comment_text', '')
-            if comment_text in existing_comments:
+            if not comment_text or comment_text in existing_comments_in_this_table:
                 continue
                 
-            existing_comments.add(comment_text)
+            existing_comments_in_this_table.add(comment_text) # Add to set after check
             
             prediction = comment.get('prediction', '')
-            confidence = comment.get('confidence', 0.0)
+            # Ensure confidence is float before formatting
+            confidence_val = comment.get('confidence', 0.0)
+            try:
+                confidence = float(confidence_val)
+            except (ValueError, TypeError):
+                confidence = 0.0
             
-            metadata = self.comment_metadata.get(comment_text, {})
+            # Use metadata stored during the restore loop, falling back if needed
+            metadata = self.comment_metadata.get(comment_text, {}) 
             is_reply = metadata.get('is_reply', False)
 
             # Insert new row
@@ -2081,17 +2321,17 @@ class AdminWindow(QMainWindow):
 
             # Set comment cell
             display_text = comment_text
+            comment_item = QTableWidgetItem() # Create item first
+            comment_item.setData(Qt.UserRole, comment_text) # Store original text
             if is_reply:
                 reply_to = metadata.get('reply_to', '')
-                comment_item = QTableWidgetItem(display_text)
-                comment_item.setData(Qt.UserRole, comment_text)
                 comment_item.setData(Qt.DisplayRole, f" [↪ Reply] {display_text}")
-                comment_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
             else:
-                comment_item = QTableWidgetItem(display_text)
-                comment_item.setData(Qt.UserRole, comment_text)
-                comment_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+                comment_item.setData(Qt.DisplayRole, display_text)
+                
+            comment_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
+            # Apply subtle background for replies AFTER setting data
             if is_reply:
                 lighter_surface = QColor(COLORS['surface']).lighter(105)
                 comment_item.setBackground(lighter_surface)
@@ -2107,6 +2347,8 @@ class AdminWindow(QMainWindow):
             # Set confidence cell (formatted 0-100 with %)
             confidence_text = f"{confidence:.2f}%" # Format to 2 decimal places and add %
             confidence_item = QTableWidgetItem(confidence_text)
+            # Store actual float value for potential sorting
+            confidence_item.setData(Qt.UserRole, confidence) 
             confidence_item.setTextAlignment(Qt.AlignCenter)
 
             # Add data to table
@@ -2117,10 +2359,34 @@ class AdminWindow(QMainWindow):
             # Resize row to fit content
             table.resizeRowToContents(row_position)
 
-            # Highlight if in selected comments
-            if comment_text in self.selected_comments:
+            # Highlight if in selected comments (check against the potentially updated self.selected_comments)
+            is_selected_in_list = False
+            for item in self.selected_comments:
+                 if isinstance(item, dict) and item.get('comment') == comment_text:
+                     is_selected_in_list = True
+                     break
+                 elif isinstance(item, str) and item == comment_text:
+                     # Handle legacy string format if still present
+                     is_selected_in_list = True
+                     break
+                     
+            if is_selected_in_list:
+                highlight_color = QColor(COLORS['highlight'])
                 for col in range(table.columnCount()):
-                    table.item(row_position, col).setBackground(QColor(COLORS['highlight']))
+                    current_item = table.item(row_position, col)
+                    if current_item: # Check if item exists before setting background
+                         # Preserve reply background if highlighting
+                         original_bg = current_item.background()
+                         if is_reply and original_bg.isValid() and original_bg != QColor(Qt.transparent):
+                              # Blend highlight with reply color (simple alpha blend)
+                              blended_color = QColor.fromRgbF(
+                                   (highlight_color.redF() * 0.3 + original_bg.redF() * 0.7),
+                                   (highlight_color.greenF() * 0.3 + original_bg.greenF() * 0.7),
+                                   (highlight_color.blueF() * 0.3 + original_bg.blueF() * 0.7)
+                              )
+                              current_item.setBackground(blended_color)
+                         else:
+                              current_item.setBackground(highlight_color)
 
     def save_tab_state(self, tab_name, comments):
         """Save tab and its comments to the database"""
