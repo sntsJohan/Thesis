@@ -794,18 +794,15 @@ class UserMainWindow(QMainWindow):
         radio_button_layout.setSpacing(8)
         radio_button_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Input method selection label (moved to vertical layout)
         method_label = QLabel("Choose Input Method:")
         method_label.setFont(FONTS['header'])
         method_label.setStyleSheet(f"color: {COLORS['text']}; margin-bottom: 5px;")
         radio_button_layout.addWidget(method_label)
 
-        # Create radio buttons (remain the same)
         self.fb_radio = QRadioButton("Facebook Post")
         self.csv_radio = QRadioButton("CSV File")
         self.direct_radio = QRadioButton("Single Comment")
 
-        # Style the radio buttons (remain the same)
         radio_style = f"""
             QRadioButton {{
                 color: {COLORS['text']};
@@ -832,28 +829,36 @@ class UserMainWindow(QMainWindow):
         self.csv_radio.setStyleSheet(radio_style)
         self.direct_radio.setStyleSheet(radio_style)
 
-        # Add radio buttons vertically
         radio_button_layout.addWidget(self.fb_radio)
         radio_button_layout.addWidget(self.csv_radio)
         radio_button_layout.addWidget(self.direct_radio)
-        radio_button_layout.addStretch() # Push buttons to the top
+        radio_button_layout.addStretch()
 
-        # Add the vertical radio button layout to the main horizontal layout (left side)
         input_layout.addWidget(radio_button_container, stretch=0) # Give minimum width
 
-        # Right side: Create stacked widget for different input methods
+        # Middle part: Create stacked widget for different input methods
         self.input_stack = QStackedWidget()
 
-        # Connect radio buttons to stack widget (remain the same)
-        self.fb_radio.toggled.connect(lambda checked: self.input_stack.setCurrentIndex(0) if checked else None)
-        self.csv_radio.toggled.connect(lambda checked: self.input_stack.setCurrentIndex(1) if checked else None)
-        self.direct_radio.toggled.connect(lambda checked: self.input_stack.setCurrentIndex(2) if checked else None)
+        # --- Create Directions Panel ---
+        self.directions_panel = QTextEdit()
+        self.directions_panel.setReadOnly(True)
+        self.directions_panel.setStyleSheet(TEXT_EDIT_STYLE) # Use same style as details
+        self.directions_panel.setFixedWidth(500) 
+        self.directions_panel.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding) # Fixed width, expanding height
 
-        # Set default selection (remain the same)
+        # --- Modify Connections ---
+        # Connect radio buttons to a new handler
+        self.fb_radio.toggled.connect(lambda checked: self.handle_input_selection(0) if checked else None)
+        self.csv_radio.toggled.connect(lambda checked: self.handle_input_selection(1) if checked else None)
+        self.direct_radio.toggled.connect(lambda checked: self.handle_input_selection(2) if checked else None)
+
+        # Set default selection and initial directions
         self.fb_radio.setChecked(True)
+        self.update_directions(0) # Show initial directions for FB
 
-        # Add the input stack to the main horizontal layout (right side)
-        input_layout.addWidget(self.input_stack, stretch=1) # Give it more horizontal space
+        # Add the input stack (middle) and directions panel (right) to the main horizontal layout
+        input_layout.addWidget(self.input_stack, stretch=1) # Give it flexible horizontal space
+        input_layout.addWidget(self.directions_panel, stretch=0) # Add directions panel to the right
         # --- End Modification ---
 
         # --- Facebook Post Input section (content remains the same, just added to stack) ---
@@ -867,10 +872,6 @@ class UserMainWindow(QMainWindow):
         fb_title.setFont(FONTS['header'])
         fb_title.setStyleSheet(f"color: {COLORS['text']};")
         fb_layout.addWidget(fb_title)
-
-        fb_description = QLabel("Enter a Facebook post URL to analyze its comments")
-        fb_description.setStyleSheet(f"color: {COLORS['text']}; font-size: 12px; margin-bottom: 5px;")
-        fb_layout.addWidget(fb_description)
 
         url_layout = QHBoxLayout()
         self.url_input.setStyleSheet(INPUT_STYLE)
@@ -900,10 +901,6 @@ class UserMainWindow(QMainWindow):
         csv_title.setFont(FONTS['header'])
         csv_title.setStyleSheet(f"color: {COLORS['text']};")
         csv_layout.addWidget(csv_title)
-
-        csv_description = QLabel("Upload a CSV file containing comments to analyze")
-        csv_description.setStyleSheet(f"color: {COLORS['text']}; font-size: 12px; margin-bottom: 5px;")
-        csv_layout.addWidget(csv_description)
 
         file_browse_layout = QHBoxLayout()
         self.file_input.setStyleSheet(INPUT_STYLE)
@@ -935,13 +932,6 @@ class UserMainWindow(QMainWindow):
         direct_title.setFont(FONTS['header'])
         direct_title.setStyleSheet(f"color: {COLORS['text']};")
         direct_layout.addWidget(direct_title)
-
-        direct_description = QLabel("Enter a single comment to analyze")
-        direct_description.setStyleSheet(f"color: {COLORS['text']}; font-size: 12px; margin-bottom: 5px;")
-        direct_layout.addWidget(direct_description)
-
-        # --- Remove previous width constraint ---
-        # Remove the horizontal_wrapper_layout and related widgets/layouts
 
         # Add input field directly to the main vertical layout
         self.text_input.setStyleSheet(INPUT_STYLE)
@@ -2090,3 +2080,41 @@ class UserMainWindow(QMainWindow):
         """Generate report for user interface"""
         generate_report_user(self)
         log_user_action(self.current_user, "Generated analysis report")
+
+    # --- Add Helper Methods ---
+    def handle_input_selection(self, index):
+        """Handles radio button selection changes."""
+        self.input_stack.setCurrentIndex(index)
+        self.update_directions(index)
+
+    def update_directions(self, index):
+        """Updates the directions panel based on the selected input type."""
+        directions_html = ""
+        if index == 0: # Facebook Post
+            directions_html = """
+            <b style='font-size: 14px;'>Facebook Post Instructions:</b><br><br>
+            1. Find the Facebook post you want to analyze.<br>
+            2. Copy the full URL from your browser's address bar.<br>
+            3. Paste the URL into the input field.<br>
+            4. Check "Include Replies" if you want to analyze replies to comments.<br>
+            5. Click "Scrape Comments" to begin.<br><br>
+            <i>Note: Only public posts can be scraped. Scraping may take some time depending on the number of comments.</i>
+            """
+        elif index == 1: # CSV File
+            directions_html = """
+            <b style='font-size: 14px;'>CSV File Instructions:</b><br><br>
+            1. Prepare a CSV file.<br>
+            2. Ensure the first column contains the comments you want to analyze.<br>
+            3. Click "Browse" to locate and select your CSV file.<br>
+            4. Click "Process CSV" to analyze the comments.<br><br>
+            <i>Note: The system only reads the first column. Ensure text is UTF-8 encoded if you encounter issues.</i>
+            """
+        elif index == 2: # Single Comment
+            directions_html = """
+            <b style='font-size: 14px;'>Single Comment Instructions:</b><br><br>
+            1. Type or paste the comment text directly into the input field.<br>
+            2. Click "Analyze Comment".<br>
+            3. The result will be added to the "Direct Inputs" tab in the table below.<br><br>
+            <i>Note: This is useful for quickly checking individual comments.</i>
+            """
+        self.directions_panel.setHtml(f"<div style='color: {COLORS['text']}; font-size: 12px; padding: 5px;'>{directions_html}</div>")
