@@ -25,7 +25,7 @@ from styles import (COLORS, FONTS, BUTTON_STYLE, INPUT_STYLE, TABLE_STYLE, TAB_S
 import tempfile
 import time
 from PyQt5.QtWidgets import QApplication
-from comment_operations import generate_report_from_window
+from comment_operations import generate_report
 from user import UserMainWindow, SummaryDialog
 from loading_overlay import LoadingOverlay
 from stopwords import TAGALOG_STOP_WORDS
@@ -1355,7 +1355,7 @@ class MainWindow(QMainWindow):
 
     def generate_report(self):
         """Generate report by calling the report generation function"""
-        generate_report_from_window(self)
+        generate_report(self)
 
     def show_history(self):
         """Show the history dialog"""
