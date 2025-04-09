@@ -40,6 +40,7 @@ BUTTON_STYLE = f"""
     }}
     QPushButton:hover {{
         background-color: {COLORS['hover']};
+        color: black;
     }}
     QPushButton:pressed {{
         background-color: {COLORS['active']};
@@ -111,11 +112,11 @@ TABLE_STYLE = f"""
     }}
     QTableWidget::item:selected {{
         background-color: {COLORS['primary']};
-        color: {COLORS['text']};
+        color: black;
     }}
     QTableWidget::item:hover:!selected {{
         background-color: {COLORS['hover']};
-        color: {COLORS['text']};
+        color: black;
     }}
 """
 
@@ -141,10 +142,11 @@ TAB_STYLE = f"""
     }}
     QTabBar::tab:selected {{
         background: {COLORS['primary']};
-        color: {COLORS['text']};
+        color: black;
     }}
     QTabBar::tab:hover:!selected {{
         background: {COLORS['hover']};
+        color: black;
     }}
     QTabBar::close-button {{
         color: white;
