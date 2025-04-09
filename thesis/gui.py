@@ -113,10 +113,17 @@ class MainWindow(QMainWindow):
             username = login_dialog.get_username()
             
             if role and role.lower() == "admin":
-                # Create admin window
-                self.admin_window = AdminWindow(self)
-                self.hide()
-                self.admin_window.showFullScreen()
+                try:
+                    # Create admin window
+                    self.admin_window = AdminWindow(self)
+                    # Set current user for the admin window
+                    self.admin_window.set_current_user(username)
+                    self.hide()
+                    self.admin_window.showFullScreen()
+                except Exception as e:
+                    display_message(self, "Error", f"Error initializing admin interface: {e}")
+                    import traceback
+                    traceback.print_exc()
             elif role and role.lower() == "user":
                 try:
                     # Create new user window instance
