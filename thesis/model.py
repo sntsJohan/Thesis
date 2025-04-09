@@ -1,6 +1,7 @@
 import os
 import joblib
 import torch
+import numpy as np
 from transformers import BertTokenizer, BertModel
 
 # Define model paths relative to this file's location
@@ -41,23 +42,33 @@ def generate_embedding(text):
     
     return cls_embedding
 
-def classify_comment(comment):
-    """Classify a comment as cyberbullying or not"""
+def classify_comment(text):
+    """
+    Classifies a single comment using the loaded BERT and SVM models.
+    Returns the prediction label ('Cyberbullying' or 'Normal') and 
+    the confidence score (0-100) based on the maximum probability.
+    """
+    if not svm_classifier:
+         raise RuntimeError("SVM classifier not loaded.")
+
     try:
-        # Generate embeddings using mBERT
-        comment_embedding = generate_embedding(comment).reshape(1, -1)
+        embedding = generate_embedding(text).reshape(1, -1)
         
-        # Predict using SVM
-        prediction = svm_classifier.predict(comment_embedding)
+        # Get prediction (0 or 1)
+        prediction = svm_classifier.predict(embedding)
         
-        # Get confidence score
-        confidence_score = svm_classifier.decision_function(comment_embedding)[0]
+        # Get probabilities for both classes
+        probabilities = svm_classifier.predict_proba(embedding)
         
-        # Format result
-        result = "Cyberbullying" if prediction[0] == 1 else "Not Cyberbullying"
+        # Determine prediction label
+        prediction_label = "Cyberbullying" if prediction[0] == 1 else "Normal"
         
-        return result, float(confidence_score)
-    
+        # Calculate confidence score (max probability * 100)
+        confidence_score = np.max(probabilities[0]) * 100.0
+        
+        return prediction_label, confidence_score
+        
     except Exception as e:
-        print(f"Error during prediction: {e}")
+        print(f"Error during classification for text '{text[:50]}...': {e}")
+        # Return a default value or re-raise the exception depending on desired handling
         return "Error", 0.0

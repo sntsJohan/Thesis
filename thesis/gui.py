@@ -26,12 +26,13 @@ import tempfile
 import time
 from PyQt5.QtWidgets import QApplication
 from comment_operations import generate_report_from_window
-from user import UserMainWindow
+from user import UserMainWindow, SummaryDialog
 from loading_overlay import LoadingOverlay
 from stopwords import TAGALOG_STOP_WORDS
 import re
 from history import HistoryDialog
 from usermanagement import UserManagementDialog 
+import os
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -756,20 +757,22 @@ class MainWindow(QMainWindow):
         header_layout.addWidget(sort_combo)
         tab_layout.addLayout(header_layout)
 
-        # Create table
+        # Create and configure table
         table = QTableWidget()
         table.setSortingEnabled(True)
         table.setStyleSheet(TABLE_ALTERNATE_STYLE)
-        table.setColumnCount(3)
-        table.setHorizontalHeaderLabels(["Comment", "Prediction", "Confidence"])
+        table.setColumnCount(3) # Set to 3 columns
+        table.setHorizontalHeaderLabels(["Comment", "Prediction", "Confidence"]) # Update headers
         table.setAlternatingRowColors(True)
-        table.setEditTriggers(QTableWidget.NoEditTriggers)  
+        table.setEditTriggers(QTableWidget.NoEditTriggers)
 
         # Adjust column sizes
         header = table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.Stretch)
         header.setSectionResizeMode(1, QHeaderView.Fixed)
-        header.setSectionResizeMode(2, QHeaderView.Fixed)
+        header.setSectionResizeMode(2, QHeaderView.Fixed) # Add resize mode for confidence
+        header.resizeSection(1, 150)  # Width for prediction
+        header.resizeSection(2, 100)  # Width for confidence
         table.setColumnWidth(1, 150)
         table.setColumnWidth(2, 100)
 
@@ -980,6 +983,7 @@ class MainWindow(QMainWindow):
                 lighter_surface = QColor(COLORS['surface']).lighter(105)
                 comment_item.setBackground(lighter_surface)
 
+            # Set prediction cell
             prediction_item = QTableWidgetItem(prediction)
             prediction_item.setTextAlignment(Qt.AlignCenter)
             if prediction == "Cyberbullying":
@@ -987,14 +991,14 @@ class MainWindow(QMainWindow):
             else:
                 prediction_item.setForeground(QColor(COLORS['normal']))
 
-            # Display raw confidence (0.0-1.0)
-            confidence_text = f"{confidence:.2f}"
+            # Display confidence (0-100) in the third column with %
+            confidence_text = f"{confidence:.2f}%" # Format to 2 decimal places and add %
             confidence_item = QTableWidgetItem(confidence_text)
             confidence_item.setTextAlignment(Qt.AlignCenter)
 
             table.setItem(row_position, 0, comment_item)
             table.setItem(row_position, 1, prediction_item)
-            table.setItem(row_position, 2, confidence_item)
+            table.setItem(row_position, 2, confidence_item) # Add to 3rd column
 
             table.resizeRowToContents(row_position)
 
@@ -1098,6 +1102,7 @@ class MainWindow(QMainWindow):
         self.details_text_edit.append(make_text("Status: ", f"{'In List' if comment in self.selected_comments else 'Not in List'}\n"))
 
     def show_summary(self):
+        """Show summary with counts, ratios, and a pie chart."""
         table = self.get_current_table()
         if not table or table.rowCount() == 0:
             display_message(self, "Info", "No comments to summarize")
@@ -1106,25 +1111,25 @@ class MainWindow(QMainWindow):
         total_comments = table.rowCount()
         cyberbullying_count = 0
         normal_count = 0
-        confidences = []
+        confidences = [] # Collect confidences
 
         for row in range(total_comments):
             comment_item = table.item(row, 0)
             prediction_item = table.item(row, 1)
-            confidence_item = table.item(row, 2) # Get confidence item from table
+            confidence_item = table.item(row, 2) # Get confidence item from 3rd column
             
             if not comment_item or not prediction_item or not confidence_item:
                 continue
             
-            # Get data from table items
-            comment_text = comment_item.data(Qt.UserRole) or comment_item.text()
+            # Get prediction label from 2nd column
             prediction = prediction_item.text()
-            try:
-                confidence = float(confidence_item.text()) # Convert text back to float
-            except ValueError:
-                confidence = 0.0 # Default if conversion fails
             
-            confidences.append(confidence)
+            # Get confidence score (0-100) from 3rd column
+            try:
+                confidence = float(confidence_item.text().strip('%')) # Read float, remove %
+                confidences.append(confidence)
+            except ValueError:
+                pass # Ignore if not a valid float
 
             if prediction == "Cyberbullying":
                 cyberbullying_count += 1
@@ -1133,21 +1138,53 @@ class MainWindow(QMainWindow):
 
         avg_confidence = np.mean(confidences) if confidences else 0
 
+        # Calculate ratios
+        bully_ratio = (cyberbullying_count / total_comments) if total_comments > 0 else 0
+        normal_ratio = (normal_count / total_comments) if total_comments > 0 else 0
+
         summary_text = (
-            f"<b>Summary of Current Tab</b>\n\n"
-            f"Total Comments: {total_comments}\n"
-            f"Cyberbullying Comments: {cyberbullying_count}\n"
-            f"Normal Comments: {normal_count}\n"
-            f"Average Confidence: {avg_confidence:.2f}\n"
+            f"<b>Summary of Current Tab</b><br><br>"
+            f"Total Comments: {total_comments}<br>"
+            f"Cyberbullying: {cyberbullying_count} ({bully_ratio:.1%})<br>"
+            f"Normal: {normal_count} ({normal_ratio:.1%})<br>"
+            f"Average Confidence: {avg_confidence:.2f}<br>" # Display avg confidence (0-100)
         )
 
-        msg_box = QMessageBox(self)
-        msg_box.setWindowTitle("Analysis Summary")
-        msg_box.setTextFormat(Qt.RichText)
-        msg_box.setText(summary_text)
-        msg_box.setIcon(QMessageBox.Information)
-        msg_box.setStyleSheet(DIALOG_STYLE)
-        msg_box.exec_()
+        # --- Generate Pie Chart --- 
+        chart_pixmap = None
+        if total_comments > 0:
+            labels = ['Cyberbullying', 'Normal']
+            sizes = [cyberbullying_count, normal_count]
+            colors = [COLORS.get('bullying', '#FF6347'), COLORS.get('normal', '#90EE90')] 
+            explode = (0.1, 0) if cyberbullying_count > 0 else (0, 0) 
+
+            try:
+                fig, ax = plt.subplots(figsize=(5, 3.5))
+                ax.pie(sizes, explode=explode, labels=labels, colors=colors,
+                       autopct='%1.1f%%', shadow=False, startangle=90,
+                       textprops={'color': 'black'})
+                ax.axis('equal')
+                fig.patch.set_alpha(0.0)
+                ax.patch.set_alpha(0.0)
+                
+                buf = BytesIO()
+                plt.savefig(buf, format='png', bbox_inches='tight', pad_inches=0.1, transparent=True)
+                plt.close(fig)
+                buf.seek(0)
+                
+                image = QImage.fromData(buf.getvalue())
+                chart_pixmap = QPixmap.fromImage(image)
+            except Exception as e:
+                print(f"Error generating pie chart: {e}")
+                chart_pixmap = None
+        # --- End Pie Chart --- 
+
+        # Show custom dialog (using the imported or copied SummaryDialog class)
+        dialog = SummaryDialog(summary_text, chart_pixmap, self)
+        dialog.exec_()
+        
+        # Optional: Add admin logging if needed
+        # log_admin_action("admin_username", "Viewed analysis summary")
 
     def show_word_cloud(self):
         """Generate and display word cloud visualization"""
@@ -1277,7 +1314,7 @@ class MainWindow(QMainWindow):
                 
             comment_text = comment_item.data(Qt.UserRole) or comment_item.text()
             prediction = prediction_item.text()
-            confidence = confidence_item.text() # Already formatted string 0.xx
+            confidence = confidence_item.text() # Get confidence string (e.g., "85.00%")
 
             # Get metadata
             metadata = self.comment_metadata.get(comment_text, {})
