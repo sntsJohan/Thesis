@@ -2075,9 +2075,5 @@ class UserMainWindow(QMainWindow):
 
     def generate_report(self):
         """Generate report for user interface"""
-        self.loading_overlay.show("Generating report...")
-        try:
-            generate_report_user(self)
-            log_user_action(self.current_user, "Generated analysis report")
-        finally:
-            self.loading_overlay.hide()
+        generate_report_user(self)
+        log_user_action(self.current_user, "Generated analysis report")

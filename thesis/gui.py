@@ -1503,11 +1503,7 @@ class MainWindow(QMainWindow):
 
     def generate_report(self):
         """Generate report by calling the report generation function"""
-        self.loading_overlay.show("Generating report...")
-        try:
-            generate_report(self)
-        finally:
-            self.loading_overlay.hide()
+        generate_report(self)
 
     def show_history(self):
         """Show the history dialog"""

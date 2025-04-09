@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QFileDialog, QTableWidgetItem
+from PyQt5.QtWidgets import QFileDialog, QTableWidgetItem, QApplication
 from PyQt5.QtCore import Qt
 import pandas as pd
 from utils import display_message
@@ -170,6 +170,10 @@ def generate_report(window):
         display_message(window, "Error", "No data available to generate report")
         return
 
+    # Show loading overlay during the entire report generation process
+    window.loading_overlay.show("Generating report...")
+    QApplication.processEvents()  # Force UI update to show loading overlay
+    
     try:
         from reportlab.lib import colors
         from reportlab.lib.pagesizes import letter
@@ -484,13 +488,24 @@ def generate_report(window):
             wordcloud_data = None
             cb_wordcloud_data = None
 
-        # Create the PDF document
+        # All report data has been prepared, now ask user where to save
+        # Only at this point we'll interrupt the loading overlay for file selection
+        # Note: We're keeping the overlay visible during file selection
+        
+        # Get file path for saving report
         file_path, _ = QFileDialog.getSaveFileName(
             window, "Save Report", "", "PDF Files (*.pdf)"
         )
+        
+        # If user cancelled, return without error
         if not file_path:
-            return
+            return False
+        
+        # Update loading message for PDF creation phase
+        window.loading_overlay.show("Creating PDF report...")
+        QApplication.processEvents()  # Force UI update to show loading overlay
 
+        # Create the PDF document
         doc = SimpleDocTemplate(
             file_path,
             pagesize=letter,
@@ -886,12 +901,16 @@ def generate_report(window):
         # Build the PDF
         doc.build(elements)
         
-        display_message(window, "Success", "Report generated successfully")
-        
+        display_message(window, "Success", f"Report saved to {file_path}")
+        return True
     except Exception as e:
-        import traceback
-        traceback.print_exc()
         display_message(window, "Error", f"Error generating report: {e}")
+        print(f"Error generating report: {e}")
+        return False
+    finally:
+        # Always hide loading overlay when finished
+        window.loading_overlay.hide()
+        QApplication.processEvents()  # Force UI update to hide loading overlay
 
 # Alias functions to maintain compatibility with existing code
 generate_report_from_window = generate_report
