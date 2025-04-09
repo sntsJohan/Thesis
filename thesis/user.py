@@ -132,7 +132,14 @@ class UserMainWindow(QMainWindow):
         """Set the current user and create or restore their session"""
         self.current_user = username
         self.app_name_label.setText(f"Cyberbullying Detection System - {username}")
+        
+        # First create/copy session data in database
         self.create_or_restore_session()
+        
+        # Then restore UI from database
+        self.restore_session()
+        
+        # Log the action
         log_user_action(username, "User login")
 
     def create_or_restore_session(self):
@@ -172,46 +179,56 @@ class UserMainWindow(QMainWindow):
                 # Copy tabs and comments from the last session
                 old_session_id = last_session[0]
                 
-                # Copy tabs
+                # Check if we need to copy data
                 cursor.execute("""
-                    INSERT INTO session_tabs (session_id, tab_name, tab_type)
-                    SELECT ?, tab_name, tab_type
+                    SELECT COUNT(*) 
                     FROM session_tabs
                     WHERE session_id = ?
-                """, (self.session_id, old_session_id))
+                """, (old_session_id,))
                 
-                # Get the mapping of old tab_ids to new tab_ids
-                cursor.execute("""
-                    SELECT t1.tab_id as old_tab_id, t2.tab_id as new_tab_id
-                    FROM session_tabs t1
-                    JOIN session_tabs t2 ON t1.tab_name = t2.tab_name
-                    WHERE t1.session_id = ? AND t2.session_id = ?
-                """, (old_session_id, self.session_id))
+                tab_count = cursor.fetchone()[0]
                 
-                tab_mapping = {old: new for old, new in cursor.fetchall()}
-                
-                # Copy comments for each tab
-                for old_tab_id, new_tab_id in tab_mapping.items():
+                if tab_count > 0:
+                    # Copy tabs
                     cursor.execute("""
-                        INSERT INTO tab_comments (
-                            tab_id, comment_text, prediction, confidence,
-                            profile_name, profile_picture, comment_date,
-                            likes_count, profile_id, is_reply, reply_to, is_selected
-                        )
-                        SELECT 
-                            ?, comment_text, prediction, confidence,
-                            profile_name, profile_picture, comment_date,
-                            likes_count, profile_id, is_reply, reply_to, is_selected
-                        FROM tab_comments
-                        WHERE tab_id = ?
-                    """, (new_tab_id, old_tab_id))
-                
-                conn.commit()
+                        INSERT INTO session_tabs (session_id, tab_name, tab_type)
+                        SELECT ?, tab_name, tab_type
+                        FROM session_tabs
+                        WHERE session_id = ?
+                    """, (self.session_id, old_session_id))
+                    
+                    # Get the mapping of old tab_ids to new tab_ids
+                    cursor.execute("""
+                        SELECT t1.tab_id as old_tab_id, t2.tab_id as new_tab_id
+                        FROM session_tabs t1
+                        JOIN session_tabs t2 ON t1.tab_name = t2.tab_name
+                        WHERE t1.session_id = ? AND t2.session_id = ?
+                    """, (old_session_id, self.session_id))
+                    
+                    tab_mapping = {old: new for old, new in cursor.fetchall()}
+                    
+                    # Copy comments for each tab
+                    for old_tab_id, new_tab_id in tab_mapping.items():
+                        cursor.execute("""
+                            INSERT INTO tab_comments (
+                                tab_id, comment_text, prediction, confidence,
+                                profile_name, profile_picture, comment_date,
+                                likes_count, profile_id, is_reply, reply_to, is_selected
+                            )
+                            SELECT 
+                                ?, comment_text, prediction, confidence,
+                                profile_name, profile_picture, comment_date,
+                                likes_count, profile_id, is_reply, reply_to, is_selected
+                            FROM tab_comments
+                            WHERE tab_id = ?
+                        """, (new_tab_id, old_tab_id))
+                    
+                    conn.commit()
             
             conn.close()
             
-            # Now restore the UI state
-            self.restore_session()
+            # Now restore the UI state - this is called separately in set_current_user
+            # self.restore_session()
             
         except Exception as e:
             print(f"Session creation/restoration error: {e}")
@@ -219,6 +236,15 @@ class UserMainWindow(QMainWindow):
     def restore_session(self):
         """Restore tabs and comments from saved session"""
         try:
+            # Clear existing tabs first to prevent duplicates
+            self.selected_comments = []
+            self.comment_metadata = {}
+            self.tabs = {}
+            
+            # Remove all tabs from the UI
+            while self.tab_widget.count() > 0:
+                self.tab_widget.removeTab(0)
+            
             conn = get_db_connection()
             cursor = conn.cursor()
 
@@ -231,7 +257,16 @@ class UserMainWindow(QMainWindow):
             
             tabs = cursor.fetchall()
             
+            # Create a set of processed tabs to avoid duplicates
+            processed_tabs = set()
+            
             for tab_id, tab_name, tab_type in tabs:
+                # Skip if we've already processed this tab name
+                if tab_name in processed_tabs:
+                    continue
+                    
+                processed_tabs.add(tab_name)
+                
                 # Create tab in UI
                 table = self.create_empty_tab(tab_name)
                 
@@ -245,11 +280,26 @@ class UserMainWindow(QMainWindow):
                 """, (tab_id,))
                 
                 comments = cursor.fetchall()
+                comments_data = []
                 
                 for comment_data in comments:
                     (comment_text, prediction, confidence, profile_name, 
                      profile_picture, comment_date, likes_count, profile_id, 
                      is_reply, reply_to, is_selected) = comment_data
+                    
+                    # Add to data list for populating table
+                    comments_data.append({
+                        'comment_text': comment_text,
+                        'prediction': prediction,
+                        'confidence': confidence,
+                        'profile_name': profile_name,
+                        'profile_picture': profile_picture,
+                        'comment_date': comment_date,
+                        'likes_count': likes_count,
+                        'profile_id': profile_id,
+                        'is_reply': is_reply,
+                        'reply_to': reply_to
+                    })
                     
                     # Store metadata
                     self.comment_metadata[comment_text] = {
@@ -259,40 +309,29 @@ class UserMainWindow(QMainWindow):
                         'likes_count': likes_count,
                         'profile_id': profile_id,
                         'is_reply': is_reply,
-                        'reply_to': reply_to
+                        'reply_to': reply_to,
+                        'confidence': confidence  # Store confidence in metadata
                     }
                     
                     # Add to selected comments if selected
                     if is_selected:
                         self.selected_comments.append(comment_text)
-                    
-                    # Add row to table
-                    row_position = table.rowCount()
-                    table.insertRow(row_position)
-                    
-                    display_text = f" [↪ Reply] {comment_text}" if is_reply else comment_text
-                    
-                    comment_item = QTableWidgetItem(display_text)
-                    comment_item.setData(Qt.UserRole, comment_text)
-                    
-                    prediction_item = QTableWidgetItem(prediction)
-                    prediction_item.setTextAlignment(Qt.AlignCenter)
-                    
-                    if prediction == "Cyberbullying":
-                        prediction_item.setForeground(QColor(COLORS['bullying']))
-                    else:
-                        prediction_item.setForeground(QColor(COLORS['normal']))
-                    
-                    table.setItem(row_position, 0, comment_item)
-                    table.setItem(row_position, 1, prediction_item)
-                    
-                    if is_selected:
-                        for col in range(table.columnCount()):
-                            table.item(row_position, col).setBackground(QColor(COLORS['highlight']))
-                    
-                    table.resizeRowToContents(row_position)
+                
+                # Clear and populate the table
+                table.setRowCount(0)
+                self.populate_table(table, comments_data)
             
             conn.close()
+            
+            # Show/hide appropriate elements based on tab count
+            if self.tab_widget.count() > 0:
+                self.initial_message.hide()
+                self.tab_widget.show()
+                self.enable_dataset_operations(True)
+            else:
+                self.initial_message.show()
+                self.tab_widget.hide()
+                self.enable_dataset_operations(False)
             
         except Exception as e:
             print(f"Session restoration error: {e}")
@@ -303,27 +342,40 @@ class UserMainWindow(QMainWindow):
             conn = get_db_connection()
             cursor = conn.cursor()
             
-            # Create tab record
+            # Check if tab already exists for this session
             cursor.execute("""
-                INSERT INTO session_tabs (session_id, tab_name, tab_type)
-                VALUES (?, ?, ?)
-            """, (self.session_id, tab_name, "analysis"))
+                SELECT tab_id FROM session_tabs 
+                WHERE session_id = ? AND tab_name = ?
+            """, (self.session_id, tab_name))
             
-            tab_id = cursor.execute("SELECT @@IDENTITY").fetchval()
+            tab_result = cursor.fetchone()
+            
+            if tab_result:
+                # Tab exists, get its ID
+                tab_id = tab_result[0]
+                
+                # Delete existing comments for this tab to avoid duplicates
+                cursor.execute("""
+                    DELETE FROM tab_comments 
+                    WHERE tab_id = ?
+                """, (tab_id,))
+            else:
+                # Create new tab record
+                cursor.execute("""
+                    INSERT INTO session_tabs (session_id, tab_name, tab_type)
+                    VALUES (?, ?, ?)
+                """, (self.session_id, tab_name, "analysis"))
+                
+                tab_id = cursor.execute("SELECT @@IDENTITY").fetchval()
             
             # Save each comment
             for comment in comments:
                 try:
-                    row = self.get_row_by_comment(comment)
-                    if row is None:
-                        continue
+                    metadata = self.comment_metadata.get(comment.get('comment_text', ''), {})
                     
-                    metadata = self.comment_metadata.get(comment, {})
-                    
-                    # Get table values
-                    prediction = self.get_current_table().item(row, 1).text()
-                    confidence_text = self.get_current_table().item(row, 2).text().strip('%')
-                    confidence_value = float(confidence_text) / 100
+                    # Get prediction and confidence from the comment data
+                    prediction = comment.get('prediction', '')
+                    confidence = comment.get('confidence', 0.0)
                     
                     # Handle likes_count - ensure it's a valid float or NULL
                     likes_count = metadata.get('likes_count')
@@ -333,7 +385,6 @@ class UserMainWindow(QMainWindow):
                         likes_count = None
                     
                     # Clean up text fields to handle emojis and special characters
-                    # Ensure values are strings before encoding
                     def clean_text(value):
                         if value is None:
                             return ''
@@ -346,7 +397,7 @@ class UserMainWindow(QMainWindow):
                         except AttributeError:
                             return str(value)
                     
-                    clean_comment = clean_text(comment)
+                    clean_comment = clean_text(comment.get('comment_text', ''))
                     clean_profile_name = clean_text(metadata.get('profile_name', ''))
                     clean_profile_picture = clean_text(metadata.get('profile_picture', ''))
                     clean_reply_to = clean_text(metadata.get('reply_to', ''))
@@ -361,7 +412,7 @@ class UserMainWindow(QMainWindow):
                         tab_id,
                         clean_comment,
                         prediction,
-                        confidence_value,
+                        confidence,  # Store actual confidence value
                         clean_profile_name,
                         clean_profile_picture,
                         metadata.get('date'),
@@ -369,7 +420,7 @@ class UserMainWindow(QMainWindow):
                         metadata.get('profile_id'),
                         float(bool(metadata.get('is_reply', False))),
                         clean_reply_to,
-                        comment in self.selected_comments
+                        clean_comment in self.selected_comments
                     ))
                     
                 except Exception as e:
@@ -446,32 +497,82 @@ class UserMainWindow(QMainWindow):
         # Get tab name before removing
         tab_name = self.tab_widget.tabText(index)
         
-        # Remove tab and its reference
-        self.tab_widget.removeTab(index)
+        try:
+            # Remove tab data from database
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            # First get the tab_id
+            cursor.execute("""
+                SELECT tab_id FROM session_tabs 
+                WHERE session_id = ? AND tab_name = ?
+            """, (self.session_id, tab_name))
+            
+            tab_result = cursor.fetchone()
+            if tab_result:
+                tab_id = tab_result[0]
+                
+                # Delete comments associated with this tab
+                cursor.execute("""
+                    DELETE FROM tab_comments 
+                    WHERE tab_id = ?
+                """, (tab_id,))
+                
+                # Delete the tab itself
+                cursor.execute("""
+                    DELETE FROM session_tabs 
+                    WHERE tab_id = ?
+                """, (tab_id,))
+                
+                conn.commit()
+                print(f"Successfully deleted tab {tab_name} and its comments from database")
+            
+            conn.close()
+            
+        except Exception as e:
+            print(f"Error removing tab data from database: {e}")
+            try:
+                conn.rollback()
+                conn.close()
+            except:
+                pass
+        
+        # Clean up memory and UI
         if tab_name in self.tabs:
+            # Get all comment text in this tab to clean up metadata and selected comments
+            comment_texts = []
+            table_widget = self.tabs[tab_name].findChild(QTableWidget)
+            if table_widget:
+                for row in range(table_widget.rowCount()):
+                    comment_item = table_widget.item(row, 0)
+                    if comment_item:
+                        comment_text = comment_item.data(Qt.UserRole) or comment_item.text()
+                        comment_texts.append(comment_text)
+                        
+                        # Remove from selected comments if present
+                        if comment_text in self.selected_comments:
+                            self.selected_comments.remove(comment_text)
+                            
+                        # Remove metadata
+                        if comment_text in self.comment_metadata:
+                            del self.comment_metadata[comment_text]
+            
+            # Remove tab widget and reference
+            self.tabs[tab_name].deleteLater()
             del self.tabs[tab_name]
+        
+        # Remove tab from UI
+        self.tab_widget.removeTab(index)
             
         # If no tabs left, show initial message and disable dataset operations
         if self.tab_widget.count() == 0:
             self.tab_widget.hide()
             self.initial_message.show()
             self.enable_dataset_operations(False)
-            self.add_remove_button.setEnabled(False)  # Disable row operations
-            self.export_selected_button.setEnabled(False) # Disable row operations
-            self.details_text_edit.clear() # Clear details panel
-            
-        # Clean up the widget
-        if tab_name in self.tabs:
-            tab_widget = self.tabs[tab_name]
-            tab_widget.deleteLater()
-            del self.tabs[tab_name]
-            
-        # Update UI state if no tabs left
-        if self.tab_widget.count() == 0:
-            self.tab_widget.hide()
-            self.initial_message.show()
-            self.enable_dataset_operations(False)
-            
+            self.add_remove_button.setEnabled(False)
+            self.export_selected_button.setEnabled(False)
+            self.details_text_edit.clear()
+
     def init_main_ui(self):
         """Initialize the main user interface"""
         # Create main widget
@@ -867,8 +968,8 @@ class UserMainWindow(QMainWindow):
 
     def create_empty_tab(self, tab_type):
         """Create a new empty tab with a table"""
-        if tab_type == "Direct Inputs" and "Direct Inputs" in self.tabs:
-            return self.tabs["Direct Inputs"].findChild(QTableWidget)
+        if tab_type in self.tabs:
+            return self.tabs[tab_type].findChild(QTableWidget)
 
         tab = QWidget()
         tab_layout = QVBoxLayout(tab)
@@ -1057,38 +1158,77 @@ class UserMainWindow(QMainWindow):
     def scrape_comments(self):
         """Scrape and process Facebook comments"""
         url = self.url_input.text()
-        include_replies = self.include_replies.isChecked()
-
         if not url:
-            display_message("Error", "Please enter a YouTube video URL.")
+            display_message(self, "Error", "Please enter a URL.")
             return
 
-        self.show_loading(True)
-        QApplication.processEvents() # Ensure UI updates
-
         try:
-            scraped_data = scrape_comments(url, include_replies=include_replies)
-            if not scraped_data:
-                display_message("Info", "No comments found or error during scraping.")
-                return
-
-            # Classify comments before populating
-            classified_comments = []
-            for comment in scraped_data:
-                prediction, confidence = classify_comment(comment['comment_text'])
-                comment['prediction'] = prediction
-                comment['confidence'] = confidence
-                classified_comments.append(comment)
-
+            self.show_loading(True)
+            QApplication.processEvents()
+            
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as temp_file:
+                temp_path = temp_file.name
+            
+            scrape_comments(url, temp_path, self.include_replies.isChecked())
+            df = pd.read_csv(temp_path)
+            
+            if not self.include_replies.isChecked():
+                df = df[~df['Is Reply']]
+                
+            self.comment_metadata = {}
+            comments_data = []
+            
+            for _, row in df.iterrows():
+                comment_text = row['Text']
+                # Get prediction and confidence from model
+                prediction, confidence = classify_comment(comment_text)
+                
+                # Store metadata
+                self.comment_metadata[comment_text] = {
+                    'profile_name': row['Profile Name'],
+                    'profile_picture': row['Profile Picture'],
+                    'date': row['Date'],
+                    'likes_count': row['Likes Count'],
+                    'profile_id': row['Profile ID'],
+                    'is_reply': row['Is Reply'],
+                    'reply_to': row['Reply To'],
+                    'confidence': confidence
+                }
+                
+                # Prepare comment data
+                comments_data.append({
+                    'comment_text': comment_text,
+                    'prediction': prediction,
+                    'confidence': confidence,
+                    'profile_name': row['Profile Name'],
+                    'profile_picture': row['Profile Picture'],
+                    'comment_date': row['Date'],
+                    'likes_count': row['Likes Count'],
+                    'profile_id': row['Profile ID'],
+                    'is_reply': row['Is Reply'],
+                    'reply_to': row['Reply To']
+                })
+            
             # Create a new tab for the results
             tab_name = f"URL {self.url_tab_count}: {url[:30]}..."
             self.url_tab_count += 1
+            
+            # Create table and populate it
             table = self.create_empty_tab(tab_name)
-            self.populate_table(table, classified_comments)
-            self.save_tab_state(tab_name, classified_comments) # Save initial state
-
+            self.populate_table(table, comments_data)
+            
+            # Save the initial state
+            self.save_tab_state(tab_name, comments_data)
+            
+            try:
+                # Truncate URL if too long
+                short_url = url[:30] + "..." if len(url) > 30 else url
+                log_user_action(self.current_user, f"Scraped FB post: {short_url}")
+            except Exception as log_error:
+                print(f"Logging error: {log_error}")
+            
         except Exception as e:
-            display_message("Error", f"Failed to scrape comments: {e}")
+            display_message(self, "Error", f"Error scraping comments: {e}")
         finally:
             self.show_loading(False)
 
@@ -1100,102 +1240,147 @@ class UserMainWindow(QMainWindow):
 
     def process_csv(self):
         """Process selected CSV file"""
-        file_path = self.file_input.text()
-        if not file_path:
-            display_message("Error", "Please select a CSV file.")
+        if not self.file_input.text():
+            display_message(self, "Error", "Please select a CSV file first")
             return
-
-        self.show_loading(True)
-        QApplication.processEvents()
-
-        try:
-            # Assuming CSV has a 'comment_text' column
-            df = pd.read_csv(file_path)
-            if 'comment_text' not in df.columns:
-                 display_message("Error", "CSV must contain a 'comment_text' column.")
-                 return
             
+        file_path = self.file_input.text()
+        try:
+            # Get just the filename without path and log at the start
+            file_name = file_path.split('/')[-1].split('\\')[-1]
+            log_user_action(self.current_user, f"Started processing CSV file: {file_name}")
+            
+            self.show_loading(True)
+            QApplication.processEvents()
+            
+            df = pd.read_csv(file_path)
+            # Get the first column name
+            first_column = df.columns[0]
+            
+            # Initialize comments list
             comments_data = []
-            for index, row in df.iterrows():
-                comment_text = str(row['comment_text']) # Ensure text is string
-                prediction, confidence = classify_comment(comment_text)
-                comments_data.append({
-                    'comment_text': comment_text,
-                    'prediction': prediction,
-                    'confidence': confidence,
-                    # Add other potential columns if available, otherwise use defaults
-                    'profile_name': row.get('profile_name', 'N/A'),
-                    'profile_picture': None, # Cannot get picture from CSV typically
-                    'comment_date': row.get('comment_date', 'N/A'),
-                    'likes_count': row.get('likes_count', 0),
-                    'profile_id': row.get('profile_id', 'N/A'),
-                    'is_reply': row.get('is_reply', False),
-                    'reply_to': row.get('reply_to', None)
-                })
-
+            
+            # Process each row
+            for _, row in df.iterrows():
+                try:
+                    # Get comment text from first column, ensuring it's a string
+                    comment_text = str(row[first_column]).strip()
+                    if not comment_text:  # Skip empty comments
+                        continue
+                        
+                    # Classify the comment
+                    prediction, confidence = classify_comment(comment_text)
+                    
+                    # Store metadata
+                    self.comment_metadata[comment_text] = {
+                        'profile_name': 'CSV Input',
+                        'profile_picture': '',
+                        'date': time.strftime('%Y-%m-%d %H:%M:%S'),
+                        'likes_count': 'N/A',
+                        'profile_id': 'N/A',
+                        'confidence': confidence
+                    }
+                    
+                    # Prepare comment data
+                    comments_data.append({
+                        'comment_text': comment_text,
+                        'prediction': prediction,
+                        'confidence': confidence,
+                        'profile_name': 'CSV Input',
+                        'profile_picture': '',
+                        'comment_date': time.strftime('%Y-%m-%d %H:%M:%S'),
+                        'likes_count': 'N/A',
+                        'profile_id': 'N/A',
+                        'is_reply': False,
+                        'reply_to': None
+                    })
+                    
+                except Exception as e:
+                    print(f"Error processing row: {e}")
+                    continue
+            
+            if not comments_data:
+                display_message(self, "Error", "No valid comments found in the CSV file.")
+                return
+            
             # Create a new tab for the results
-            file_name = os.path.basename(file_path)
             tab_name = f"CSV {self.csv_tab_count}: {file_name}"
             self.csv_tab_count += 1
+            
+            # Create table and populate it
             table = self.create_empty_tab(tab_name)
             self.populate_table(table, comments_data)
-            self.save_tab_state(tab_name, comments_data) # Save initial state
-
-        except FileNotFoundError:
-            display_message("Error", f"File not found: {file_path}")
-        except pd.errors.EmptyDataError:
-            display_message("Error", "The selected CSV file is empty.")
+            
+            # Save the initial state
+            self.save_tab_state(tab_name, comments_data)
+            
+            # Log successful completion
+            log_user_action(self.current_user, f"Successfully processed CSV file: {file_name}")
+            
         except Exception as e:
-            display_message("Error", f"Failed to process CSV file: {e}")
+            # Log failure
+            if 'file_name' in locals():
+                log_user_action(self.current_user, f"Failed to process CSV file: {file_name}")
+            display_message(self, "Error", f"Error reading CSV file: {e}")
         finally:
             self.show_loading(False)
 
     def analyze_single(self):
         """Analyze a single comment from direct input"""
-        comment_text = self.text_input.text()
-        if not comment_text:
-            display_message("Error", "Please enter a comment to analyze.")
+        if not self.text_input.text():
+            display_message(self, "Error", "Please enter a comment to analyze")
             return
-
-        self.show_loading(True)
-        QApplication.processEvents()
-
+        
         try:
+            self.show_loading(True)
+            QApplication.processEvents()
+            
+            comment_text = self.text_input.text()
+            # Get prediction and confidence from model
             prediction, confidence = classify_comment(comment_text)
             
-            # Prepare comment data dictionary
-            comment_data = {
+            # Store metadata
+            self.comment_metadata[comment_text] = {
+                'profile_name': 'Direct Input',
+                'profile_picture': '',
+                'date': time.strftime('%Y-%m-%d %H:%M:%S'),
+                'likes_count': 'N/A',
+                'profile_id': 'N/A',
+                'confidence': confidence
+            }
+            
+            # Prepare comment data
+            comment_data = [{
                 'comment_text': comment_text,
                 'prediction': prediction,
                 'confidence': confidence,
-                'profile_name': 'Manual Input',
-                'profile_picture': None, 
-                'comment_date': 'N/A',
-                'likes_count': 0,
+                'profile_name': 'Direct Input',
+                'profile_picture': '',
+                'comment_date': time.strftime('%Y-%m-%d %H:%M:%S'),
+                'likes_count': 'N/A',
                 'profile_id': 'N/A',
                 'is_reply': False,
                 'reply_to': None
-            }
-
-            # Add to the currently active table or a default/new one if none active
-            current_table = self.get_current_table()
-            if current_table:
-                # Create a list containing the single comment data
-                self.populate_table(current_table, [comment_data], append=True)
-                # Optionally save state if desired for single additions
-                # tab_index = self.results_tabs.currentIndex()
-                # tab_name = self.results_tabs.tabText(tab_index)
-                # self.save_tab_state(tab_name, [comment_data], append=True)
-            else:
-                # Optionally create a 'Manual Analysis' tab if no tabs exist
-                 display_message("Info", "Analysis complete. Open a URL or CSV tab to see the results.")
-                 # Or display result in a dialog
-                 # display_message("Analysis Result", f"Comment: {comment_text}\\nPrediction: {prediction} (Confidence: {confidence:.2f})")\n
-
-            self.text_input.clear()
-
+            }]
+            
+            # Get or create table
+            table = self.get_current_table()
+            if not table:
+                tab_name = "Direct Inputs"
+                table = self.create_empty_tab(tab_name)
+            
+            # Populate table
+            self.populate_table(table, comment_data, append=True)
+            
+            # Save state if needed
+            if table.parent():
+                tab_name = self.tab_widget.tabText(self.tab_widget.indexOf(table.parent()))
+                self.save_tab_state(tab_name, comment_data)
+            
+            log_user_action(self.current_user, "Analyzed single comment")
+            
         except Exception as e:
-            display_message("Error", f"Failed to analyze comment: {e}")
+            display_message(self, "Error", f"Error analyzing comment: {e}")
         finally:
             self.show_loading(False)
 
@@ -1203,14 +1388,32 @@ class UserMainWindow(QMainWindow):
         """Populate table with analyzed comments"""
         if not append:
             table.setRowCount(0)
-            table.setColumnCount(2)  # Ensure we have the right number of columns
+            table.setColumnCount(2)  # Back to 2 columns: Comment and Prediction
             table.setHorizontalHeaderLabels(["Comment", "Prediction"])
+
+        # Create a set of existing comments to avoid duplicates
+        existing_comments = set()
+        if append:
+            for row in range(table.rowCount()):
+                comment_item = table.item(row, 0)
+                if comment_item and comment_item.data(Qt.UserRole):
+                    existing_comments.add(comment_item.data(Qt.UserRole))
 
         for comment in comments:
             # Get the comment text and prediction from the comment dictionary
             comment_text = comment.get('comment_text', '')
+            
+            # Skip if this comment already exists in the table
+            if comment_text in existing_comments:
+                continue
+                
+            existing_comments.add(comment_text)
+            
             prediction = comment.get('prediction', '')  # Use pre-classified prediction
             confidence = comment.get('confidence', 0.0)  # Use pre-classified confidence
+            
+            # Convert confidence to High/Medium/Low
+            confidence_level = "High" if confidence > 0.8 else "Medium" if confidence > 0.5 else "Low"
             
             # Get metadata from either dictionary or metadata store
             if isinstance(comment, dict):
@@ -1222,7 +1425,8 @@ class UserMainWindow(QMainWindow):
                     'likes_count': comment.get('likes_count', 0),
                     'profile_id': comment.get('profile_id', 'N/A'),
                     'is_reply': comment.get('is_reply', False),
-                    'reply_to': comment.get('reply_to', None)
+                    'reply_to': comment.get('reply_to', None),
+                    'confidence': confidence  # Store actual confidence value
                 }
                 # Also store in comment_metadata for compatibility with other functions
                 self.comment_metadata[comment_text] = metadata
@@ -1253,8 +1457,9 @@ class UserMainWindow(QMainWindow):
                 lighter_surface = QColor(COLORS['surface']).lighter(105)
                 comment_item.setBackground(lighter_surface)
 
-            # Set prediction cell
-            prediction_item = QTableWidgetItem(prediction)
+            # Set prediction cell with confidence level
+            prediction_text = f"{prediction} ({confidence_level})"
+            prediction_item = QTableWidgetItem(prediction_text)
             prediction_item.setTextAlignment(Qt.AlignCenter)
             if prediction == "Cyberbullying":
                 prediction_item.setForeground(QColor(COLORS['bullying']))
@@ -1282,8 +1487,8 @@ class UserMainWindow(QMainWindow):
                     if tab_widget == table_parent:
                         tab_index = self.tab_widget.indexOf(tab_widget)
                         self.tab_widget.setCurrentIndex(tab_index)
-                        # Save the tab state after populating
-                        self.save_tab_state(tab_name, comments)
+                        # Don't save the tab state automatically
+                        # self.save_tab_state(tab_name, comments)
                         break
         except Exception as e:
             print(f"Error setting current tab: {e}")
