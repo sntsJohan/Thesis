@@ -604,22 +604,22 @@ def generate_report(window):
             summary_text = f"""
             This report analyzes {total_rows} comments for potential cyberbullying content. The analysis found that <b>{cb_percentage:.1f}%</b> of the 
             comments contain language consistent with cyberbullying. A total of <b>{cyber_count}</b> comments were identified as potentially problematic.
-            
-            Key findings:
-            • Most common terms in problematic comments: {cb_terms}
-            • Primary sentiment in flagged comments: {sentiment_result if sentiment_result else 'Neutral'}
-            
+            <br/><br/>
+            Key findings:<br/>
+            &bull; Most common terms in problematic comments: {cb_terms}<br/>
+            &bull; Primary sentiment in flagged comments: {sentiment_result if sentiment_result else 'Neutral'}<br/>
+            <br/>
             Based on these findings, {'immediate attention is recommended' if cb_percentage >= 25 else 'continued monitoring is advised'}.
             Detailed analysis and specific recommendations are provided in the following sections.
             """
         else:
             summary_text = f"""
             This report analyzes {total_rows} comments for potential cyberbullying content. No cyberbullying content was detected in this analysis.
-            
-            Key findings:
-            • All comments appear to contain appropriate language
-            • Primary sentiment in all comments: {sentiment_result if sentiment_result else 'Neutral'}
-            
+            <br/><br/>
+            Key findings:<br/>
+            &bull; All comments appear to contain appropriate language<br/>
+            &bull; Primary sentiment in all comments: {sentiment_result if sentiment_result else 'Neutral'}<br/>
+            <br/>
             Continued monitoring is advised as a precautionary measure, though no immediate action is required.
             """
             
@@ -812,54 +812,54 @@ def generate_report(window):
         
         if cb_percentage >= 50:
             recommendation_text = f"""
-            <b>High cyberbullying content detected ({cb_percentage:.1f}%)</b>
+            <b>High cyberbullying content detected ({cb_percentage:.1f}%)</b><br/><br/>
             
-            1. <b>Immediate Action Required:</b> The high percentage of cyberbullying content indicates a serious problem that requires prompt intervention.
+            1. <b>Immediate Action Required:</b> The high percentage of cyberbullying content indicates a serious problem that requires prompt intervention.<br/><br/>
             
-            2. <b>Content Moderation:</b> Implement stricter comment moderation measures, including:
-               • Pre-approval of comments before they appear publicly
-               • Automatic filtering of harmful language
-               • Temporary comment restrictions until the situation improves
+            2. <b>Content Moderation:</b> Implement stricter comment moderation measures, including:<br/>
+               &bull; Pre-approval of comments before they appear publicly<br/>
+               &bull; Automatic filtering of harmful language<br/>
+               &bull; Temporary comment restrictions until the situation improves<br/><br/>
             
-            3. <b>Community Guidelines:</b> Establish or reinforce clear community guidelines that explicitly prohibit harassment, hate speech, and cyberbullying.
+            3. <b>Community Guidelines:</b> Establish or reinforce clear community guidelines that explicitly prohibit harassment, hate speech, and cyberbullying.<br/><br/>
             
-            4. <b>Educational Outreach:</b> Consider educational initiatives to raise awareness about the impact of cyberbullying and promote positive online interaction.
+            4. <b>Educational Outreach:</b> Consider educational initiatives to raise awareness about the impact of cyberbullying and promote positive online interaction.<br/><br/>
             
-            5. <b>Regular Monitoring:</b> Continue to monitor the comment section closely and conduct follow-up analyses to track improvement.
+            5. <b>Regular Monitoring:</b> Continue to monitor the comment section closely and conduct follow-up analyses to track improvement.<br/><br/>
             
             {sentiment_factor}
             """
         elif cb_percentage >= 25:
             recommendation_text = f"""
-            <b>Moderate cyberbullying content detected ({cb_percentage:.1f}%)</b>
+            <b>Moderate cyberbullying content detected ({cb_percentage:.1f}%)</b><br/><br/>
             
-            1. <b>Enhanced Monitoring:</b> Increase the frequency of comment section review to identify and address problematic content quickly.
+            1. <b>Enhanced Monitoring:</b> Increase the frequency of comment section review to identify and address problematic content quickly.<br/><br/>
             
-            2. <b>Targeted Moderation:</b> Focus moderation efforts on:
-               • Comments containing the most frequent harmful terms identified in the word cloud
-               • Threads or discussions that may be escalating in negativity
+            2. <b>Targeted Moderation:</b> Focus moderation efforts on:<br/>
+               &bull; Comments containing the most frequent harmful terms identified in the word cloud<br/>
+               &bull; Threads or discussions that may be escalating in negativity<br/><br/>
             
-            3. <b>Community Engagement:</b> Actively engage with the community to promote positive interactions and discourage negative behavior.
+            3. <b>Community Engagement:</b> Actively engage with the community to promote positive interactions and discourage negative behavior.<br/><br/>
             
-            4. <b>Clear Guidelines:</b> Ensure your community guidelines are visible and clearly communicate expectations for respectful communication.
+            4. <b>Clear Guidelines:</b> Ensure your community guidelines are visible and clearly communicate expectations for respectful communication.<br/><br/>
             
-            5. <b>Follow-up Analysis:</b> Conduct a follow-up analysis within 2-4 weeks to monitor for improvement or deterioration.
+            5. <b>Follow-up Analysis:</b> Conduct a follow-up analysis within 2-4 weeks to monitor for improvement or deterioration.<br/><br/>
             """
         else:
             recommendation_text = f"""
-            <b>Low cyberbullying content detected ({cb_percentage:.1f}%)</b>
+            <b>Low cyberbullying content detected ({cb_percentage:.1f}%)</b><br/><br/>
             
-            1. <b>Continued Monitoring:</b> While the current levels of problematic content are low, maintaining regular monitoring is recommended.
+            1. <b>Continued Monitoring:</b> While the current levels of problematic content are low, maintaining regular monitoring is recommended.<br/><br/>
             
-            2. <b>Preventive Measures:</b> Consider implementing subtle preventive measures such as:
-               • Positive reinforcement for constructive comments
-               • Occasional reminders about community guidelines
+            2. <b>Preventive Measures:</b> Consider implementing subtle preventive measures such as:<br/>
+               &bull; Positive reinforcement for constructive comments<br/>
+               &bull; Occasional reminders about community guidelines<br/><br/>
             
-            3. <b>Community Building:</b> Focus on strengthening the positive aspects of your community to maintain the healthy environment.
+            3. <b>Community Building:</b> Focus on strengthening the positive aspects of your community to maintain the healthy environment.<br/><br/>
             
-            4. <b>Periodic Assessment:</b> Schedule periodic assessments (every 1-2 months) to ensure the comment section maintains its positive nature.
+            4. <b>Periodic Assessment:</b> Schedule periodic assessments (every 1-2 months) to ensure the comment section maintains its positive nature.<br/><br/>
             
-            5. <b>Educational Resources:</b> Make resources available for users to learn about digital citizenship and respectful online communication.
+            5. <b>Educational Resources:</b> Make resources available for users to learn about digital citizenship and respectful online communication.<br/><br/>
             """
 
         elements.append(Paragraph(recommendation_text, recommendation_style))
@@ -870,11 +870,11 @@ def generate_report(window):
         # Add technical notes section
         elements.append(Paragraph("Technical Notes", subtitle_style))
         technical_notes = f"""
-        • This report was generated using an AI-powered cyberbullying detection system
-        • Classification confidence is based on the prediction model's probability score
-        • Word clouds exclude common stop words in both English and Tagalog
-        • Sentiment analysis utilizes a specialized model designed for social media content
-        • The system may not catch all instances of cyberbullying, particularly those using coded language or novel terms
+        &bull; This report was generated using an AI-powered cyberbullying detection system<br/>
+        &bull; Classification confidence is based on the prediction model's probability score<br/>
+        &bull; Word clouds exclude common stop words in both English and Tagalog<br/>
+        &bull; Sentiment analysis utilizes a specialized model designed for social media content<br/>
+        &bull; The system may not catch all instances of cyberbullying, particularly those using coded language or novel terms<br/>
         """
         elements.append(Paragraph(technical_notes, small_style))
         elements.append(Spacer(1, 10))
