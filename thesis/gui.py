@@ -631,10 +631,78 @@ class MainWindow(QMainWindow):
             # Filter out replies if not included
             if not self.include_replies.isChecked():
                 df = df[~df['Is Reply']]
+
+            # Initialize counters for excluded comments
+            short_comment_count = 0
+            name_only_count = 0
+            total_comments = len(df)
+            
+            # Function to check if a comment is likely a name-only comment
+            def is_name_only(text):
+                # Convert to lowercase for better comparison
+                text = text.lower()
                 
+                # Check common name patterns
+                name_patterns = [
+                    # Pattern: First Second Third
+                    r"^[A-Za-z]+ [A-Za-z]+ [A-Za-z]+$",
+                    # Pattern: Name @ Name
+                    r"^[A-Za-z]+ @ [A-Za-z]+$",
+                    # Pattern: First Last
+                    r"^[A-Za-z]+ [A-Za-z]+$",
+                    # Tag pattern
+                    r"^@[A-Za-z0-9_]+$"
+                ]
+                
+                # Common Filipino name markers
+                name_markers = [
+                    "kuya", "ate", "tita", "tito", "lola", "lolo", "nanay", "tatay", 
+                    "mommy", "daddy", "mama", "papa", "inay", "itay", "sis", "bro"
+                ]
+                
+                # Check if any word in the comment is a common name marker
+                words = text.split()
+                has_name_marker = any(marker in words for marker in name_markers)
+                
+                # Check against regex patterns
+                matches_pattern = any(re.search(pattern, text, re.IGNORECASE) for pattern in name_patterns)
+                
+                return matches_pattern or has_name_marker
+            
+            # Function to check if comment has 3 or fewer words
+            def is_short_comment(text):
+                # Split by whitespace and count words
+                words = text.strip().split()
+                return len(words) <= 3
+            
+            # Filter the dataframe
+            filtered_df = df.copy()
+            
+            # Create mask for comments to keep
+            keep_mask = pd.Series(True, index=df.index)
+            
+            # Apply filters
+            for idx, row in df.iterrows():
+                text = row['Text']
+                
+                # Check if comment is too short
+                if is_short_comment(text):
+                    keep_mask[idx] = False
+                    short_comment_count += 1
+                    continue
+                
+                # Check if comment is likely just a name
+                if is_name_only(text):
+                    keep_mask[idx] = False
+                    name_only_count += 1
+                    continue
+            
+            # Apply the mask to keep only valid comments
+            filtered_df = df[keep_mask]
+            
             # Store additional comment metadata
             self.comment_metadata = {}
-            for _, row in df.iterrows():
+            for _, row in filtered_df.iterrows():
                 self.comment_metadata[row['Text']] = {
                     'profile_name': row['Profile Name'],
                     'profile_picture': row['Profile Picture'],
@@ -645,8 +713,22 @@ class MainWindow(QMainWindow):
                     'reply_to': row['Reply To']
                 }
             
-            comments = df['Text'].tolist()
+            comments = filtered_df['Text'].tolist()
             self.populate_table(comments)
+            
+            # Show summary dialog with exclusion statistics
+            excluded_count = short_comment_count + name_only_count
+            if excluded_count > 0:
+                message = (
+                    f"Comments Filter Summary:\n\n"
+                    f"Total comments found: {total_comments}\n"
+                    f"Comments excluded: {excluded_count}\n"
+                    f"• Short comments (3 words or less): {short_comment_count}\n"
+                    f"• Name-only comments: {name_only_count}\n\n"
+                    f"Comments displayed: {len(comments)}"
+                )
+                QMessageBox.information(self, "Comment Filtering Results", message)
+            
         except Exception as e:
             display_message(self, "Error", f"Error scraping comments: {e}")
         finally:
@@ -1355,7 +1437,11 @@ class MainWindow(QMainWindow):
 
     def generate_report(self):
         """Generate report by calling the report generation function"""
-        generate_report(self)
+        self.loading_overlay.show("Generating report...")
+        try:
+            generate_report(self)
+        finally:
+            self.loading_overlay.hide()
 
     def show_history(self):
         """Show the history dialog"""

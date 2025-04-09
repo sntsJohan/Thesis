@@ -38,6 +38,7 @@ class LoadingOverlay(QWidget):
         pixmap = QPixmap(logo_path)
         self.logo_label.setPixmap(pixmap.scaled(64, 64, Qt.KeepAspectRatio, Qt.SmoothTransformation))
         self.logo_label.setAlignment(Qt.AlignCenter)
+        self.logo_label.setStyleSheet("border: none;") # Remove border from logo
         content_layout.addWidget(self.logo_label)
         
         # Create loading label (styling removed, handled by container)
