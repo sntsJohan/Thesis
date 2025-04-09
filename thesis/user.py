@@ -939,38 +939,21 @@ class UserMainWindow(QMainWindow):
         direct_description = QLabel("Enter a single comment to analyze")
         direct_description.setStyleSheet(f"color: {COLORS['text']}; font-size: 12px; margin-bottom: 5px;")
         direct_layout.addWidget(direct_description)
-        
-        # --- Start Modification ---
-        # Create a horizontal layout to constrain the width
-        horizontal_wrapper_layout = QHBoxLayout()
 
-        # Create a container widget for the input elements
-        direct_input_widgets_container = QWidget()
-        direct_input_widgets_layout = QVBoxLayout(direct_input_widgets_container)
-        direct_input_widgets_layout.setContentsMargins(0, 0, 0, 0) # Remove inner margins
-        direct_input_widgets_layout.setSpacing(8) # Keep spacing
+        # --- Remove previous width constraint ---
+        # Remove the horizontal_wrapper_layout and related widgets/layouts
 
-        # Add input field to the container\'s layout
+        # Add input field directly to the main vertical layout
         self.text_input.setStyleSheet(INPUT_STYLE)
         self.text_input.setPlaceholderText("Type or paste a comment here...")
         self.text_input.setToolTip("Enter a single comment to analyze")
-        direct_input_widgets_layout.addWidget(self.text_input)
+        direct_layout.addWidget(self.text_input)
 
-        # Add button to the container\'s layout
+        # Add button directly to the main vertical layout
         self.analyze_button.setFont(FONTS['button'])
         self.analyze_button.setStyleSheet(BUTTON_STYLE)
         self.analyze_button.setToolTip("Analyze the entered comment")
-        direct_input_widgets_layout.addWidget(self.analyze_button)
-
-        # Add the container to the horizontal layout with stretch factor 1
-        horizontal_wrapper_layout.addWidget(direct_input_widgets_container, stretch=1)
-
-        # Add stretch factor 3 to the right to take up 3/4 of the space
-        horizontal_wrapper_layout.addStretch(stretch=3)
-
-        # Add the horizontal wrapper layout to the main vertical layout
-        direct_layout.addLayout(horizontal_wrapper_layout)
-        # --- End Modification ---
+        direct_layout.addWidget(self.analyze_button)
 
         self.input_stack.addWidget(direct_section)
 
