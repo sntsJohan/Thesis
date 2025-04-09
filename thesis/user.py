@@ -97,9 +97,16 @@ class SummaryDialog(QDialog):
 class UserMainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.selected_comments = []
-        self.comment_metadata = {}
+        
+        # Initialize variables
+        self.first_login = True
         self.current_user = None
+        self.selected_comments = []  # Change to list of dictionaries
+        self.csv_tab_count = 1
+        self.url_tab_count = 1
+        self.comment_metadata = {}
+        self.tabs = {}
+        self.tab_states = {}
         self.main_window = None
         self.session_id = None  # Add session ID property
         self.setWindowTitle("Cyberbullying Detection - User View")
@@ -146,10 +153,6 @@ class UserMainWindow(QMainWindow):
         # Initially disable row operation buttons
         self.add_remove_button.setEnabled(False)
         self.export_selected_button.setEnabled(False)
-
-        # Initialize tab counters
-        self.csv_tab_count = 1
-        self.url_tab_count = 1
 
         # Initialize input stack
         self.input_stack = QStackedWidget()
@@ -1243,13 +1246,21 @@ class UserMainWindow(QMainWindow):
         self.enable_dataset_operations(True)
 
         row = selected_items[0].row()
-        comment = self.get_current_table().item(row, 0).data(Qt.UserRole) or self.get_current_table().item(row, 0).text()
+        comment_item = self.get_current_table().item(row, 0)
+        comment = comment_item.data(Qt.UserRole) or comment_item.text()
         prediction = self.get_current_table().item(row, 1).text()
+        confidence = self.get_current_table().item(row, 2).text()
         
         metadata = self.comment_metadata.get(comment, {})
         
-        # Update add/remove button text
-        if comment in self.selected_comments:
+        # Check if this comment is in the selected list and update add/remove button text
+        in_selected_list = False
+        for item in self.selected_comments:
+            if (isinstance(item, dict) and item.get('comment') == comment) or (isinstance(item, str) and item == comment):
+                in_selected_list = True
+                break
+                
+        if in_selected_list:
             self.add_remove_button.setText("➖ Remove from List")
         else:
             self.add_remove_button.setText("➕ Add to List")
@@ -1269,22 +1280,25 @@ class UserMainWindow(QMainWindow):
         if metadata.get('is_reply', False) and metadata.get('reply_to'):
             current_table = self.get_current_table()
             for i in range(current_table.rowCount()):
-                parent_text = current_table.item(i, 0).data(Qt.UserRole)
-                if parent_text == metadata['reply_to']:
-                    parent_metadata = self.comment_metadata.get(metadata['reply_to'], {})
-                    self.details_text_edit.append("\n" + make_text("Reply Information:\n", ""))
-                    self.details_text_edit.append(make_text("Row #", f"{i+1}\n"))
-                    self.details_text_edit.append(make_text("Replying to: ", f"{parent_metadata.get('profile_name', 'Unknown')}\n"))
-                    self.details_text_edit.append(make_text("Original Comment: ", f"{metadata['reply_to']}\n"))
-                    self.details_text_edit.append(make_text("Date: ", f"{parent_metadata['date']}\n"))
-                    break
+                parent_item = current_table.item(i, 0)
+                if parent_item:
+                    parent_text = parent_item.data(Qt.UserRole) or parent_item.text()
+                    if parent_text == metadata['reply_to']:
+                        parent_metadata = self.comment_metadata.get(metadata['reply_to'], {})
+                        self.details_text_edit.append("\n" + make_text("Reply Information:\n", ""))
+                        self.details_text_edit.append(make_text("Row #", f"{i+1}\n"))
+                        self.details_text_edit.append(make_text("Replying to: ", f"{parent_metadata.get('profile_name', 'Unknown')}\n"))
+                        self.details_text_edit.append(make_text("Original Comment: ", f"{metadata['reply_to']}\n"))
+                        self.details_text_edit.append(make_text("Date: ", f"{parent_metadata.get('date', 'N/A')}\n"))
+                        break
             else:
                 self.details_text_edit.append("\n" + make_text("Reply Information:\n", ""))
                 self.details_text_edit.append(make_text("Replying to: ", f"{metadata['reply_to']}\n"))
 
         # Add classification details
         self.details_text_edit.append(make_text("Classification: ", f"{prediction}\n"))
-        self.details_text_edit.append(make_text("Status: ", f"{'In List' if comment in self.selected_comments else 'Not in List'}\n"))
+        self.details_text_edit.append(make_text("Confidence: ", f"{confidence}\n"))
+        self.details_text_edit.append(make_text("Status: ", f"{'In List' if in_selected_list else 'Not in List'}\n"))
 
     def scrape_comments(self):
         """Scrape and process Facebook comments"""
@@ -1918,20 +1932,49 @@ class UserMainWindow(QMainWindow):
             display_message(self, "Error", "Please select a comment to add or remove")
             return
 
-        comment = self.get_current_table().item(selected_items[0].row(), 0).text()
         row = selected_items[0].row()
-        if comment in self.selected_comments:
-            self.selected_comments.remove(comment)
-            display_message(self, "Success", "Comment removed from list")
-            for col in range(self.get_current_table().columnCount()):
-                self.get_current_table().item(row, col).setBackground(QColor(COLORS['normal']))
-            log_user_action(self.current_user, "Removed comment from list")
-        else:
-            self.selected_comments.append(comment)
-            display_message(self, "Success", "Comment added to list")
-            for col in range(self.get_current_table().columnCount()):
-                self.get_current_table().item(row, col).setBackground(QColor(COLORS['highlight']))
-            log_user_action(self.current_user, "Added comment to list")
+        comment_item = self.get_current_table().item(row, 0)
+        prediction_item = self.get_current_table().item(row, 1)
+        confidence_item = self.get_current_table().item(row, 2)
+        
+        comment = comment_item.data(Qt.UserRole) or comment_item.text()
+        prediction = prediction_item.text()
+        confidence = confidence_item.text()
+        
+        # Check if this comment is already in the selected comments list
+        for i, item in enumerate(self.selected_comments):
+            if isinstance(item, dict) and item.get('comment') == comment:
+                # Found it - remove it
+                self.selected_comments.pop(i)
+                display_message(self, "Success", "Comment removed from list")
+                # Reset row color
+                for col in range(self.get_current_table().columnCount()):
+                    self.get_current_table().item(row, col).setBackground(QColor(COLORS['normal']))
+                log_user_action(self.current_user, "Removed comment from list")
+                self.update_details_panel()
+                return
+            elif isinstance(item, str) and item == comment:
+                # Found it (old format) - remove it
+                self.selected_comments.pop(i)
+                display_message(self, "Success", "Comment removed from list")
+                # Reset row color
+                for col in range(self.get_current_table().columnCount()):
+                    self.get_current_table().item(row, col).setBackground(QColor(COLORS['normal']))
+                log_user_action(self.current_user, "Removed comment from list")
+                self.update_details_panel()
+                return
+                
+        # If we got here, the comment isn't in the list - add it with prediction and confidence
+        self.selected_comments.append({
+            'comment': comment,
+            'prediction': prediction,
+            'confidence': confidence
+        })
+        display_message(self, "Success", "Comment added to list")
+        # Highlight row color
+        for col in range(self.get_current_table().columnCount()):
+            self.get_current_table().item(row, col).setBackground(QColor(COLORS['highlight']))
+        log_user_action(self.current_user, "Added comment to list")
         self.update_details_panel()
 
     def export_selected(self):
@@ -1945,7 +1988,36 @@ class UserMainWindow(QMainWindow):
         )
         if file_path:
             try:
-                df = pd.DataFrame(self.selected_comments, columns=['Comment'])
+                # Prepare data for export depending on format of selected_comments
+                export_data = []
+                
+                for item in self.selected_comments:
+                    if isinstance(item, dict):
+                        # New format with prediction and confidence
+                        export_data.append([
+                            item.get('comment', ''),
+                            item.get('prediction', ''),
+                            item.get('confidence', '')
+                        ])
+                    else:
+                        # Legacy format (just strings)
+                        comment = item
+                        # Try to find prediction and confidence from current table
+                        prediction = "Unknown"
+                        confidence = "Unknown"
+                        
+                        # Look for this comment in current table
+                        table = self.get_current_table()
+                        for row in range(table.rowCount()):
+                            comment_item = table.item(row, 0)
+                            if comment_item and (comment_item.data(Qt.UserRole) == comment or comment_item.text() == comment):
+                                prediction = table.item(row, 1).text()
+                                confidence = table.item(row, 2).text()
+                                break
+                        
+                        export_data.append([comment, prediction, confidence])
+                
+                df = pd.DataFrame(export_data, columns=['Comment', 'Prediction', 'Confidence'])
                 df.to_csv(file_path, index=False)
                 display_message(self, "Success", "Selected comments exported successfully")
                 log_user_action(self.current_user, f"Exported selected comments to: {file_path}")
