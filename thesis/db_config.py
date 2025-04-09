@@ -1,13 +1,14 @@
 import pyodbc
 
 def get_db_connection():
-    conn = pyodbc.connect(
-        'DRIVER={ODBC Driver 17 for SQL Server};'
-        'SERVER=YOHAN\SQLEXPRESS;'
-        'DATABASE=Thesis;'
-        'Trusted_Connection=yes;'
-    )
-    return conn
+       conn = pyodbc.connect(
+           'DRIVER={ODBC Driver 17 for SQL Server};'
+           'SERVER=cbdstipqc.database.windows.net;'  # From Azure
+           'DATABASE=Thesis_db;'                         # Your DB name
+           'UID=sntsyohan;'                           # Your admin username
+           'PWD=09499894635Johan!;'                        # Your password
+       )
+       return conn
 
 def log_user_action(username, action):
     """Log user actions to the database"""
