@@ -782,29 +782,30 @@ class UserMainWindow(QMainWindow):
         input_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
         input_container.setStyleSheet("background: transparent;")
 
-        # Main vertical layout for inputs
-        input_layout = QVBoxLayout(input_container)
-        input_layout.setSpacing(10)
+        # --- Start Modification ---
+        # Main horizontal layout for inputs
+        input_layout = QHBoxLayout(input_container)
+        input_layout.setSpacing(15) # Add some spacing between radio buttons and stack
         input_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Input method selection
+        # Left side: Vertical layout for radio buttons
+        radio_button_container = QWidget()
+        radio_button_layout = QVBoxLayout(radio_button_container)
+        radio_button_layout.setSpacing(8)
+        radio_button_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Input method selection label (moved to vertical layout)
         method_label = QLabel("Choose Input Method:")
         method_label.setFont(FONTS['header'])
         method_label.setStyleSheet(f"color: {COLORS['text']}; margin-bottom: 5px;")
-        input_layout.addWidget(method_label)
+        radio_button_layout.addWidget(method_label)
 
-        # Create radio button group for input selection
-        radio_group = QWidget()
-        radio_layout = QHBoxLayout(radio_group)
-        radio_layout.setSpacing(20)
-        radio_layout.setContentsMargins(0, 0, 0, 10)
-
-        # Create radio buttons
+        # Create radio buttons (remain the same)
         self.fb_radio = QRadioButton("Facebook Post")
         self.csv_radio = QRadioButton("CSV File")
         self.direct_radio = QRadioButton("Single Comment")
 
-        # Style the radio buttons
+        # Style the radio buttons (remain the same)
         radio_style = f"""
             QRadioButton {{
                 color: {COLORS['text']};
@@ -831,27 +832,31 @@ class UserMainWindow(QMainWindow):
         self.csv_radio.setStyleSheet(radio_style)
         self.direct_radio.setStyleSheet(radio_style)
 
-        # Add radio buttons to layout
-        radio_layout.addWidget(self.fb_radio)
-        radio_layout.addWidget(self.csv_radio)
-        radio_layout.addWidget(self.direct_radio)
-        radio_layout.addStretch()
+        # Add radio buttons vertically
+        radio_button_layout.addWidget(self.fb_radio)
+        radio_button_layout.addWidget(self.csv_radio)
+        radio_button_layout.addWidget(self.direct_radio)
+        radio_button_layout.addStretch() # Push buttons to the top
 
-        # Connect radio buttons to stack widget
+        # Add the vertical radio button layout to the main horizontal layout (left side)
+        input_layout.addWidget(radio_button_container, stretch=0) # Give minimum width
+
+        # Right side: Create stacked widget for different input methods
+        self.input_stack = QStackedWidget()
+
+        # Connect radio buttons to stack widget (remain the same)
         self.fb_radio.toggled.connect(lambda checked: self.input_stack.setCurrentIndex(0) if checked else None)
         self.csv_radio.toggled.connect(lambda checked: self.input_stack.setCurrentIndex(1) if checked else None)
         self.direct_radio.toggled.connect(lambda checked: self.input_stack.setCurrentIndex(2) if checked else None)
 
-        # Set default selection
+        # Set default selection (remain the same)
         self.fb_radio.setChecked(True)
 
-        input_layout.addWidget(radio_group)
+        # Add the input stack to the main horizontal layout (right side)
+        input_layout.addWidget(self.input_stack, stretch=1) # Give it more horizontal space
+        # --- End Modification ---
 
-        # Create stacked widget for different input methods
-        self.input_stack = QStackedWidget()
-        input_layout.addWidget(self.input_stack)
-
-        # Facebook Post Input
+        # --- Facebook Post Input section (content remains the same, just added to stack) ---
         fb_section = QWidget()
         fb_section.setStyleSheet(SECTION_CONTAINER_STYLE)
         fb_layout = QVBoxLayout(fb_section)
@@ -884,7 +889,7 @@ class UserMainWindow(QMainWindow):
         fb_layout.addWidget(self.scrape_button)
         self.input_stack.addWidget(fb_section)
 
-        # CSV File Input
+        # --- CSV File Input section (content remains the same, just added to stack) ---
         csv_section = QWidget()
         csv_section.setStyleSheet(SECTION_CONTAINER_STYLE)
         csv_layout = QVBoxLayout(csv_section)
@@ -919,7 +924,7 @@ class UserMainWindow(QMainWindow):
         csv_layout.addWidget(self.process_csv_button)
         self.input_stack.addWidget(csv_section)
 
-        # Direct Input
+        # --- Direct Input section (content remains the same, just added to stack) ---
         direct_section = QWidget()
         direct_section.setStyleSheet(SECTION_CONTAINER_STYLE)
         direct_layout = QVBoxLayout(direct_section)
@@ -935,18 +940,42 @@ class UserMainWindow(QMainWindow):
         direct_description.setStyleSheet(f"color: {COLORS['text']}; font-size: 12px; margin-bottom: 5px;")
         direct_layout.addWidget(direct_description)
         
+        # --- Start Modification ---
+        # Create a horizontal layout to constrain the width
+        horizontal_wrapper_layout = QHBoxLayout()
+
+        # Create a container widget for the input elements
+        direct_input_widgets_container = QWidget()
+        direct_input_widgets_layout = QVBoxLayout(direct_input_widgets_container)
+        direct_input_widgets_layout.setContentsMargins(0, 0, 0, 0) # Remove inner margins
+        direct_input_widgets_layout.setSpacing(8) # Keep spacing
+
+        # Add input field to the container\'s layout
         self.text_input.setStyleSheet(INPUT_STYLE)
         self.text_input.setPlaceholderText("Type or paste a comment here...")
         self.text_input.setToolTip("Enter a single comment to analyze")
-        direct_layout.addWidget(self.text_input)
-        
+        direct_input_widgets_layout.addWidget(self.text_input)
+
+        # Add button to the container\'s layout
         self.analyze_button.setFont(FONTS['button'])
         self.analyze_button.setStyleSheet(BUTTON_STYLE)
         self.analyze_button.setToolTip("Analyze the entered comment")
-        direct_layout.addWidget(self.analyze_button)
+        direct_input_widgets_layout.addWidget(self.analyze_button)
+
+        # Add the container to the horizontal layout with stretch factor 1
+        horizontal_wrapper_layout.addWidget(direct_input_widgets_container, stretch=1)
+
+        # Add stretch factor 3 to the right to take up 3/4 of the space
+        horizontal_wrapper_layout.addStretch(stretch=3)
+
+        # Add the horizontal wrapper layout to the main vertical layout
+        direct_layout.addLayout(horizontal_wrapper_layout)
+        # --- End Modification ---
+
         self.input_stack.addWidget(direct_section)
 
-        self.content_layout.addWidget(input_container)
+        # Explicitly set stretch factor 0 for the input container
+        self.content_layout.addWidget(input_container, stretch=0)
 
         # Create responsive splitter for table and details
         splitter = QSplitter(Qt.Horizontal)
@@ -1072,7 +1101,8 @@ class UserMainWindow(QMainWindow):
         splitter.setStretchFactor(0, 9)
         splitter.setStretchFactor(1, 1)
 
-        self.content_layout.addWidget(splitter)
+        # Add the splitter to the content layout with a stretch factor
+        self.content_layout.addWidget(splitter, stretch=1) 
 
     def show_about(self):
         """Show About dialog and log the action"""
