@@ -1057,47 +1057,38 @@ class UserMainWindow(QMainWindow):
     def scrape_comments(self):
         """Scrape and process Facebook comments"""
         url = self.url_input.text()
+        include_replies = self.include_replies.isChecked()
+
         if not url:
-            display_message(self, "Error", "Please enter a URL.")
+            display_message("Error", "Please enter a YouTube video URL.")
             return
 
+        self.show_loading(True)
+        QApplication.processEvents() # Ensure UI updates
+
         try:
-            self.show_loading(True)
-            QApplication.processEvents()
-            
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as temp_file:
-                temp_path = temp_file.name
-            
-            scrape_comments(url, temp_path, self.include_replies.isChecked())
-            df = pd.read_csv(temp_path)
-            
-            if not self.include_replies.isChecked():
-                df = df[~df['Is Reply']]
-                
-            self.comment_metadata = {}
-            for _, row in df.iterrows():
-                self.comment_metadata[row['Text']] = {
-                    'profile_name': row['Profile Name'],
-                    'profile_picture': row['Profile Picture'],
-                    'date': row['Date'],
-                    'likes_count': row['Likes Count'],
-                    'profile_id': row['Profile ID'],
-                    'is_reply': row['Is Reply'],
-                    'reply_to': row['Reply To']
-                }
-            
-            comments = df['Text'].tolist()
-            self.populate_table(comments)
-            
-            try:
-                # Truncate URL if too long
-                short_url = url[:30] + "..." if len(url) > 30 else url
-                log_user_action(self.current_user, f"Scraped FB post: {short_url}")
-            except Exception as log_error:
-                print(f"Logging error: {log_error}")
-            
+            scraped_data = scrape_comments(url, include_replies=include_replies)
+            if not scraped_data:
+                display_message("Info", "No comments found or error during scraping.")
+                return
+
+            # Classify comments before populating
+            classified_comments = []
+            for comment in scraped_data:
+                prediction, confidence = classify_comment(comment['comment_text'])
+                comment['prediction'] = prediction
+                comment['confidence'] = confidence
+                classified_comments.append(comment)
+
+            # Create a new tab for the results
+            tab_name = f"URL {self.url_tab_count}: {url[:30]}..."
+            self.url_tab_count += 1
+            table = self.create_empty_tab(tab_name)
+            self.populate_table(table, classified_comments)
+            self.save_tab_state(tab_name, classified_comments) # Save initial state
+
         except Exception as e:
-            display_message(self, "Error", f"Error scraping comments: {e}")
+            display_message("Error", f"Failed to scrape comments: {e}")
         finally:
             self.show_loading(False)
 
@@ -1109,162 +1100,160 @@ class UserMainWindow(QMainWindow):
 
     def process_csv(self):
         """Process selected CSV file"""
-        if not self.file_input.text():
-            display_message(self, "Error", "Please select a CSV file first")
-            return
-            
         file_path = self.file_input.text()
+        if not file_path:
+            display_message("Error", "Please select a CSV file.")
+            return
+
+        self.show_loading(True)
+        QApplication.processEvents()
+
         try:
-            # Get just the filename without path and log at the start
-            file_name = file_path.split('/')[-1].split('\\')[-1]
-            log_user_action(self.current_user, f"Started processing CSV file: {file_name}")
-            
-            self.show_loading(True)
-            QApplication.processEvents()
-            
+            # Assuming CSV has a 'comment_text' column
             df = pd.read_csv(file_path)
-            # Convert all values to strings to handle numeric values
-            comments = df.iloc[:, 0].astype(str).tolist()
+            if 'comment_text' not in df.columns:
+                 display_message("Error", "CSV must contain a 'comment_text' column.")
+                 return
             
-            self.comment_metadata = {}
-            for comment in comments:
-                self.comment_metadata[comment] = {
-                    'profile_name': 'CSV Input',
-                    'profile_picture': '',
-                    'date': time.strftime('%Y-%m-%d %H:%M:%S'),
-                    'likes_count': 'N/A',
-                    'profile_id': 'N/A'
-                }
-            
-            self.populate_table(comments)
-            
-            # Log successful completion
-            log_user_action(self.current_user, f"Successfully processed CSV file: {file_name}")
-            
+            comments_data = []
+            for index, row in df.iterrows():
+                comment_text = str(row['comment_text']) # Ensure text is string
+                prediction, confidence = classify_comment(comment_text)
+                comments_data.append({
+                    'comment_text': comment_text,
+                    'prediction': prediction,
+                    'confidence': confidence,
+                    # Add other potential columns if available, otherwise use defaults
+                    'profile_name': row.get('profile_name', 'N/A'),
+                    'profile_picture': None, # Cannot get picture from CSV typically
+                    'comment_date': row.get('comment_date', 'N/A'),
+                    'likes_count': row.get('likes_count', 0),
+                    'profile_id': row.get('profile_id', 'N/A'),
+                    'is_reply': row.get('is_reply', False),
+                    'reply_to': row.get('reply_to', None)
+                })
+
+            # Create a new tab for the results
+            file_name = os.path.basename(file_path)
+            tab_name = f"CSV {self.csv_tab_count}: {file_name}"
+            self.csv_tab_count += 1
+            table = self.create_empty_tab(tab_name)
+            self.populate_table(table, comments_data)
+            self.save_tab_state(tab_name, comments_data) # Save initial state
+
+        except FileNotFoundError:
+            display_message("Error", f"File not found: {file_path}")
+        except pd.errors.EmptyDataError:
+            display_message("Error", "The selected CSV file is empty.")
         except Exception as e:
-            # Log failure
-            if 'file_name' in locals():
-                log_user_action(self.current_user, f"Failed to process CSV file: {file_name}")
-            display_message(self, "Error", f"Error reading CSV file: {e}")
+            display_message("Error", f"Failed to process CSV file: {e}")
         finally:
             self.show_loading(False)
 
     def analyze_single(self):
         """Analyze a single comment from direct input"""
-        if not self.text_input.text():
-            display_message(self, "Error", "Please enter a comment to analyze")
+        comment_text = self.text_input.text()
+        if not comment_text:
+            display_message("Error", "Please enter a comment to analyze.")
             return
-        
+
+        self.show_loading(True)
+        QApplication.processEvents()
+
         try:
-            self.show_loading(True)
-            QApplication.processEvents()
+            prediction, confidence = classify_comment(comment_text)
             
-            comment = self.text_input.text()
-            self.comment_metadata = {
-                comment: {
-                    'profile_name': 'Direct Input',
-                    'profile_picture': '',
-                    'date': time.strftime('%Y-%m-%d %H:%M:%S'),
-                    'likes_count': 'N/A',
-                    'profile_id': 'N/A'
-                }
+            # Prepare comment data dictionary
+            comment_data = {
+                'comment_text': comment_text,
+                'prediction': prediction,
+                'confidence': confidence,
+                'profile_name': 'Manual Input',
+                'profile_picture': None, 
+                'comment_date': 'N/A',
+                'likes_count': 0,
+                'profile_id': 'N/A',
+                'is_reply': False,
+                'reply_to': None
             }
-            
-            self.populate_table([comment])
-            
-            log_user_action(self.current_user, "Analyzed single comment")
-            
+
+            # Add to the currently active table or a default/new one if none active
+            current_table = self.get_current_table()
+            if current_table:
+                # Create a list containing the single comment data
+                self.populate_table(current_table, [comment_data], append=True)
+                # Optionally save state if desired for single additions
+                # tab_index = self.results_tabs.currentIndex()
+                # tab_name = self.results_tabs.tabText(tab_index)
+                # self.save_tab_state(tab_name, [comment_data], append=True)
+            else:
+                # Optionally create a 'Manual Analysis' tab if no tabs exist
+                 display_message("Info", "Analysis complete. Open a URL or CSV tab to see the results.")
+                 # Or display result in a dialog
+                 # display_message("Analysis Result", f"Comment: {comment_text}\\nPrediction: {prediction} (Confidence: {confidence:.2f})")\n
+
+            self.text_input.clear()
+
+        except Exception as e:
+            display_message("Error", f"Failed to analyze comment: {e}")
         finally:
             self.show_loading(False)
 
-    def populate_table(self, comments):
+    def populate_table(self, table, comments, append=False):
         """Populate table with analyzed comments"""
-        file_path = self.file_input.text()
-        url = self.url_input.text()
-
-        self.file_input.clear()
-        self.url_input.clear()
-        self.text_input.clear()
-
-        if len(comments) == 1:
-            tab_name = "Direct Inputs"
-        elif file_path:
-            file_name = file_path.split('/')[-1].split('\\')[-1]
-            file_name = file_name.rsplit('.', 1)[0]
-            
-            if len(file_name) > 20:
-                file_name = file_name[:17] + "..."
-            
-            if file_name in self.tabs:
-                msg = QMessageBox()
-                msg.setIcon(QMessageBox.Question)
-                msg.setWindowTitle("Duplicate File Name")
-                msg.setText(f"A tab with name '{file_name}' already exists.")
-                msg.setInformativeText("Do you want to replace the existing tab or create a new one?")
-                replace_button = msg.addButton("Replace", QMessageBox.YesRole)
-                new_tab_button = msg.addButton("Create New", QMessageBox.NoRole)
-                msg.addButton("Cancel", QMessageBox.RejectRole)
-                
-                msg.exec_()
-                
-                if msg.clickedButton() == replace_button:
-                    old_tab_index = self.tab_widget.indexOf(self.tabs[file_name])
-                    self.tab_widget.removeTab(old_tab_index)
-                    del self.tabs[file_name]
-                    tab_name = file_name
-                elif msg.clickedButton() == new_tab_button:
-                    counter = 2
-                    while f"{file_name} ({counter})" in self.tabs:
-                        counter += 1
-                    tab_name = f"{file_name} ({counter})"
-                else:
-                    return
-            else:
-                tab_name = file_name
-                
-        elif url:
-            # Find highest existing Facebook Post number
-            highest_num = 0
-            for existing_tab in self.tabs.keys():
-                if existing_tab.startswith("Facebook Post "):
-                    try:
-                        num = int(existing_tab.split("Facebook Post ")[1])
-                        highest_num = max(highest_num, num)
-                    except (ValueError, IndexError):
-                        continue
-            
-            # Set counter to next available number
-            self.url_tab_count = highest_num + 1
-            tab_name = f"Facebook Post {self.url_tab_count}"
-        else:
-            tab_name = f"Analysis {self.csv_tab_count + self.url_tab_count}"
-
-        table = self.create_empty_tab(tab_name)
+        if not append:
+            table.setRowCount(0)
+            table.setColumnCount(2)  # Ensure we have the right number of columns
+            table.setHorizontalHeaderLabels(["Comment", "Prediction"])
 
         for comment in comments:
-            metadata = self.comment_metadata.get(comment, {})
+            # Get the comment text and prediction from the comment dictionary
+            comment_text = comment.get('comment_text', '')
+            prediction = comment.get('prediction', '')  # Use pre-classified prediction
+            confidence = comment.get('confidence', 0.0)  # Use pre-classified confidence
+            
+            # Get metadata from either dictionary or metadata store
+            if isinstance(comment, dict):
+                # New format: use metadata directly from dictionary
+                metadata = {
+                    'profile_name': comment.get('profile_name', 'N/A'),
+                    'profile_picture': comment.get('profile_picture', None),
+                    'comment_date': comment.get('comment_date', 'N/A'),
+                    'likes_count': comment.get('likes_count', 0),
+                    'profile_id': comment.get('profile_id', 'N/A'),
+                    'is_reply': comment.get('is_reply', False),
+                    'reply_to': comment.get('reply_to', None)
+                }
+                # Also store in comment_metadata for compatibility with other functions
+                self.comment_metadata[comment_text] = metadata
+            else:
+                # Old format: use comment_metadata directly (deprecated)
+                metadata = self.comment_metadata.get(comment_text, {})
+            
             is_reply = metadata.get('is_reply', False)
             
-            prediction, confidence = classify_comment(comment)
+            # Insert new row
             row_position = table.rowCount()
             table.insertRow(row_position)
 
-            display_text = comment
+            # Set comment cell
+            display_text = comment_text
             if is_reply:
                 reply_to = metadata.get('reply_to', '')
                 comment_item = QTableWidgetItem(display_text)
-                comment_item.setData(Qt.UserRole, comment)
+                comment_item.setData(Qt.UserRole, comment_text)
                 comment_item.setData(Qt.DisplayRole, f" [↪ Reply] {display_text}")
                 comment_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
             else:
                 comment_item = QTableWidgetItem(display_text)
-                comment_item.setData(Qt.UserRole, comment)
+                comment_item.setData(Qt.UserRole, comment_text)
                 comment_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
             if is_reply:
                 lighter_surface = QColor(COLORS['surface']).lighter(105)
                 comment_item.setBackground(lighter_surface)
 
+            # Set prediction cell
             prediction_item = QTableWidgetItem(prediction)
             prediction_item.setTextAlignment(Qt.AlignCenter)
             if prediction == "Cyberbullying":
@@ -1272,20 +1261,32 @@ class UserMainWindow(QMainWindow):
             else:
                 prediction_item.setForeground(QColor(COLORS['normal']))
 
+            # Add data to table
             table.setItem(row_position, 0, comment_item)
             table.setItem(row_position, 1, prediction_item)
 
+            # Resize row to fit content
             table.resizeRowToContents(row_position)
 
-            if comment in self.selected_comments:
+            # Highlight if in selected comments
+            if comment_text in self.selected_comments:
                 for col in range(table.columnCount()):
                     table.item(row_position, col).setBackground(QColor(COLORS['highlight']))
 
-        tab_index = self.tab_widget.indexOf(self.tabs[tab_name])
-        self.tab_widget.setCurrentIndex(tab_index)
-
-        # Save the tab state after populating
-        self.save_tab_state(tab_name, comments)
+        # Set the current tab
+        try:
+            # Get the name/title of the current tab
+            if table.parent():
+                table_parent = table.parent()
+                for tab_name, tab_widget in self.tabs.items():
+                    if tab_widget == table_parent:
+                        tab_index = self.tab_widget.indexOf(tab_widget)
+                        self.tab_widget.setCurrentIndex(tab_index)
+                        # Save the tab state after populating
+                        self.save_tab_state(tab_name, comments)
+                        break
+        except Exception as e:
+            print(f"Error setting current tab: {e}")
 
     def show_summary(self):
         """Show summary of comment analysis"""

@@ -1,69 +1,63 @@
-from sample_data import SAMPLE_COMMENTS
-import random
+import os
+import joblib
+import torch
+from transformers import BertTokenizer, BertModel
 
-class CyberbullyingModel:
-    
-    def __init__(self, model_path=None):
-        """Initialize model with optional path to saved model"""
-        self.model_path = model_path
-        self.is_loaded = False
-        # Will store the actual model once loaded
-        self.model = None
+# Define model paths relative to this file's location
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_DIR = os.path.join(BASE_DIR, "models", "model")
+SVM_MODEL_PATH = os.path.join(MODEL_DIR, "svm_model.pkl")
+MBERT_MODEL_DIR = os.path.join(MODEL_DIR, "cyberbullying_model")
+BERT_BASE_MODEL = "bert-base-multilingual-cased"  # Base model to use if weights not found locally
+
+print("Loading SVM model...")
+svm_classifier = joblib.load(SVM_MODEL_PATH)
+print("SVM model loaded successfully.")
+
+# Function to generate embeddings using mBERT
+def generate_embedding(text):
+    """Generate embeddings for text using mBERT"""
+    try:
+        # First try to use the local tokenizer
+        tokenizer = BertTokenizer.from_pretrained(MBERT_MODEL_DIR)
+        print("Using locally trained tokenizer")
         
-    def load(self):
-        """Load the model from saved file"""
+        # Try to load local model, fall back to base model if needed
         try:
-            # TODO: Implement actual model loading
-            # self.model = load_model(self.model_path)
-            self.is_loaded = True
-        except Exception as e:
-            print(f"Warning: Using placeholder model. Error loading model: {e}")
+            model = BertModel.from_pretrained(MBERT_MODEL_DIR)
+            print("Using locally trained model weights")
+        except:
+            print(f"Model weights not found locally, using {BERT_BASE_MODEL} weights")
+            model = BertModel.from_pretrained(BERT_BASE_MODEL)
+    except:
+        print(f"Tokenizer not found locally, using {BERT_BASE_MODEL}")
+        tokenizer = BertTokenizer.from_pretrained(BERT_BASE_MODEL)
+        model = BertModel.from_pretrained(BERT_BASE_MODEL)
     
-    def preprocess(self, text):
-        """Preprocess text before prediction"""
-        # TODO: Implement actual text preprocessing
-        return text.lower()
+    with torch.no_grad():
+        inputs = tokenizer(text, return_tensors='pt', padding=True, truncation=True)
+        outputs = model(**inputs)
+        cls_embedding = outputs.last_hidden_state[0, 0, :].numpy()
     
-    def predict(self, text):
-        """
-        Predict if text is cyberbullying
-        Returns tuple of (prediction_label, confidence_score)
-        """
-        if not self.is_loaded:
-            return self._placeholder_predict(text)
-            
-        # TODO: Replace with actual model prediction
-        # processed_text = self.preprocess(text)
-        # prediction = self.model.predict(processed_text)
-        # return self._format_prediction(prediction)
-        
-        return self._placeholder_predict(text)
-    
-    def _placeholder_predict(self, text):
-        """Temporary placeholder prediction logic"""
-        # First try to find an exact match in sample data
-        for sample in SAMPLE_COMMENTS:
-            if text.lower() == sample["comment"].lower():
-                return sample["prediction"], sample["confidence"]
-        
-        # If no exact match, return random classification
-        is_cyberbullying = random.random() < 0.3
-        if is_cyberbullying:
-            return "Cyberbullying", random.uniform(0.70, 0.99)
-        else:
-            return "Not Cyberbullying", random.uniform(0.75, 0.99)
-    
-    def _format_prediction(self, model_output):
-        """Format model output into standardized prediction format"""
-        # TODO: Implement conversion from model output to (label, confidence) format
-        pass
-
-# Create global model instance
-model = CyberbullyingModel()
+    return cls_embedding
 
 def classify_comment(comment):
-    """
-    Main interface for comment classification.
-    Returns tuple of (prediction_label, confidence_score)
-    """
-    return model.predict(comment)
+    """Classify a comment as cyberbullying or not"""
+    try:
+        # Generate embeddings using mBERT
+        comment_embedding = generate_embedding(comment).reshape(1, -1)
+        
+        # Predict using SVM
+        prediction = svm_classifier.predict(comment_embedding)
+        
+        # Get confidence score
+        confidence_score = svm_classifier.decision_function(comment_embedding)[0]
+        
+        # Format result
+        result = "Cyberbullying" if prediction[0] == 1 else "Not Cyberbullying"
+        
+        return result, float(confidence_score)
+    
+    except Exception as e:
+        print(f"Error during prediction: {e}")
+        return "Error", 0.0
