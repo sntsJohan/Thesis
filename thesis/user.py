@@ -1415,7 +1415,7 @@ class UserMainWindow(QMainWindow):
             confidence = comment.get('confidence', 0.0)  # Use pre-classified confidence
             
             # Convert confidence to High/Medium/Low
-            confidence_level = "High" if confidence > 0.8 else "Medium" if confidence > 0.5 else "Low"
+            # confidence_level = "High" if confidence > 0.8 else "Medium" if confidence > 0.5 else "Low"
             
             # Get metadata from either dictionary or metadata store
             if isinstance(comment, dict):
@@ -1460,7 +1460,9 @@ class UserMainWindow(QMainWindow):
                 comment_item.setBackground(lighter_surface)
 
             # Set prediction cell with confidence level
-            prediction_text = f"{prediction} ({confidence_level})"
+            # prediction_text = f"{prediction} ({confidence_level})"
+            # Format confidence to 2 decimal places
+            prediction_text = f"{prediction} ({confidence:.2f})"
             prediction_item = QTableWidgetItem(prediction_text)
             prediction_item.setTextAlignment(Qt.AlignCenter)
             if prediction == "Cyberbullying":
@@ -1496,38 +1498,56 @@ class UserMainWindow(QMainWindow):
             print(f"Error setting current tab: {e}")
 
     def show_summary(self):
-        """Show summary of comment analysis"""
-        total_comments = self.get_current_table().rowCount()
-        if total_comments == 0:
-            display_message(self, "Error", "No comments to summarize")
+        """Show summary of analyzed comments"""
+        table = self.get_current_table()
+        if not table or table.rowCount() == 0:
+            display_message(self, "Info", "No comments to summarize")
             return
 
+        total_comments = table.rowCount()
         cyberbullying_count = 0
         normal_count = 0
-        high_confidence_count = 0
+        confidences = []
 
         for row in range(total_comments):
-            prediction = self.get_current_table().item(row, 1).text()
-            confidence = float(self.get_current_table().item(row, 2).text().strip('%')) / 100
+            comment_item = table.item(row, 0)
+            prediction_item = table.item(row, 1)
+            
+            if not comment_item or not prediction_item:
+                continue
+            
+            # Get comment text and prediction from table
+            comment_text = comment_item.data(Qt.UserRole) or comment_item.text()
+            prediction = prediction_item.text().split(" (")[0] # Extract prediction part
+
+            # Get confidence from metadata
+            metadata = self.comment_metadata.get(comment_text, {})
+            confidence = metadata.get('confidence', 0.0) # Get raw confidence
+            
+            confidences.append(confidence)
 
             if prediction == "Cyberbullying":
                 cyberbullying_count += 1
-            else:
+            elif prediction == "Normal":
                 normal_count += 1
 
-            if confidence > 0.9:
-                high_confidence_count += 1
+        avg_confidence = np.mean(confidences) if confidences else 0
 
         summary_text = (
-            f"Analysis Summary:\n\n"
-            f"Total Comments Analyzed: {total_comments}\n"
-            f"Cyberbullying Comments: {cyberbullying_count} ({(cyberbullying_count/total_comments)*100:.1f}%)\n"
-            f"Normal Comments: {normal_count} ({(normal_count/total_comments)*100:.1f}%)\n"
-            f"High Confidence Predictions: {high_confidence_count} ({(high_confidence_count/total_comments)*100:.1f}%)\n"
-            f"Comments in Selection List: {len(self.selected_comments)}"
+            f"<b>Summary of Current Tab</b>\n\n"
+            f"Total Comments: {total_comments}\n"
+            f"Cyberbullying Comments: {cyberbullying_count}\n"
+            f"Normal Comments: {normal_count}\n"
+            f"Average Confidence: {avg_confidence:.2f}\n"
         )
-        
-        display_message(self, "Results Summary", summary_text)
+
+        msg_box = QMessageBox(self)
+        msg_box.setWindowTitle("Analysis Summary")
+        msg_box.setTextFormat(Qt.RichText)
+        msg_box.setText(summary_text)
+        msg_box.setIcon(QMessageBox.Information)
+        msg_box.setStyleSheet(DIALOG_STYLE)
+        msg_box.exec_()
         log_user_action(self.current_user, "Viewed analysis summary")
 
     def show_word_cloud(self):
@@ -1639,35 +1659,52 @@ class UserMainWindow(QMainWindow):
                 display_message(self, "Error", f"Error exporting comments: {e}")
 
     def export_all(self):
-        """Export all comments to CSV file"""
-        if self.get_current_table().rowCount() == 0:
-            display_message(self, "Error", "No comments to export")
+        """Export all analyzed comments from the current tab to CSV"""
+        table = self.get_current_table()
+        if not table or table.rowCount() == 0:
+            display_message(self, "Info", "No comments to export")
             return
 
-        file_path, _ = QFileDialog.getSaveFileName(
-            self, "Export All Comments", "", "CSV Files (*.csv)"
-        )
+        # Prepare data for export
+        export_data = []
+        header = ["Comment", "Prediction", "Confidence", "Commenter", "Date", "Likes", "Profile ID", "Is Reply", "Reply To"]
+
+        for row in range(table.rowCount()):
+            comment_item = table.item(row, 0)
+            prediction_item = table.item(row, 1)
+            
+            if not comment_item or not prediction_item:
+                continue
+                
+            comment_text = comment_item.data(Qt.UserRole) or comment_item.text()
+            prediction = prediction_item.text().split(" (")[0]
+
+            # Get metadata and confidence
+            metadata = self.comment_metadata.get(comment_text, {})
+            confidence = metadata.get('confidence', 0.0)
+            
+            export_data.append([
+                comment_text,
+                prediction,
+                f"{confidence:.2f}", # Format confidence
+                metadata.get('profile_name', 'N/A'),
+                metadata.get('date', 'N/A'),
+                metadata.get('likes_count', 'N/A'),
+                metadata.get('profile_id', 'N/A'),
+                "Yes" if metadata.get('is_reply') else "No",
+                metadata.get('reply_to', 'N/A')
+            ])
+
+        # Show file dialog to save
+        file_path, _ = QFileDialog.getSaveFileName(self, "Save CSV", "", "CSV Files (*.csv)")
         if file_path:
             try:
-                comments = []
-                predictions = []
-                confidences = []
-
-                for row in range(self.get_current_table().rowCount()):
-                    comments.append(self.get_current_table().item(row, 0).text())
-                    predictions.append(self.get_current_table().item(row, 1).text())
-                    confidences.append(self.get_current_table().item(row, 2).text())
-
-                df = pd.DataFrame({
-                    'Comment': comments,
-                    'Prediction': predictions,
-                    'Confidence': confidences
-                })
+                df = pd.DataFrame(export_data, columns=header)
                 df.to_csv(file_path, index=False)
-                display_message(self, "Success", "All comments exported successfully")
-                log_user_action(self.current_user, f"Exported all comments to: {file_path}")
+                display_message(self, "Success", f"Successfully exported all comments to {file_path}")
+                log_user_action(self.current_user, f"Exported all comments to {os.path.basename(file_path)}")
             except Exception as e:
-                display_message(self, "Error", f"Error exporting comments: {e}")
+                display_message(self, "Error", f"Failed to export data: {e}")
 
     def generate_report(self):
         """Generate report for user interface"""

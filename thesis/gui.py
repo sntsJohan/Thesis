@@ -696,17 +696,23 @@ class MainWindow(QMainWindow):
             
             # Create metadata for the direct input comment
             comment = self.text_input.text()
-            self.comment_metadata = {
-                comment: {
+            
+            # Check if the comment already exists in metadata (might be from previous input)
+            if comment not in self.comment_metadata:
+                self.comment_metadata[comment] = {
                     'profile_name': 'Direct Input',
                     'profile_picture': '',
                     'date': time.strftime('%Y-%m-%d %H:%M:%S'),
                     'likes_count': 'N/A',
                     'profile_id': 'N/A'
                 }
-            }
             
-            self.populate_table([comment])
+            # Call populate_table with append=True
+            self.populate_table([comment], append=True)
+            
+            # Clear the input field after processing
+            self.text_input.clear()
+            
         finally:
             self.show_loading(False)  # Hide loading overlay
 
@@ -842,7 +848,7 @@ class MainWindow(QMainWindow):
         current_tab = self.tab_widget.currentWidget()
         return current_tab.findChild(QTableWidget)
 
-    def populate_table(self, comments):
+    def populate_table(self, comments, append=False):
         """Create new tab and populate it based on input type"""
         # Store the input source before clearing
         file_path = self.file_input.text()
@@ -852,7 +858,7 @@ class MainWindow(QMainWindow):
         self.file_input.clear()
         self.url_input.clear()
 
-        if len(comments) == 1:  # Direct input
+        if len(comments) == 1 and not file_path and not url:  # Check if it's truly direct input
             tab_name = "Direct Inputs"
         elif file_path:  # CSV input
             # Get filename without path and extension
@@ -877,22 +883,30 @@ class MainWindow(QMainWindow):
                 msg.exec_()
                 
                 if msg.clickedButton() == replace_button:
-                    # Remove existing tab
-                    old_tab_index = self.tab_widget.indexOf(self.tabs[file_name])
-                    self.tab_widget.removeTab(old_tab_index)
-                    del self.tabs[file_name]
+                    # Remove existing tab widget reference (don't remove from tab_widget yet)
+                    if file_name in self.tabs:
+                        self.tabs[file_name].deleteLater() # Clean up old widget
+                        del self.tabs[file_name]
+                        # Find the actual index to remove
+                        for i in range(self.tab_widget.count()):
+                            if self.tab_widget.tabText(i) == file_name:
+                                self.tab_widget.removeTab(i)
+                                break
                     tab_name = file_name
+                    append = False # Ensure replacement
                 elif msg.clickedButton() == new_tab_button:
                     # Find next available number
                     counter = 2
                     while f"{file_name} ({counter})" in self.tabs:
                         counter += 1
                     tab_name = f"{file_name} ({counter})"
+                    append = False # Creating new tab
                 else:
                     # User clicked Cancel
                     return
             else:
                 tab_name = file_name
+                append = False # Creating new tab
                 
         elif url:  # Facebook post
             # Find highest existing Facebook Post number
@@ -908,16 +922,39 @@ class MainWindow(QMainWindow):
             # Set counter to next available number
             self.url_tab_count = highest_num + 1
             tab_name = f"Facebook Post {self.url_tab_count}"
-        else:  # Fallback case
+            append = False # Creating new tab
+        else:  # Fallback case (shouldn't happen with current logic)
             tab_name = f"Analysis {self.csv_tab_count + self.url_tab_count}"
+            append = False
 
-        # Create new tab and get its table
-        table = self.create_empty_tab(tab_name)
+        # Get or create the table
+        if append and tab_name in self.tabs:
+             # If appending and tab exists, get its table
+             table = self.tabs[tab_name].findChild(QTableWidget)
+        else:
+             # Otherwise, create a new tab/table (handles replacement logic internally if name exists)
+             table = self.create_empty_tab(tab_name)
         
         # Enable dataset operations since we now have data
         self.enable_dataset_operations(True)
 
+        # Clear existing rows ONLY if not appending
+        if not append:
+            table.setRowCount(0)
+        
+        # Create a set of existing comments in the table if appending
+        existing_comments_in_table = set()
+        if append:
+            for row in range(table.rowCount()):
+                item = table.item(row, 0)
+                if item:
+                    existing_comments_in_table.add(item.data(Qt.UserRole) or item.text())
+
         for comment in comments:
+             # Skip if appending and comment already exists
+            if append and comment in existing_comments_in_table:
+                continue
+            
             metadata = self.comment_metadata.get(comment, {})
             is_reply = metadata.get('is_reply', False)
             
@@ -950,7 +987,9 @@ class MainWindow(QMainWindow):
             else:
                 prediction_item.setForeground(QColor(COLORS['normal']))
 
-            confidence_item = QTableWidgetItem(f"{confidence:.2%}")
+            # Display raw confidence (0.0-1.0)
+            confidence_text = f"{confidence:.2f}"
+            confidence_item = QTableWidgetItem(confidence_text)
             confidence_item.setTextAlignment(Qt.AlignCenter)
 
             table.setItem(row_position, 0, comment_item)
@@ -963,9 +1002,11 @@ class MainWindow(QMainWindow):
                 for col in range(table.columnCount()):
                     table.item(row_position, col).setBackground(QColor(COLORS['highlight']))
 
-        # Switch to the new tab
-        tab_index = self.tab_widget.indexOf(self.tabs[tab_name])
-        self.tab_widget.setCurrentIndex(tab_index)
+        # Switch to the correct tab
+        if tab_name in self.tabs:
+             tab_index = self.tab_widget.indexOf(self.tabs[tab_name])
+             if tab_index != -1:
+                 self.tab_widget.setCurrentIndex(tab_index)
 
     def sort_table(self, table):
         """Sort the specified table based on its combo box selection"""
@@ -1057,38 +1098,56 @@ class MainWindow(QMainWindow):
         self.details_text_edit.append(make_text("Status: ", f"{'In List' if comment in self.selected_comments else 'Not in List'}\n"))
 
     def show_summary(self):
-        total_comments = self.get_current_table().rowCount()
-        if total_comments == 0:
-            display_message(self, "Error", "No comments to summarize")
+        table = self.get_current_table()
+        if not table or table.rowCount() == 0:
+            display_message(self, "Info", "No comments to summarize")
             return
 
+        total_comments = table.rowCount()
         cyberbullying_count = 0
         normal_count = 0
-        high_confidence_count = 0  # Comments with confidence > 90%
+        confidences = []
 
         for row in range(total_comments):
-            prediction = self.get_current_table().item(row, 1).text()
-            confidence = float(self.get_current_table().item(row, 2).text().strip('%')) / 100
+            comment_item = table.item(row, 0)
+            prediction_item = table.item(row, 1)
+            confidence_item = table.item(row, 2) # Get confidence item from table
+            
+            if not comment_item or not prediction_item or not confidence_item:
+                continue
+            
+            # Get data from table items
+            comment_text = comment_item.data(Qt.UserRole) or comment_item.text()
+            prediction = prediction_item.text()
+            try:
+                confidence = float(confidence_item.text()) # Convert text back to float
+            except ValueError:
+                confidence = 0.0 # Default if conversion fails
+            
+            confidences.append(confidence)
 
             if prediction == "Cyberbullying":
                 cyberbullying_count += 1
-            else:
+            elif prediction == "Normal":
                 normal_count += 1
 
-            if confidence > 0.9:
-                high_confidence_count += 1
+        avg_confidence = np.mean(confidences) if confidences else 0
 
         summary_text = (
-            f"Analysis Summary:\n\n"
-            f"Total Comments Analyzed: {total_comments}\n"
-            f"Cyberbullying Comments: {cyberbullying_count} ({(cyberbullying_count/total_comments)*100:.1f}%)\n"
-            f"Normal Comments: {normal_count} ({(normal_count/total_comments)*100:.1f}%)\n"
-            f"High Confidence Predictions: {high_confidence_count} ({(high_confidence_count/total_comments)*100:.1f}%)\n"
-            f"Comments in Selection List: {len(self.selected_comments)}"
+            f"<b>Summary of Current Tab</b>\n\n"
+            f"Total Comments: {total_comments}\n"
+            f"Cyberbullying Comments: {cyberbullying_count}\n"
+            f"Normal Comments: {normal_count}\n"
+            f"Average Confidence: {avg_confidence:.2f}\n"
         )
-        
-        # Display summary in a simple dialog
-        display_message(self, "Results Summary", summary_text)
+
+        msg_box = QMessageBox(self)
+        msg_box.setWindowTitle("Analysis Summary")
+        msg_box.setTextFormat(Qt.RichText)
+        msg_box.setText(summary_text)
+        msg_box.setIcon(QMessageBox.Information)
+        msg_box.setStyleSheet(DIALOG_STYLE)
+        msg_box.exec_()
 
     def show_word_cloud(self):
         """Generate and display word cloud visualization"""
@@ -1199,33 +1258,53 @@ class MainWindow(QMainWindow):
                 display_message(self, "Error", f"Error exporting comments: {e}")
 
     def export_all(self):
-        if self.get_current_table().rowCount() == 0:
-            display_message(self, "Error", "No comments to export")
+        table = self.get_current_table()
+        if not table or table.rowCount() == 0:
+            display_message(self, "Info", "No comments to export")
             return
 
-        file_path, _ = QFileDialog.getSaveFileName(
-            self, "Export All Comments", "", "CSV Files (*.csv)"
-        )
+        # Prepare data for export
+        export_data = []
+        header = ["Comment", "Prediction", "Confidence", "Commenter", "Date", "Likes", "Profile ID", "Is Reply", "Reply To"]
+
+        for row in range(table.rowCount()):
+            comment_item = table.item(row, 0)
+            prediction_item = table.item(row, 1)
+            confidence_item = table.item(row, 2)
+            
+            if not comment_item or not prediction_item or not confidence_item:
+                continue
+                
+            comment_text = comment_item.data(Qt.UserRole) or comment_item.text()
+            prediction = prediction_item.text()
+            confidence = confidence_item.text() # Already formatted string 0.xx
+
+            # Get metadata
+            metadata = self.comment_metadata.get(comment_text, {})
+            
+            export_data.append([
+                comment_text,
+                prediction,
+                confidence, # Use the formatted string directly
+                metadata.get('profile_name', 'N/A'),
+                metadata.get('date', 'N/A'),
+                metadata.get('likes_count', 'N/A'),
+                metadata.get('profile_id', 'N/A'),
+                "Yes" if metadata.get('is_reply') else "No",
+                metadata.get('reply_to', 'N/A')
+            ])
+
+        # Show file dialog to save
+        file_path, _ = QFileDialog.getSaveFileName(self, "Save CSV", "", "CSV Files (*.csv)")
         if file_path:
             try:
-                comments = []
-                predictions = []
-                confidences = []
-
-                for row in range(self.get_current_table().rowCount()):
-                    comments.append(self.get_current_table().item(row, 0).text())
-                    predictions.append(self.get_current_table().item(row, 1).text())
-                    confidences.append(self.get_current_table().item(row, 2).text())
-
-                df = pd.DataFrame({
-                    'Comment': comments,
-                    'Prediction': predictions,
-                    'Confidence': confidences
-                })
+                df = pd.DataFrame(export_data, columns=header)
                 df.to_csv(file_path, index=False)
-                display_message(self, "Success", "All comments exported successfully")
+                display_message(self, "Success", f"Successfully exported all comments to {file_path}")
+                # Optional: Log action
+                # log_user_action(self.current_user, f"Exported all comments to {os.path.basename(file_path)}")
             except Exception as e:
-                display_message(self, "Error", f"Error exporting comments: {e}")
+                display_message(self, "Error", f"Failed to export data: {e}")
 
     def generate_report(self):
         """Generate report by calling the report generation function"""
