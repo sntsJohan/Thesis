@@ -1600,8 +1600,8 @@ class UserMainWindow(QMainWindow):
             else:
                 table = self.create_empty_tab(tab_name)
             
-            # Populate table with the new comment
-            self.populate_table(table, comment_data)
+            # Populate table with the new comment, setting append=True to keep existing comments
+            self.populate_table(table, comment_data, append=True)
             
             # Clear the text input
             self.text_input.clear()
