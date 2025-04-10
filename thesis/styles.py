@@ -7,6 +7,7 @@ COLORS = {
     'background': '#121212',   # Deep dark gray; reduces eye strain
     'surface': '#1E1E1E',      # Slightly lighter for depth
     'error': '#EF5350',        # Red for errors and warnings
+    'warning': '#FFB74D',      # Orange for warnings and cautions
     'success': '#66BB6A',      # Green for success messages
     'text': '#E0E0E0',         # Light gray for readability
     'text_secondary': '#A0A0A0',  # Muted gray for less emphasis

@@ -3,18 +3,45 @@ import csv
 
 api = "apify_api_lNtXpN7jnO8CgUxujl7uPrQFUAAHwP4alnLC"
 
-def scrape_comments(fb_url, save_path, include_replies=True):
+def scrape_comments(fb_url, save_path, filters=None):
     client = ApifyClient(api)
+    
+    # Set default filters if none provided
+    if filters is None:
+        filters = {
+            "includeReplies": True,
+            "resultsLimit": 50,
+            "viewOption": "RANKED_UNFILTERED",
+            "timelineOption": "CHRONOLOGICAL",
+            "filterPostsByLanguage": False,
+            "filterCommentsLanguage": "en",
+            "maxComments": 50
+        }
+    
+    # Configure actor input based on filters
     run_input = {
         "startUrls": [{"url": fb_url}],
-        "resultsLimit": 1000,
-        "includeNestedComments": include_replies,
-        "viewOption": "RANKED_UNFILTERED",
+        "resultsLimit": filters.get("resultsLimit", 1000),
+        "includeNestedComments": filters.get("includeReplies", True),
+        "viewOption": filters.get("viewOption", "RANKED_UNFILTERED"),
     }
+    
+    # Add timeline option if available
+    if "timelineOption" in filters:
+        run_input["timelineOption"] = filters["timelineOption"]
+        
+    # Add language filtering if enabled
+    if filters.get("filterPostsByLanguage", False):
+        run_input["filterPostsByLanguage"] = True
+        run_input["language"] = filters.get("filterCommentsLanguage", "en")
+    
+    # Run the actor
     run = client.actor("us5srxAYnsrkgUv2v").call(run_input=run_input)
 
+    # Get the results
     comments = list(client.dataset(run["defaultDatasetId"]).iterate_items())
 
+    # Write to CSV
     with open(save_path, mode='w', newline='', encoding='utf-8') as file:
         writer = csv.writer(file)
         writer.writerow(['Text', 'Profile Name', 'Profile Picture', 'Date', 'Likes Count', 
