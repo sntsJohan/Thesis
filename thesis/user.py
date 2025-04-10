@@ -276,6 +276,10 @@ class UserMainWindow(QMainWindow):
             self.comment_metadata = {}
             self.tabs = {}
             
+            # Reset tab counters for fresh start
+            self.csv_tab_count = 1
+            self.url_tab_count = 1
+            
             # Remove all tabs from the UI
             while self.tab_widget.count() > 0:
                 self.tab_widget.removeTab(0)
@@ -369,6 +373,9 @@ class UserMainWindow(QMainWindow):
             
             conn.close()
             
+            # Update tab counters based on existing tabs
+            self.update_tab_counters()
+            
             # Show/hide appropriate elements based on tab count
             if self.tab_widget.count() > 0:
                 self.initial_message.hide()
@@ -383,6 +390,38 @@ class UserMainWindow(QMainWindow):
             print(f"Session restoration error: {e}")
             import traceback
             traceback.print_exc()  # Print full stack trace for debugging
+
+    def update_tab_counters(self):
+        """Update tab counters based on existing tabs"""
+        max_csv_count = 0
+        max_url_count = 0
+        
+        # Check all tab names to find the highest numbers
+        for tab_name in self.tabs.keys():
+            if tab_name.startswith("CSV "):
+                try:
+                    # Extract number from format "CSV X: filename"
+                    number_part = tab_name.split(" ")[1]
+                    if ":" in number_part:
+                        number = int(number_part.split(":")[0])
+                        max_csv_count = max(max_csv_count, number)
+                except (ValueError, IndexError):
+                    pass
+            elif tab_name.startswith("URL "):
+                try:
+                    # Extract number from format "URL X: url"
+                    number_part = tab_name.split(" ")[1]
+                    if ":" in number_part:
+                        number = int(number_part.split(":")[0])
+                        max_url_count = max(max_url_count, number)
+                except (ValueError, IndexError):
+                    pass
+        
+        # Set the counters to one more than the highest found
+        self.csv_tab_count = max_csv_count + 1
+        self.url_tab_count = max_url_count + 1
+        
+        print(f"Updated tab counters - CSV: {self.csv_tab_count}, URL: {self.url_tab_count}")
 
     def save_tab_state(self, tab_name, comments):
         """Save tab and its comments to the database"""
@@ -603,8 +642,23 @@ class UserMainWindow(QMainWindow):
 
     def close_tab(self, index):
         """Close the tab and clean up resources"""
-        # Get tab name before removing
-        tab_name = self.tab_widget.tabText(index)
+        # Get tab name before removing - this is the truncated version shown in UI
+        ui_tab_name = self.tab_widget.tabText(index)
+        
+        # Get the actual tab widget for this index
+        tab_widget = self.tab_widget.widget(index)
+        
+        # Find the full tab name from the tabs dictionary
+        full_tab_name = None
+        for name, widget in self.tabs.items():
+            if widget == tab_widget:
+                full_tab_name = name
+                break
+        
+        # Use full tab name for database operations if found, otherwise use UI tab name
+        tab_name = full_tab_name or ui_tab_name
+        
+        print(f"Closing tab: UI name='{ui_tab_name}', Full name='{tab_name}'")
         
         try:
             # Remove tab data from database
@@ -635,6 +689,8 @@ class UserMainWindow(QMainWindow):
                 
                 conn.commit()
                 print(f"Successfully deleted tab {tab_name} and its comments from database")
+            else:
+                print(f"Warning: Could not find tab_id for '{tab_name}' in session {self.session_id}")
             
             # Now update session last accessed time
             cursor.execute("""
