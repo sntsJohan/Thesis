@@ -18,10 +18,14 @@ def scrape_comments(fb_url, save_path, filters=None):
             "maxComments": 50
         }
     
-    # Configure actor input based on filters
+    # Get max comments limit (used both for API call and local truncation)
+    max_comments = filters.get("maxComments", 50)
+    
+    # Configure actor input based on filters - request slightly more than needed
+    # to ensure we get at least the requested amount after filtering
     run_input = {
         "startUrls": [{"url": fb_url}],
-        "resultsLimit": filters.get("resultsLimit", 1000),
+        "resultsLimit": max(max_comments + 10, int(max_comments * 1.2)),  # Request 20% more or at least 10 more
         "includeNestedComments": filters.get("includeReplies", True),
         "viewOption": filters.get("viewOption", "RANKED_UNFILTERED"),
     }
@@ -40,6 +44,9 @@ def scrape_comments(fb_url, save_path, filters=None):
 
     # Get the results
     comments = list(client.dataset(run["defaultDatasetId"]).iterate_items())
+    
+    # Apply strict limit to enforce maxComments
+    comments = comments[:max_comments]
 
     # Write to CSV
     with open(save_path, mode='w', newline='', encoding='utf-8') as file:
