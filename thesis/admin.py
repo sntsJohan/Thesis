@@ -4,8 +4,8 @@ from PyQt5.QtWidgets import (QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
                              QHeaderView, QSplitter, QGridLayout, QComboBox, QSizePolicy,
                              QStackedWidget, QTabWidget, QMessageBox, QCheckBox, QTabBar,
                              QApplication)
-from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtGui import QColor, QFont, QPixmap, QImage, QIcon, QPainter
+from PyQt5.QtCore import Qt, QSize, QRect, pyqtSignal
+from PyQt5.QtGui import QColor, QFont, QPixmap, QImage, QIcon, QPainter, QPen
 import numpy as np
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
@@ -34,6 +34,7 @@ from loading_overlay import LoadingOverlay
 from stopwords import TAGALOG_STOP_WORDS
 from comment_operations import generate_report
 from db_config import log_user_action, get_db_connection
+from comment_filters import CommentFiltersDialog
 
 def admin_classify_comment(text):
     """
@@ -113,15 +114,15 @@ class AdminWindow(QMainWindow):
     def __init__(self, main_window=None):
         super().__init__()
         self.main_window = main_window
-        self.selected_comments = []  # List for selected comments
-        self.comment_metadata = {}  # Comment metadata storage
-        self.csv_tab_count = 1
-        self.url_tab_count = 1
-        self.tabs = {}  # Dictionary to store tab references
-        self.tab_states = {}  # Dictionary to store tab states
+        
+        # Initialize variables
         self.current_user = None
+        self.selected_comments = []  # Track selected comments
+        self.url_tab_count = 1
+        self.csv_tab_count = 1
+        self.comment_metadata = {}  # Store metadata for each comment
         self.session_id = None
-        self.first_login = True
+        self.tabs = {}
         
         # Set window properties
         self.setWindowTitle("Cyberbullying Detection System - Admin")
@@ -132,6 +133,35 @@ class AdminWindow(QMainWindow):
         base_path = os.path.dirname(os.path.abspath(__file__))
         app_icon = QIcon(os.path.join(base_path, "assets", "applogo.png"))
         self.setWindowIcon(app_icon)
+        
+        # Initialize UI elements
+        self.url_input = QLineEdit()
+        # Initialize filter settings
+        self.comment_filters = {
+            "includeReplies": True,
+            "maxComments": 50,
+            "resultsLimit": 50,  # Keep for compatibility with scraper
+            "viewOption": "RANKED_UNFILTERED",  # Keep for compatibility with scraper
+            "timelineOption": "CHRONOLOGICAL",  # Keep for compatibility with scraper
+            "minWordCount": 3,
+            "excludeLinks": True,
+            "excludeEmojisOnly": True
+        }
+        self.filter_button = QPushButton("Filters")
+        self.filter_button.clicked.connect(self.show_filters_dialog)
+        
+        self.file_input = QLineEdit()
+        self.browse_button = QPushButton("Browse")
+        self.browse_button.clicked.connect(self.browse_file)
+        self.process_csv_button = QPushButton("Process CSV")
+        self.process_csv_button.clicked.connect(self.process_csv)
+        
+        self.text_input = QLineEdit()
+        self.analyze_button = QPushButton("Analyze Comment")
+        self.analyze_button.clicked.connect(self.analyze_single)
+        
+        self.scrape_button = QPushButton("Scrape Comments")
+        self.scrape_button.clicked.connect(self.scrape_comments)
         
         # Create central widget and main layout
         self.central_widget = QWidget()
@@ -245,12 +275,15 @@ class AdminWindow(QMainWindow):
         self.url_input.setStyleSheet(INPUT_STYLE)
         self.url_input.setPlaceholderText("Enter Facebook Post URL")
         
-        self.include_replies = QCheckBox("Include Replies")
-        self.include_replies.setStyleSheet(CHECKBOX_REPLY_STYLE)
-        self.include_replies.setChecked(True)
+        # Connect filter button that was already initialized in __init__
+        self.filter_button.setFont(FONTS['button'])
+        self.filter_button.setStyleSheet(BUTTON_STYLE)
+        self.filter_button.setFixedWidth(80)
+        self.filter_button.setToolTip("Configure comment scraping options")
+        self.filter_button.clicked.connect(self.show_filters_dialog)
         
         url_layout.addWidget(self.url_input, 1)  # Give URL input stretch factor of 1
-        url_layout.addWidget(self.include_replies, 0)  # Don't stretch checkbox
+        url_layout.addWidget(self.filter_button, 0)  # Don't stretch filter button
         fb_layout.addLayout(url_layout)
 
         self.scrape_button = QPushButton("Scrape Comments")
@@ -989,17 +1022,19 @@ class AdminWindow(QMainWindow):
             with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as temp_file:
                 temp_path = temp_file.name
             
-            # Pass include_replies flag to scrape_comments
-            scrape_comments(url, temp_path, self.include_replies.isChecked())
+            # Use filters instead of include_replies flag
+            scrape_comments(url, temp_path, self.comment_filters)
             df = pd.read_csv(temp_path)
             
             # Filter out replies if not included
-            if not self.include_replies.isChecked():
+            if not self.comment_filters.get("includeReplies", True):
                 df = df[~df['Is Reply']]
 
             # Initialize counters for excluded comments
             short_comment_count = 0
             name_only_count = 0
+            link_comment_count = 0
+            emoji_only_count = 0
             total_comments = len(df)
             
             # Function to check if a comment is likely a name-only comment
@@ -1034,14 +1069,52 @@ class AdminWindow(QMainWindow):
                 
                 return matches_pattern or has_name_marker
             
-            # Function to check if comment has 3 or fewer words
+            # Function to check if comment has fewer words than minimum
             def is_short_comment(text):
                 # Split by whitespace and count words
                 words = text.strip().split()
-                return len(words) <= 3
+                min_word_count = self.comment_filters.get("minWordCount", 3)
+                return len(words) < min_word_count
             
-            # Filter the dataframe
-            filtered_df = df.copy()
+            # Function to check if comment contains links
+            def contains_link(text):
+                # Simple regex to detect URLs
+                url_pattern = r'https?://\S+|www\.\S+'
+                return bool(re.search(url_pattern, text))
+            
+            # Function to check if comment only contains emojis
+            def is_emoji_only(text):
+                # Strip whitespace
+                text = text.strip()
+                if not text:
+                    return False
+                
+                # Check if all characters are emojis or whitespace
+                emoji_pattern = re.compile(
+                    "["
+                    "\U0001F600-\U0001F64F"  # emoticons
+                    "\U0001F300-\U0001F5FF"  # symbols & pictographs
+                    "\U0001F680-\U0001F6FF"  # transport & map symbols
+                    "\U0001F700-\U0001F77F"  # alchemical symbols
+                    "\U0001F780-\U0001F7FF"  # Geometric Shapes
+                    "\U0001F800-\U0001F8FF"  # Supplemental Arrows-C
+                    "\U0001F900-\U0001F9FF"  # Supplemental Symbols and Pictographs
+                    "\U0001FA00-\U0001FA6F"  # Chess Symbols
+                    "\U0001FA70-\U0001FAFF"  # Symbols and Pictographs Extended-A
+                    "\U00002702-\U000027B0"  # Dingbats
+                    "\U000024C2-\U0001F251" 
+                    "]+|[\u2600-\u26FF\u2700-\u27BF]"
+                )
+                
+                # Replace all emojis with empty string
+                text_without_emojis = emoji_pattern.sub('', text)
+                
+                # If after removing emojis and whitespace there's nothing left, it's emoji-only
+                return len(text_without_emojis.strip()) == 0
+            
+            # Get filter settings with defaults
+            exclude_links = self.comment_filters.get("excludeLinks", True)
+            exclude_emojis_only = self.comment_filters.get("excludeEmojisOnly", True)
             
             # Create mask for comments to keep
             keep_mask = pd.Series(True, index=df.index)
@@ -1060,6 +1133,18 @@ class AdminWindow(QMainWindow):
                 if is_name_only(text):
                     keep_mask[idx] = False
                     name_only_count += 1
+                    continue
+                
+                # Check if comment contains links and we want to exclude them
+                if exclude_links and contains_link(text):
+                    keep_mask[idx] = False
+                    link_comment_count += 1
+                    continue
+                
+                # Check if comment is emoji-only and we want to exclude them
+                if exclude_emojis_only and is_emoji_only(text):
+                    keep_mask[idx] = False
+                    emoji_only_count += 1
                     continue
             
             # Apply the mask to keep only valid comments
@@ -1111,14 +1196,17 @@ class AdminWindow(QMainWindow):
             self.save_tab_state(tab_name, comments_data)
             
             # Show summary dialog with exclusion statistics
-            excluded_count = short_comment_count + name_only_count
+            excluded_count = short_comment_count + name_only_count + link_comment_count + emoji_only_count
             if excluded_count > 0:
+                min_word_count = self.comment_filters.get("minWordCount", 3)
                 message = (
                     f"Comments Filter Summary:\n\n"
                     f"Total comments found: {total_comments}\n"
                     f"Comments excluded: {excluded_count}\n"
-                    f"• Short comments (3 words or less): {short_comment_count}\n"
-                    f"• Name-only comments: {name_only_count}\n\n"
+                    f"• Short comments (fewer than {min_word_count} words): {short_comment_count}\n"
+                    f"• Name-only comments: {name_only_count}\n"
+                    f"• Comments with links: {link_comment_count}\n"
+                    f"• Emoji-only comments: {emoji_only_count}\n\n"
                     f"Comments displayed: {len(comments_data)}"
                 )
                 QMessageBox.information(self, "Comment Filtering Results", message)
@@ -2561,3 +2649,18 @@ class AdminWindow(QMainWindow):
                 print(f"Session close error: {e}")
                 import traceback
                 traceback.print_exc()
+
+    def show_filters_dialog(self):
+        """Show the filters dialog"""
+        dialog = CommentFiltersDialog(self.comment_filters, self)
+        dialog.filtersUpdated.connect(self.update_filters)
+        dialog.exec_()
+    
+    def update_filters(self, new_filters):
+        """Update filter settings when dialog emits filtersUpdated signal"""
+        self.comment_filters = new_filters
+        try:
+            # Log filter changes
+            log_user_action(self.current_user, f"Updated comment filters: Max comments={new_filters['maxComments']}, Include Replies={new_filters['includeReplies']}")
+        except Exception as log_error:
+            print(f"Logging error: {log_error}")
