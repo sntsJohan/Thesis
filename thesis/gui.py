@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import (QMainWindow, QVBoxLayout, QHBoxLayout, QLabel,
                            QPushButton, QWidget, QStackedWidget, QDialog, QMessageBox)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont, QIcon
-from utils import display_message
+from utils import display_message, get_resource_path
 from styles import (WELCOME_BACKGROUND_STYLE, WELCOME_CONTAINER_STYLE, WELCOME_TITLE_FONT, 
                    WELCOME_TITLE_STYLE_DARK, WELCOME_SUBTITLE_FONT, GET_STARTED_BUTTON_DARK_STYLE, 
                    ABOUT_BUTTON_OUTLINE_STYLE, WELCOME_VERSION_STYLE, COLORS, FONTS)
@@ -17,11 +17,11 @@ class MainWindow(QMainWindow):
         
         # Set window properties
         self.setWindowTitle("Cyberbullying Detection System")
-        self.showFullScreen()
         self.setStyleSheet(f"background-color: {COLORS['background']}; color: {COLORS['text']};")
 
-        # Set window icon
-        app_icon = QIcon("./assets/applogo.png")
+        # Set window icon using the resource path
+        icon_path = get_resource_path("assets/applogo.png")
+        app_icon = QIcon(icon_path)
         self.setWindowIcon(app_icon)
 
         # Create central stacked widget
@@ -30,6 +30,9 @@ class MainWindow(QMainWindow):
 
         # Initialize welcome screen
         self.init_welcome_screen()
+        
+        # Show fullscreen after setup
+        self.showFullScreen()
 
     def init_welcome_screen(self):
         """Initialize the welcome screen"""

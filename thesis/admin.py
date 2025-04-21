@@ -1303,6 +1303,10 @@ class AdminWindow(QMainWindow):
             # Get the comment text
             comment_text = self.text_input.text()
             
+            # Check if the input is 5 words or less
+            word_count = len(comment_text.split())
+            is_short_input = word_count <= 5
+            
             # Get prediction and confidence
             prediction, confidence = classify_comment(comment_text)
             
@@ -1341,6 +1345,10 @@ class AdminWindow(QMainWindow):
             
             # Clear the input field
             self.text_input.clear()
+            
+            # Show warning if input is too short
+            if is_short_input:
+                display_message(self, "Warning", "The prediction may be less accurate because the input is 5 words or less. Longer inputs provide better accuracy.")
             
             # Now gather ALL comments from the Direct Inputs tab to save the complete state
             all_comments_data = []

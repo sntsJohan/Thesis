@@ -3,13 +3,20 @@ import joblib
 import torch
 import numpy as np
 from transformers import BertTokenizer, BertModel
+from utils import get_resource_path # Import the helper function
 
-# Define model paths relative to this file's location
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_DIR = os.path.join(BASE_DIR, "models", "model")
-SVM_MODEL_PATH = os.path.join(MODEL_DIR, "svm_model.pkl")
-MBERT_MODEL_DIR = os.path.join(MODEL_DIR, "cyberbullying_model")
+# Define model paths using the helper function
+SVM_MODEL_PATH = get_resource_path(os.path.join("models", "model", "svm_model.pkl"))
+MBERT_MODEL_DIR = get_resource_path(os.path.join("models", "model", "cyberbullying_model"))
 BERT_BASE_MODEL = "bert-base-multilingual-cased"  # Base model to use if weights not found locally
+
+# Ensure the directories exist before trying to load from them
+if not os.path.exists(SVM_MODEL_PATH):
+    raise FileNotFoundError(f"SVM model not found at: {SVM_MODEL_PATH}")
+if not os.path.isdir(MBERT_MODEL_DIR):
+    print(f"Warning: Local mBERT directory not found at: {MBERT_MODEL_DIR}. Will attempt to use base model.")
+    # You might want to handle this more gracefully, e.g., by downloading if necessary
+    # or raising an error if local weights are mandatory.
 
 print("Loading SVM model...")
 svm_classifier = joblib.load(SVM_MODEL_PATH)
@@ -18,25 +25,29 @@ print("SVM model loaded successfully.")
 # Function to generate embeddings using mBERT
 def generate_embedding(text):
     """Generate embeddings for text using mBERT"""
-    try:
-        # First try to use the local tokenizer
-        tokenizer = BertTokenizer.from_pretrained(MBERT_MODEL_DIR)
-        print("Using locally trained tokenizer")
-        
-        # Try to load local model, fall back to base model if needed
+    tokenizer = None
+    model = None
+    # Prioritize loading local model/tokenizer if the directory exists
+    if os.path.isdir(MBERT_MODEL_DIR):
         try:
-            model = BertModel.from_pretrained(MBERT_MODEL_DIR)
-            print("Using locally trained model weights")
-        except:
-            print(f"Model weights not found locally, using {BERT_BASE_MODEL} weights")
-            model = BertModel.from_pretrained(BERT_BASE_MODEL)
-    except:
-        print(f"Tokenizer not found locally, using {BERT_BASE_MODEL}")
+            tokenizer = BertTokenizer.from_pretrained(MBERT_MODEL_DIR)
+            print("Using locally trained tokenizer")
+            try:
+                model = BertModel.from_pretrained(MBERT_MODEL_DIR)
+                print("Using locally trained model weights")
+            except Exception as e_model:
+                print(f"Local model weights failed to load ({e_model}), falling back to {BERT_BASE_MODEL} weights")
+        except Exception as e_tokenizer:
+            print(f"Local tokenizer failed to load ({e_tokenizer}), falling back to {BERT_BASE_MODEL}")
+
+    # Fallback to base model if local loading failed or directory didn't exist
+    if tokenizer is None or model is None:
+        print(f"Using {BERT_BASE_MODEL} tokenizer and model.")
         tokenizer = BertTokenizer.from_pretrained(BERT_BASE_MODEL)
         model = BertModel.from_pretrained(BERT_BASE_MODEL)
     
     with torch.no_grad():
-        inputs = tokenizer(text, return_tensors='pt', padding=True, truncation=True)
+        inputs = tokenizer(text, return_tensors='pt', padding=True, truncation=True, max_length=512) # Added max_length
         outputs = model(**inputs)
         cls_embedding = outputs.last_hidden_state[0, 0, :].numpy()
     
