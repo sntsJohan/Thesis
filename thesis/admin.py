@@ -139,7 +139,7 @@ class AdminWindow(QMainWindow):
         # Initialize filter settings
         self.comment_filters = {
             "includeReplies": True,
-            "maxComments": 50,
+            "maxComments": 100,
             "resultsLimit": 50,  # Keep for compatibility with scraper
             "viewOption": "RANKED_UNFILTERED",  # Keep for compatibility with scraper
             "timelineOption": "CHRONOLOGICAL",  # Keep for compatibility with scraper
@@ -504,7 +504,7 @@ class AdminWindow(QMainWindow):
         # Initialize operation buttons
         self.show_summary_button = QPushButton("📊 Summary")
         self.word_cloud_button = QPushButton("☁️ Word Cloud")
-        self.export_all_button = QPushButton("📤 Export All")
+        self.export_all_button = QPushButton("📤 Export Tab")
         self.generate_report_button = QPushButton("📝 Generate Report")
         
         # Connect operation button signals

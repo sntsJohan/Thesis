@@ -1,0 +1,92 @@
+import joblib
+import torch
+import numpy as np
+import pandas as pd
+from transformers import BertTokenizer, BertModel
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score, classification_report
+from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+
+# Load fine-tuned mBERT
+model_path = "./cyberbullying_model5e5_balanced_TAPT_uncased_26-04"
+tokenizer = BertTokenizer.from_pretrained(model_path)
+model = BertModel.from_pretrained(model_path).to("cuda" if torch.cuda.is_available() else "cpu")
+model.eval()
+
+# Device setup
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# Function to generate embeddings using mBERT (batch processing)
+def generate_embeddings_batch(texts, batch_size=128):
+    embeddings = []
+    for i in range(0, len(texts), batch_size):
+        batch = texts[i : i + batch_size]
+        inputs = tokenizer(batch, return_tensors="pt", padding=True, truncation=True, max_length=512).to(device)
+        with torch.no_grad():
+            outputs = model(**inputs)
+            cls_embeddings = outputs.last_hidden_state[:, 0, :].cpu().numpy()  # Extract CLS token
+            embeddings.append(cls_embeddings)
+        print(f"Processed {i + len(batch)} texts...")
+    return np.vstack(embeddings)
+
+# Load and clean dataset
+df = pd.read_csv("balanced_25-04.csv")
+
+# Ensure required columns exist
+if "comment" not in df.columns or "label" not in df.columns:
+    raise ValueError("CSV must contain 'comment' and 'label' columns.")
+
+# Drop rows with NaNs and ensure label is numeric
+df = df.dropna(subset=["comment", "label"])
+df["label"] = pd.to_numeric(df["label"], errors="coerce")
+df = df.dropna(subset=["label"])
+df["label"] = df["label"].astype(int)
+
+# Stratified split
+train_texts, valid_texts, y_train, y_valid = train_test_split(
+    df["comment"].tolist(),
+    df["label"].values,
+    test_size=0.2,
+    random_state=42,
+    stratify=df["label"].values
+)
+
+# Generate embeddings
+print("Generating training embeddings...")
+X_train = generate_embeddings_batch(train_texts)
+
+print("Generating validation embeddings...")
+X_valid = generate_embeddings_batch(valid_texts)
+
+# SVM model with a pipeline (to include scaling)
+svm_classifier = make_pipeline(
+    StandardScaler(),  # Feature scaling (important when working with SVMs)
+    SVC(kernel="linear", C=1.0, probability=True)
+)
+
+# Cross-validation setup
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+# Perform cross-validation
+print("Performing cross-validation...")
+cv_scores = cross_val_score(svm_classifier, X_train, y_train, cv=cv, scoring='accuracy')
+
+# Display cross-validation results
+print(f"Cross-validation Accuracy: {cv_scores.mean() * 100:.2f}% (+/- {cv_scores.std() * 100:.2f}%)")
+
+# Train the final model on the full training data (after cross-validation)
+print("Training final SVM model...")
+svm_classifier.fit(X_train, y_train)
+
+# Save the trained SVM model
+joblib.dump(svm_classifier, "svm_model.pkl")
+
+# Evaluate on the validation set
+y_pred = svm_classifier.predict(X_valid)
+accuracy = accuracy_score(y_valid, y_pred)
+
+# Display final evaluation results
+print(f"Final SVM Accuracy on Validation Set: {accuracy * 100:.2f}%")
+print("Classification Report:\n", classification_report(y_valid, y_pred))

@@ -4,6 +4,8 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon, QPixmap
 from styles import COLORS, FONTS, DIALOG_STYLE, CONTAINER_STYLE
 import os
+# Import the resource path helper
+from utils import get_resource_path 
 
 class AboutDialog(QDialog):
     def __init__(self, parent=None):
@@ -21,9 +23,12 @@ class AboutDialog(QDialog):
         qr.moveRight(screen.right() - 200)  # Move to right side with 200px margin
         self.setGeometry(qr)
         
-        # Set window icon
-        base_path = os.path.dirname(os.path.abspath(__file__))
-        self.setWindowIcon(QIcon(os.path.join(base_path, "assets", "applogo.png")))
+        # Set window icon using helper
+        # base_path = os.path.dirname(os.path.abspath(__file__))
+        # self.setWindowIcon(QIcon(os.path.join(base_path, "assets", "applogo.png")))
+        app_icon_path = get_resource_path(os.path.join("assets", "applogo.png"))
+        if os.path.exists(app_icon_path):
+            self.setWindowIcon(QIcon(app_icon_path))
         
         self.init_ui()
 
@@ -51,9 +56,12 @@ class AboutDialog(QDialog):
         # Title with logo
         title_layout = QHBoxLayout()
         logo = QLabel()
-        base_path = os.path.dirname(os.path.abspath(__file__))
-        logo_pixmap = QPixmap(os.path.join(base_path, "assets", "applogo.png"))
-        logo.setPixmap(logo_pixmap.scaled(64, 64, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        # base_path = os.path.dirname(os.path.abspath(__file__))
+        # logo_pixmap = QPixmap(os.path.join(base_path, "assets", "applogo.png"))
+        logo_path = get_resource_path(os.path.join("assets", "applogo.png"))
+        if os.path.exists(logo_path):
+            logo_pixmap = QPixmap(logo_path)
+            logo.setPixmap(logo_pixmap.scaled(64, 64, Qt.KeepAspectRatio, Qt.SmoothTransformation))
         title_layout.addWidget(logo)
         
         title = QLabel("Tagalog-English Cyberbullying Detection System")
@@ -68,12 +76,14 @@ class AboutDialog(QDialog):
         version.setFont(FONTS['body'])
         system_layout.addWidget(version)
         
-        description = QLabel(
-            "A sophisticated system designed to detect and analyze cyberbullying content "
-            "in both Tagalog and English languages. This tool uses advanced natural language "
-            "processing and machine learning techniques to identify potentially harmful content "
-            "across social media platforms."
+        # Updated, user-friendly description
+        description_text = (
+            "This tool helps identify potential cyberbullying in Tagalog and English comments. "
+            "You can analyze comments from Facebook posts, upload a CSV file, or type in a single comment. "
+            "The system uses mBERT + SVM to read the comment and predict if it's 'Cyberbullying' or 'Normal'. "
+            "Results are shown in a table with a confidence score, and you can generate reports and visualizations like word clouds."
         )
+        description = QLabel(description_text)
         description.setWordWrap(True)
         description.setFont(FONTS['body'])
         system_layout.addWidget(description)
@@ -96,10 +106,11 @@ class AboutDialog(QDialog):
         
         # Team member data
         team_members = [
-            {"name": "Anioay, Kenneth", "role": "Project Lead & ML Engineer", "image": "./assets/placeholder.png"},
-            {"name": "De Vera, Nathan", "role": "Backend Developer", "image": "./assets/placeholder.png"},
-            {"name": "Evangelista, Danielle", "role": "Frontend Developer", "image": "./assets/placeholder.png"},
-            {"name": "Santos, Johan", "role": "Frontend Developer", "image": "./assets/santos.png.jfif"}
+            # Use get_resource_path for images
+            {"name": "Anioay, Kenneth", "role": "Project Lead & ML Engineer", "image": get_resource_path(os.path.join("assets", "kenneth.png"))},
+            {"name": "De Vera, Nathan", "role": "Researcher", "image": get_resource_path(os.path.join("assets", "nathan.jpg"))},
+            {"name": "Evangelista, Danielle", "role": "Researcher", "image": get_resource_path(os.path.join("assets", "daniel.jpg"))},
+            {"name": "Santos, Johan", "role": "Fullstack Developer", "image": get_resource_path(os.path.join("assets", "johan.jpg"))}
         ]
         
         # Create team member cards
@@ -116,10 +127,23 @@ class AboutDialog(QDialog):
             
             # Member image
             image = QLabel()
-            pixmap = QPixmap(member["image"])
-            image.setPixmap(pixmap.scaled(120, 120, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            # Set a fixed size for the QLabel to ensure layout consistency
+            image.setFixedSize(120, 120) 
             image.setAlignment(Qt.AlignCenter)
-            card_layout.addWidget(image)
+            
+            # Check if image path exists before creating Pixmap
+            member_image_path = member["image"]
+            if os.path.exists(member_image_path):
+                 pixmap = QPixmap(member_image_path)
+                 # Scale pixmap to fit within the QLabel, keeping aspect ratio
+                 scaled_pixmap = pixmap.scaled(120, 120, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                 image.setPixmap(scaled_pixmap)
+            else:
+                 image.setText("(Image not found)") # Placeholder if image missing
+                 image.setStyleSheet("color: grey;") # Style the placeholder text
+            
+            # Center the QLabel within the card's layout
+            card_layout.addWidget(image, alignment=Qt.AlignCenter) 
             
             # Member name
             name = QLabel(member["name"])

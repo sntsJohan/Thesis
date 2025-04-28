@@ -280,8 +280,9 @@ LOADING_OVERLAY_STYLE = f"""
 CONTAINER_STYLE = f"""
     QWidget {{
         background-color: {COLORS['surface']};
-        border: 1px solid {COLORS['secondary']};
+        /* border: 1px solid {COLORS['secondary']}; */ /* Removed border for cleaner look */
         border-radius: 4px;
+        padding: 15px; /* Add some padding for internal spacing */
     }}
 """
 

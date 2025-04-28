@@ -1,7 +1,7 @@
 from apify_client import ApifyClient
 import csv
 
-api = "apify_api_lNtXpN7jnO8CgUxujl7uPrQFUAAHwP4alnLC"
+api = "apify_api_BWinyy1TCK8cFaOvdeCUQqAtBjJSvY2XdHMo"
 
 def scrape_comments(fb_url, save_path, filters=None):
     client = ApifyClient(api)

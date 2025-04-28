@@ -124,7 +124,7 @@ class UserMainWindow(QMainWindow):
         # Initialize filter settings
         self.comment_filters = {
             "includeReplies": True,
-            "maxComments": 50,
+            "maxComments": 100,
             "resultsLimit": 50,  # Keep for compatibility with scraper
             "viewOption": "RANKED_UNFILTERED",  # Keep for compatibility with scraper
             "timelineOption": "CHRONOLOGICAL",  # Keep for compatibility with scraper
@@ -1123,7 +1123,7 @@ class UserMainWindow(QMainWindow):
         button_configs = [
             (self.show_summary_button, "📊 Summary", 0, 0),
             (self.word_cloud_button, "☁️ Word Cloud", 0, 1),
-            (self.export_all_button, "📤 Export All", 0, 2),
+            (self.export_all_button, "📤 Export Tab", 0, 2),
             (self.generate_report_button, "📝 Generate Report", 1, 0, 3)
         ]
 
