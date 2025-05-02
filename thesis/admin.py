@@ -557,8 +557,13 @@ class AdminWindow(QMainWindow):
     
     def show_api_manager(self):
         """Show API manager dialog"""
-        dialog = APIManagerDialog(self)
-        dialog.exec_()
+        try:
+            dialog = APIManagerDialog(self)
+            dialog.exec_()
+        except Exception as e:
+            print(f"Error showing API Manager: {str(e)}")
+            from utils import display_message
+            display_message(self, "Error", f"Could not open API Manager: {str(e)}")
         
     def show_user_management(self):
         """Show user management dialog"""
@@ -1348,8 +1353,10 @@ class AdminWindow(QMainWindow):
             
             # Show warning if input is too short
             if is_short_input:
-                display_message(self, "Warning", "The prediction may be less accurate because the input is 5 words or less. Longer inputs provide better accuracy.")
-            
+                warning_text = ("Input has 5 words or less. Prediction accuracy may be reduced for very short inputs, "
+                                "especially if they are names, gibberish, or not in English/Tagalog.")
+                display_message(self, "Warning", warning_text)
+
             # Now gather ALL comments from the Direct Inputs tab to save the complete state
             all_comments_data = []
             

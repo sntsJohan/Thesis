@@ -444,7 +444,7 @@ def generate_report(window):
                 max_words=100,
                 stopwords=TAGALOG_STOP_WORDS,
                 collocations=False,
-                colormap='viridis'
+                colormap='plasma'
             ).generate(' '.join(processed_all))
 
             plt.figure(figsize=(10, 5))
@@ -467,7 +467,7 @@ def generate_report(window):
                     max_words=50,
                     stopwords=TAGALOG_STOP_WORDS,
                     collocations=False,
-                    colormap='Reds'
+                    colormap='plasma'
                 ).generate(' '.join(processed_cb))
 
                 plt.figure(figsize=(10, 5))
@@ -701,6 +701,7 @@ def generate_report(window):
         elements.append(Spacer(1, 10))
 
         # Add charts section
+        elements.append(PageBreak())
         elements.append(Paragraph("Visual Analysis", subtitle_style))
         
         # Add pie chart
@@ -724,8 +725,29 @@ def generate_report(window):
             elements.append(Paragraph(pie_interpretation, interpretation_style))
             elements.append(Spacer(1, 20))
 
+        # Add confidence distribution bar chart
+        elements.append(PageBreak())
+        elements.append(Paragraph("Confidence Level Distribution", subtitle_style))
+        elements.append(Spacer(1, 5))
+        if bar_chart_data:
+            elements.append(Image(bar_chart_data, width=400, height=300))
+            elements.append(Spacer(1, 10))
+
+            # Interpretation of confidence bar chart
+            conf_interpretation = ""
+            if high_confidence_percentage > 80:
+                conf_interpretation = f"The high confidence levels ({high_confidence_percentage:.1f}% > 90%) suggest the model's predictions are generally reliable for this dataset."
+            elif high_confidence_percentage > 50:
+                conf_interpretation = f"The moderate confidence levels ({high_confidence_percentage:.1f}% > 90%) suggest the model is reasonably certain, but some predictions may benefit from manual review."
+            else:
+                conf_interpretation = f"The lower confidence levels ({high_confidence_percentage:.1f}% > 90%) indicate that while the model provides insights, manual review of uncertain predictions is recommended for higher accuracy."
+                
+            elements.append(Paragraph(conf_interpretation, interpretation_style))
+            elements.append(Spacer(1, 20))
+
         # Add sentiment analysis chart
         if sentiment_chart_data:
+            elements.append(PageBreak())
             elements.append(Paragraph("Sentiment Analysis", subtitle_style))
             elements.append(Spacer(1, 5))
             elements.append(Image(sentiment_chart_data, width=400, height=300))
@@ -737,7 +759,7 @@ def generate_report(window):
             elif sentiment_result == "Negative":
                 sentiment_interpretation = "Despite the relatively low level of cyberbullying content, the sentiment analysis shows a predominantly negative tone. This may indicate underlying tensions or dissatisfaction that could escalate if not addressed."
             elif sentiment_result == "Positive" and cb_percentage > 25:
-                sentiment_interpretation = "Interestingly, despite the significant presence of cyberbullying content, the overall sentiment leans positive. This may indicate that the problematic content is concentrated among a smaller subset of users or discussions."
+                sentiment_interpretation = "Interestingly, despite the significant presence of cyberbullying content, the overall positive sentiment suggests the harmful behavior may be concentrated among a smaller subset of users or discussions."
             elif sentiment_result == "Positive":
                 sentiment_interpretation = "The sentiment analysis shows a predominantly positive tone, consistent with the low levels of cyberbullying content detected. This suggests a generally healthy communication environment."
             else:
@@ -748,7 +770,8 @@ def generate_report(window):
 
         # Add word cloud
         if wordcloud_data:
-            elements.append(Paragraph("Word Frequency Analysis", subtitle_style))
+            elements.append(PageBreak())
+            elements.append(Paragraph("Word Frequency Analysis (All Comments)", subtitle_style))
             elements.append(Spacer(1, 5))
             elements.append(Image(wordcloud_data, width=400, height=300))
             elements.append(Spacer(1, 10))
@@ -765,6 +788,7 @@ def generate_report(window):
             
             # Add cyberbullying-specific word cloud if available
             if cb_wordcloud_data and cyberbullying_count > 5:
+                elements.append(PageBreak())
                 elements.append(Paragraph("Cyberbullying Word Frequency Analysis", subtitle_style))
                 elements.append(Spacer(1, 5))
                 elements.append(Image(cb_wordcloud_data, width=400, height=300))
@@ -787,6 +811,7 @@ def generate_report(window):
                 elements.append(Spacer(1, 20))
 
         # Add detailed results section
+        elements.append(PageBreak())
         elements.append(Paragraph("Detailed Analysis Results", subtitle_style))
         
         # Prepare table data with headers
@@ -885,7 +910,7 @@ def generate_report(window):
         # Add technical notes section
         elements.append(Paragraph("Technical Notes", subtitle_style))
         technical_notes = f"""
-        &bull; This report was generated using an AI-powered cyberbullying detection system<br/>
+        &bull; This report was generated using an mBERT and SVM-based cyberbullying detection system<br/>
         &bull; Classification confidence is based on the prediction model's probability score<br/>
         &bull; Word clouds exclude common stop words in both English and Tagalog<br/>
         &bull; Sentiment analysis utilizes a specialized model designed for social media content<br/>

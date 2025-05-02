@@ -908,6 +908,12 @@ class UserMainWindow(QMainWindow):
         # Middle part: Create stacked widget for different input methods
         self.input_stack = QStackedWidget()
 
+        # --- Create Details Panel ---
+        self.details_text_edit = QTextEdit() # Define details panel here
+        self.details_text_edit.setReadOnly(True)
+        self.details_text_edit.setStyleSheet(TEXT_EDIT_STYLE)
+        self.details_text_edit.setMinimumHeight(150) # Give it a reasonable minimum height
+
         # --- Create Directions Panel ---
         self.directions_panel = QTextEdit()
         self.directions_panel.setReadOnly(True)
@@ -1068,9 +1074,6 @@ class UserMainWindow(QMainWindow):
         details_header.addStretch()
         details_section_layout.addLayout(details_header)
 
-        self.details_text_edit = QTextEdit()
-        self.details_text_edit.setReadOnly(True)
-        self.details_text_edit.setStyleSheet(TEXT_EDIT_STYLE)
         details_section_layout.addWidget(self.details_text_edit)
         details_layout.addWidget(details_section)
 
@@ -1743,8 +1746,10 @@ class UserMainWindow(QMainWindow):
             
             # Show warning if input is too short
             if is_short_input:
-                display_message(self, "Warning", "The prediction may be less accurate because the input is 5 words or less. Longer inputs provide better accuracy.")
-            
+                warning_text = ("Input has 5 words or less. Prediction accuracy may be reduced for very short inputs, "
+                                "especially if they are names, gibberish, or not in English/Tagalog.")
+                display_message(self, "Warning", warning_text)
+
             # Now gather ALL comments from the Direct Inputs tab to save the complete state
             all_comments_data = []
             

@@ -23,6 +23,7 @@ COLORS = {
 # Enhanced Fonts with better readability
 FONTS = {
     'header': QFont('Segoe UI', 13, QFont.Bold),  # Slightly larger header
+    'subheader': QFont('Segoe UI', 12, QFont.Bold),  # Medium header for section titles
     'body': QFont('Segoe UI', 11),  # Slightly larger body text
     'button': QFont('Segoe UI', 11, QFont.Medium),  # Consistent with body
     'small': QFont('Segoe UI', 9)  # New option for smaller text

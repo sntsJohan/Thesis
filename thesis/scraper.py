@@ -1,9 +1,13 @@
 from apify_client import ApifyClient
 import csv
-
-api = "apify_api_BWinyy1TCK8cFaOvdeCUQqAtBjJSvY2XdHMo"
+from api_db import get_api_key
 
 def scrape_comments(fb_url, save_path, filters=None):
+    # Get API key from database
+    api = get_api_key('apify')
+    if not api:
+        raise ValueError("API key not found in database. Please set an API key first.")
+    
     client = ApifyClient(api)
     
     # Set default filters if none provided
