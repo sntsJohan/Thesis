@@ -127,8 +127,8 @@ class AdminWindow(QMainWindow):
         # Define base path for assets
         base_path = os.path.dirname(os.path.abspath(__file__))
 
-        # Set window properties
-        self.setStyleSheet("background-color: #2b2b2b;")
+        # Set window properties using shared styles
+        self.setStyleSheet(f"background-color: {COLORS['background']}; color: {COLORS['text']};")
         self.app_icon = QIcon(os.path.join(base_path, "assets", "applogo.png"))
         self.setWindowIcon(self.app_icon) 
         self.setWindowTitle("Cyberbullying Content Guidance System - Admin")
