@@ -50,7 +50,7 @@ def update_details_panel(window):
     if prediction == "Potentially Harmful":
         guidance_text = "This comment may contain harmful content. Review recommended."
         concern_areas = ["Potential Harassment", "Possible Hate Speech", "Concerning Language"]
-    elif prediction == "Requires Attention":
+    elif prediction == "Requires Review":
         guidance_text = "This comment has elements that may need review. Use discretion."
         concern_areas = ["Ambiguous Intent", "Context Dependent"]
     elif prediction == "Likely Appropriate":
@@ -66,7 +66,7 @@ def update_details_panel(window):
     assessment_color = COLORS['text']  # Default color
     if prediction == "Potentially Harmful":
         assessment_color = COLORS['potentially_harmful']
-    elif prediction == "Requires Attention":
+    elif prediction == "Requires Review":
         assessment_color = COLORS['requires_attention']
     elif prediction == "Likely Appropriate":
         assessment_color = COLORS['likely_appropriate']
@@ -93,7 +93,7 @@ def show_summary(window):
         return
 
     potentially_harmful_count = 0
-    requires_attention_count = 0
+    requires_review_count = 0
     likely_appropriate_count = 0
     high_confidence_count = 0  # Comments with confidence > 90%
 
@@ -103,8 +103,8 @@ def show_summary(window):
 
         if prediction == "Potentially Harmful":
             potentially_harmful_count += 1
-        elif prediction == "Requires Attention":
-            requires_attention_count += 1
+        elif prediction == "Requires Review":
+            requires_review_count += 1
         elif prediction == "Likely Appropriate":
             likely_appropriate_count += 1
 
@@ -115,7 +115,7 @@ def show_summary(window):
         f"Analysis Summary:\n\n"
         f"Total Comments Analyzed: {total_comments}\n"
         f"<span style='color:{COLORS['potentially_harmful']}'>Potentially Harmful Comments: {potentially_harmful_count} ({(potentially_harmful_count/total_comments)*100:.1f}%)</span>\n"
-        f"<span style='color:{COLORS['requires_attention']}'>Comments Requiring Attention: {requires_attention_count} ({(requires_attention_count/total_comments)*100:.1f}%)</span>\n"
+        f"<span style='color:{COLORS['requires_attention']}'>Comments Needing Review: {requires_review_count} ({(requires_review_count/total_comments)*100:.1f}%)</span>\n"
         f"<span style='color:{COLORS['likely_appropriate']}'>Likely Appropriate Comments: {likely_appropriate_count} ({(likely_appropriate_count/total_comments)*100:.1f}%)</span>\n"
         f"High Confidence Predictions: {high_confidence_count} ({(high_confidence_count/total_comments)*100:.1f}%)\n"
         f"Comments in Selection List: {len(window.selected_comments)}"
@@ -223,7 +223,7 @@ def generate_report(window):
         data = []
         total_rows = current_table.rowCount()
         potentially_harmful_count = 0
-        requires_attention_count = 0
+        requires_review_count = 0
         likely_appropriate_count = 0
         confidence_ranges = {'90-100%': 0, '80-89%': 0, '70-79%': 0, '<70%': 0}
         all_comments = []
@@ -254,8 +254,8 @@ def generate_report(window):
             # Count by prediction type
             if prediction == "Potentially Harmful":
                 potentially_harmful_count += 1
-            elif prediction == "Requires Attention":
-                requires_attention_count += 1
+            elif prediction == "Requires Review":
+                requires_review_count += 1
             elif prediction == "Likely Appropriate":
                 likely_appropriate_count += 1
                 
@@ -374,8 +374,8 @@ def generate_report(window):
 
         # Create classification distribution pie chart
         plt.figure(figsize=(6, 4))
-        plt.pie([potentially_harmful_count, requires_attention_count, likely_appropriate_count], 
-                labels=['Potentially Harmful', 'Requires Attention', 'Likely Appropriate'],
+        plt.pie([potentially_harmful_count, requires_review_count, likely_appropriate_count], 
+                labels=['Potentially Harmful', 'Requires Review', 'Likely Appropriate'],
                 autopct='%1.1f%%',
                 colors=[COLORS['potentially_harmful'], COLORS['requires_attention'], COLORS['likely_appropriate']],
                 textprops={'color': 'white'})
@@ -441,11 +441,11 @@ def generate_report(window):
 
             # Create separate word clouds for normal and potentially harmful comments
             normal_comments = [comment for comment, prediction, _ in data if prediction == "Likely Appropriate"]
-            requires_attention_comments = [comment for comment, prediction, _ in data if prediction == "Requires Attention"]
+            requires_review_comments = [comment for comment, prediction, _ in data if prediction == "Requires Review"]
             potentially_harmful_comments = [comment for comment, prediction, _ in data if prediction == "Potentially Harmful"]
             
             processed_normal = [preprocess_text(comment) for comment in normal_comments] if normal_comments else [""]
-            processed_ra = [preprocess_text(comment) for comment in requires_attention_comments] if requires_attention_comments else [""]
+            processed_rr = [preprocess_text(comment) for comment in requires_review_comments] if requires_review_comments else [""]
             processed_cb = [preprocess_text(comment) for comment in potentially_harmful_comments] if potentially_harmful_comments else [""]
             processed_all = [preprocess_text(comment) for comment in all_comments]
             
@@ -686,7 +686,7 @@ def generate_report(window):
         
         # Calculate statistics and percentages
         cb_percentage = (potentially_harmful_count/total_rows)*100 if total_rows > 0 else 0
-        ra_percentage = (requires_attention_count/total_rows)*100 if total_rows > 0 else 0
+        rr_percentage = (requires_review_count/total_rows)*100 if total_rows > 0 else 0
         la_percentage = (likely_appropriate_count/total_rows)*100 if total_rows > 0 else 0
         high_confidence = confidence_ranges['90-100%']
         high_confidence_percentage = (high_confidence/total_rows)*100 if total_rows > 0 else 0
@@ -695,7 +695,7 @@ def generate_report(window):
         summary_data = [
             ["Total Comments Analyzed:", str(total_rows)],
             ["Potentially Harmful Comments:", f"{potentially_harmful_count} ({cb_percentage:.1f}%)"],
-            ["Requires Attention Comments:", f"{requires_attention_count} ({ra_percentage:.1f}%)"],
+            ["Requires Review Comments:", f"{requires_review_count} ({rr_percentage:.1f}%)"],
             ["Likely Appropriate Comments:", f"{likely_appropriate_count} ({la_percentage:.1f}%)"],
             ["High Confidence Predictions (>90%):", f"{high_confidence} ({high_confidence_percentage:.1f}%)"]
         ]

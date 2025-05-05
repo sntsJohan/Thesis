@@ -124,6 +124,9 @@ class AdminWindow(QMainWindow):
         self.session_id = None
         self.tabs = {}
         
+        # Define base path for assets
+        base_path = os.path.dirname(os.path.abspath(__file__))
+
         # Set window properties
         self.setStyleSheet("background-color: #2b2b2b;")
         self.app_icon = QIcon(os.path.join(base_path, "assets", "applogo.png"))
@@ -1018,6 +1021,7 @@ class AdminWindow(QMainWindow):
             return
 
         try:
+            start_time = time.time() # Record start time
             self.show_loading(True)
             QApplication.processEvents()
             
@@ -1026,6 +1030,11 @@ class AdminWindow(QMainWindow):
             
             # Use filters instead of include_replies flag
             scrape_comments(url, temp_path, self.comment_filters)
+            
+            end_time = time.time() # Record end time
+            duration = end_time - start_time
+            print(f"Admin Scraping and initial processing took {duration:.2f} seconds.")
+
             df = pd.read_csv(temp_path)
             
             # Filter out replies if not included
@@ -1197,21 +1206,27 @@ class AdminWindow(QMainWindow):
             # Save the initial state
             self.save_tab_state(tab_name, comments_data)
             
-            # Show summary dialog with exclusion statistics
+            # Show summary dialog with exclusion statistics and duration
             excluded_count = short_comment_count + name_only_count + link_comment_count + emoji_only_count
+            filter_summary = ""
             if excluded_count > 0:
                 min_word_count = self.comment_filters.get("minWordCount", 3)
-                message = (
-                    f"Comments Filter Summary:\n\n"
-                    f"Total comments found: {total_comments}\n"
-                    f"Comments excluded: {excluded_count}\n"
-                    f"• Short comments (fewer than {min_word_count} words): {short_comment_count}\n"
-                    f"• Name-only comments: {name_only_count}\n"
-                    f"• Comments with links: {link_comment_count}\n"
-                    f"• Emoji-only comments: {emoji_only_count}\n\n"
+                filter_summary = (
+                    f"<b>Comments Filter Summary:</b><br>"
+                    f"Total comments found: {total_comments}<br>"
+                    f"Comments excluded: {excluded_count}<br>"
+                    f"&nbsp;&nbsp;• Short comments (&lt; {min_word_count} words): {short_comment_count}<br>"
+                    f"&nbsp;&nbsp;• Name-only comments: {name_only_count}<br>"
+                    f"&nbsp;&nbsp;• Comments with links: {link_comment_count}<br>"
+                    f"&nbsp;&nbsp;• Emoji-only comments: {emoji_only_count}<br><br>"
                     f"Comments displayed: {len(comments_data)}"
                 )
-                QMessageBox.information(self, "Comment Filtering Results", message)
+            
+            duration_summary = f"<b>Processing Time:</b><br>Scraping and analysis took {duration:.2f} seconds."            
+            
+            final_message = filter_summary + ("<br><br>" if filter_summary else "") + duration_summary
+            
+            QMessageBox.information(self, "Scraping Results", final_message)
             
             # Log the action
             log_user_action(self.current_user, f"Scraped FB post: {url[:30]}..." if len(url) > 30 else url)
@@ -1682,7 +1697,7 @@ class AdminWindow(QMainWindow):
             prediction_item.setTextAlignment(Qt.AlignCenter)
             if prediction == "Potentially Harmful":
                 prediction_item.setForeground(QColor(COLORS['potentially_harmful']))
-            elif prediction == "Requires Attention":
+            elif prediction == "Requires Review":
                 prediction_item.setForeground(QColor(COLORS['requires_attention']))
             elif prediction == "Likely Appropriate":
                 prediction_item.setForeground(QColor(COLORS['likely_appropriate']))
@@ -1702,6 +1717,12 @@ class AdminWindow(QMainWindow):
                 for col in range(table.columnCount()):
                     table.item(row_position, col).setBackground(QColor(COLORS['highlight']))
 
+        # Reset sort dropdown to default (index 0) when replacing table content
+        if not append and hasattr(table, 'sort_combo'):
+            table.sort_combo.setCurrentIndex(0)
+            # Optionally trigger the sort immediately if needed
+            # self.sort_table(table)
+
         # Switch to the correct tab
         if tab_name in self.tabs:
              tab_index = self.tab_widget.indexOf(self.tabs[tab_name])
@@ -1718,35 +1739,132 @@ class AdminWindow(QMainWindow):
             log_user_action(self.current_user, f"{action_type} tab: {tab_name}")
 
     def sort_table(self, table):
-        """Sort the specified table based on its combo box selection"""
+        """Sort table based on selected criteria using custom logic."""
         sort_combo = table.sort_combo
         index = sort_combo.currentIndex()
         
-        # First show all rows when not in "Show Replies Only" mode
-        if index != 5:
-            for row in range(table.rowCount()):
-                table.setRowHidden(row, False)
-        
-        # Handle the replies filter
+        # Disable sorting during the process
+        table.setSortingEnabled(False)
+
+        # --- Reply Filtering --- 
         if index == 5:  # "Show Replies Only"
             for row in range(table.rowCount()):
-                text = table.item(row, 0).text()
-                is_reply = text.startswith(" [↪ Reply]") or text.startswith(" ↪ Reply")
+                comment_item = table.item(row, 0)
+                # Check UserRole first for original text
+                is_reply = False
+                if comment_item:
+                    metadata = self.comment_metadata.get(comment_item.data(Qt.UserRole) or comment_item.text(), {})
+                    is_reply = metadata.get('is_reply', False)
                 table.setRowHidden(row, not is_reply)
-            return
+            # Re-enable sorting after filtering
+            # table.setSortingEnabled(True) # Keep disabled, manual sort below
+            return # Exit after filtering
+        else:
+            # Ensure all rows are visible if not filtering replies
+            for row in range(table.rowCount()):
+                table.setRowHidden(row, False)
+
+        # --- Custom Sorting Logic --- 
+        # Get data for sorting
+        all_rows_data = []
+        for row in range(table.rowCount()):
+            comment_item = table.item(row, 0)
+            prediction_item = table.item(row, 1)
+            confidence_item = table.item(row, 2)
             
-        # Regular sorting
-        if index == 0:
-            table.sortItems(0, Qt.AscendingOrder)
-        elif index == 1:
-            table.sortItems(0, Qt.DescendingOrder)
-        elif index == 2:
-            table.sortItems(1, Qt.AscendingOrder)
-        elif index == 3:
-            table.sortItems(2, Qt.DescendingOrder)
-        elif index == 4:
-            table.sortItems(2, Qt.AscendingOrder)
+            if not (comment_item and prediction_item and confidence_item):
+                # Skip rows with missing items to avoid errors
+                continue 
+
+            # Get original comment text (prefer UserRole)
+            comment_text = comment_item.data(Qt.UserRole) or comment_item.text()
+            # Clean potential display prefix if fallback to text() was used
+            if comment_text.startswith(" [↪ Reply] "):
+                 comment_text = comment_text[len(" [↪ Reply] "):]
             
+            prediction_text = prediction_item.text()
+            
+            # Get numerical confidence
+            confidence_value = 0.0
+            try:
+                # Use UserRole for confidence if available (safer)
+                conf_data = confidence_item.data(Qt.UserRole)
+                if conf_data is not None:
+                     confidence_value = float(conf_data)
+                else:
+                     # Fallback: parse text, removing %
+                     confidence_value = float(confidence_item.text().strip('%'))
+            except (ValueError, TypeError):
+                pass # Keep 0.0 if parsing fails
+                
+            all_rows_data.append((row, comment_text, prediction_text, confidence_value))
+
+        # Define sort key based on index
+        sort_key = None
+        reverse_sort = False
+        
+        if index == 0: # Comment A-Z
+            sort_key = lambda item: item[1].lower() # item[1] is comment_text
+        elif index == 1: # Comment Z-A
+            sort_key = lambda item: item[1].lower()
+            reverse_sort = True
+        elif index == 2: # Prediction A-Z
+            sort_key = lambda item: item[2] # item[2] is prediction_text
+        elif index == 3: # Confidence High-Low
+            sort_key = lambda item: item[3] # item[3] is confidence_value
+            reverse_sort = True
+        elif index == 4: # Confidence Low-High
+            sort_key = lambda item: item[3]
+            
+        # Perform the sort if a key is defined
+        if sort_key:
+            all_rows_data.sort(key=sort_key, reverse=reverse_sort)
+
+        # --- Reorder Table Rows --- 
+        # This part can be slow for large tables, but is necessary for custom sort
+        current_row_mapping = {data[0]: data for data in all_rows_data}
+        
+        # Temporarily block signals to avoid triggering updates during move
+        table.blockSignals(True)
+        
+        # Move rows according to the sorted order
+        target_row = 0
+        processed_original_rows = set()
+        
+        # Iterate through the desired sorted order
+        for original_row_index, _, _, _ in all_rows_data:
+            if original_row_index in processed_original_rows:
+                 continue # Skip if this original row was already moved
+            
+            # Find the current visual position of the original row
+            current_visual_row = -1
+            for r in range(table.rowCount()):
+                item = table.item(r, 0)
+                if item and (item.data(Qt.UserRole) or item.text()) == current_row_mapping[original_row_index][1]:
+                    current_visual_row = r
+                    break
+            
+            if current_visual_row != -1 and current_visual_row != target_row:
+                # Insert a new row at the target position
+                table.insertRow(target_row)
+                
+                # Move items from the current visual row to the target row
+                for col in range(table.columnCount()):
+                    item_to_move = table.takeItem(current_visual_row + 1, col) # +1 because we inserted a row
+                    table.setItem(target_row, col, item_to_move)
+                    
+                # Remove the now empty original row (which shifted down)
+                table.removeRow(current_visual_row + 1)
+                
+            processed_original_rows.add(original_row_index)
+            target_row += 1
+            
+        # Unblock signals
+        table.blockSignals(False)
+        
+        # Optional: re-enable default sorting if desired, but manual sort is done
+        # table.setSortingEnabled(True)
+
     def update_details_panel(self):
         """Update the details panel with selected comment information"""
         table = self.get_current_table()
@@ -1970,7 +2088,7 @@ class AdminWindow(QMainWindow):
 
         total_comments = table.rowCount()
         potentially_harmful_count = 0
-        requires_attention_count = 0
+        requires_review_count = 0 # Changed from needs_review_count
         likely_appropriate_count = 0
         confidences = [] # Collect confidences
 
@@ -1994,8 +2112,8 @@ class AdminWindow(QMainWindow):
 
             if prediction == "Potentially Harmful":
                 potentially_harmful_count += 1
-            elif prediction == "Requires Attention":
-                requires_attention_count += 1
+            elif prediction == "Requires Review": # Changed from Needs Review
+                requires_review_count += 1
             elif prediction == "Likely Appropriate":
                 likely_appropriate_count += 1
 
@@ -2003,14 +2121,14 @@ class AdminWindow(QMainWindow):
 
         # Calculate ratios
         harmful_ratio = (potentially_harmful_count / total_comments) if total_comments > 0 else 0
-        attention_ratio = (requires_attention_count / total_comments) if total_comments > 0 else 0
+        review_ratio = (requires_review_count / total_comments) if total_comments > 0 else 0 # Changed from needs_review_count
         appropriate_ratio = (likely_appropriate_count / total_comments) if total_comments > 0 else 0
 
         summary_text = (
             f"<b>Guidance Summary of Current Tab</b><br><br>"
             f"Total Comments: {total_comments}<br>"
             f"<span style='color:{COLORS['potentially_harmful']}'>Potentially Harmful: {potentially_harmful_count} ({harmful_ratio:.1%})</span><br>"
-            f"<span style='color:{COLORS['requires_attention']}'>Requires Attention: {requires_attention_count} ({attention_ratio:.1%})</span><br>"
+            f"<span style='color:{COLORS['requires_attention']}'>Requires Review: {requires_review_count} ({review_ratio:.1%})</span><br>"
             f"<span style='color:{COLORS['likely_appropriate']}'>Likely Appropriate: {likely_appropriate_count} ({appropriate_ratio:.1%})</span><br>"
             f"Average Confidence: {avg_confidence:.2f}%<br>" # Display avg confidence with % sign
             f"<br><i>Note: This assessment is guidance-oriented and not a definitive judgment.</i>"
@@ -2020,11 +2138,11 @@ class AdminWindow(QMainWindow):
         chart_pixmap = None
         # Only generate pie chart if there are comments to display
         if total_comments > 0:
-            labels = ['Potentially Harmful', 'Requires Attention', 'Likely Appropriate']
-            sizes = [potentially_harmful_count, requires_attention_count, likely_appropriate_count]
+            labels = ['Potentially Harmful', 'Requires Review', 'Likely Appropriate'] # Changed label
+            sizes = [potentially_harmful_count, requires_review_count, likely_appropriate_count] # Changed variable
             colors = [
                 COLORS.get('potentially_harmful', '#EF5350'), 
-                COLORS.get('requires_attention', '#FF9800'), 
+                COLORS.get('requires_attention', '#FF9800'), # Still use the 'requires_attention' color key
                 COLORS.get('likely_appropriate', '#66BB6A')
             ]
             
@@ -2467,8 +2585,12 @@ class AdminWindow(QMainWindow):
             prediction_item.setTextAlignment(Qt.AlignCenter)
             if prediction == "Cyberbullying":
                 prediction_item.setForeground(QColor(COLORS['bullying']))
+            elif prediction == "Likely Appropriate":
+                prediction_item.setForeground(QColor(COLORS['likely_appropriate']))
+            elif prediction == "Requires Review":
+                prediction_item.setForeground(QColor(COLORS['requires_attention']))
             else:
-                prediction_item.setForeground(QColor(COLORS['normal']))
+                prediction_item.setForeground(QColor(COLORS['potentially_harmful']))
             
             # Set confidence cell (formatted 0-100 with %)
             confidence_text = f"{confidence:.2f}%" # Format to 2 decimal places and add %

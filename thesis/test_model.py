@@ -28,9 +28,9 @@ def test_model():
     
     print("-" * 70)
     print("Assessment levels explanation:")
-    print("• Potentially Harmful: Content that may need moderation due to harmful elements")
-    print("• Requires Attention: Content with ambiguous intent that should be reviewed")
-    print("• Likely Appropriate: Content that appears to be non-harmful based on analysis")
+    print("• Potentially Harmful: Content with strong indicators of harm. Should be prioritized for review.")
+    print("• Requires Review: Content with ambiguous intent that should be reviewed")
+    print("• Likely Appropriate: Content that appears non-harmful based on the model.")
     print("\nNote: This is a guidance tool to assist human review, not to make definitive judgments.")
 
 if __name__ == "__main__":

@@ -127,7 +127,7 @@ def classify_comment(text):
     Instead of a binary classification (Cyberbullying/Normal), this now returns
     a three-level guidance system:
     - "Potentially Harmful" (was Cyberbullying)
-    - "Requires Attention" (new neutral/middle category)
+    - "Requires Review" (new neutral/middle category)
     - "Likely Appropriate" (was Normal)
     """
     global svm_classifier
@@ -180,13 +180,13 @@ def classify_comment(text):
             if confidence_score >= 80:
                 prediction_label = "Potentially Harmful"  # High confidence harmful content
             else:
-                prediction_label = "Requires Attention"   # Lower confidence, but has concerning elements
+                prediction_label = "Requires Review"   # Lower confidence, but has concerning elements
         # For binary prediction 0 (normal):
         else:
             if confidence_score >= 80:
                 prediction_label = "Likely Appropriate"   # High confidence appropriate content
             else:
-                prediction_label = "Requires Attention"   # Lower confidence, might have subtle issues
+                prediction_label = "Requires Review"   # Lower confidence, might have subtle issues
         
         return prediction_label, confidence_score
 

@@ -70,34 +70,34 @@ class DisclaimerDialog(QDialog):
         sections = [
             {
                 "title": "Purpose of the Tool",
-                "content": "The Cyberbullying Content Guidance System is designed to assist in identifying potentially problematic content in online communications. This tool provides an assessment and not a definitive judgment about the nature of the content. All assessments should be reviewed by a human moderator."
+                "content": "The Cyberbullying Content Guidance System is designed to assist in identifying potentially problematic content in online communications sourced *only from public Facebook posts*. This tool provides an assessment based on its underlying model and is not a definitive judgment about the nature of the content. All assessments should be reviewed by a human moderator."
             },
             {
-                "title": "Privacy and Data Usage",
-                "content": "When using this tool with content from Facebook, Twitter, or other social media platforms:\n\n• Personal information (names, profile pictures, etc.) may be processed but not stored permanently\n• All data analysis is conducted locally on your device\n• This tool should not be used to target specific individuals\n• You must comply with all relevant platform Terms of Service when collecting data"
+                "title": "Privacy and Data Usage (Facebook Posts)",
+                "content": "When using this tool with content from public Facebook posts:\n\n• Comment text and related metadata (commenter name, date, etc.) are processed but not stored permanently by this tool beyond your current session.\n• All data analysis is conducted locally on your device.\n• This tool should not be used to target specific individuals.\n• You must comply with Facebook's Terms of Service when collecting data."
             },
             {
                 "title": "Limitations and Potential Biases",
-                "content": "Be aware of the following limitations:\n\n• The assessment is probabilistic, not deterministic\n• False positives and false negatives can occur\n• Cultural and linguistic nuances may not be fully captured\n• Results should be interpreted cautiously, particularly for content with medium-confidence scores\n• The tool may reflect biases present in its training data\n• Context and intent are often not fully captured by automated analysis"
+                "content": "Be aware of the following limitations:\n\n• The assessment is probabilistic, based on patterns learned by the model, not a deterministic judgment.\n• False positives and false negatives can occur.\n• Cultural and linguistic nuances may not be fully captured.\n• Results should be interpreted cautiously, particularly for content with lower confidence scores.\n• The underlying model may reflect biases present in its training data.\n• Context and intent are often not fully captured by automated analysis."
             },
             {
                 "title": "Ethical Usage Guidelines",
-                "content": "By using this tool, you agree to:\n\n• Use the technology responsibly and ethically\n• Not rely solely on automated assessments for moderation decisions\n• Consider context and intent when reviewing flagged content\n• Respect the privacy of individuals whose content is being analyzed\n• Not use this tool to discriminate against individuals or groups\n• Obtain appropriate consent when required by law\n• Use the tool as an aid for human judgment, not as a replacement"
+                "content": "By using this tool, you agree to:\n\n• Use the technology responsibly and ethically.\n• Not rely solely on automated assessments for moderation decisions.\n• Consider context and intent when reviewing flagged content.\n• Respect the privacy of individuals whose content is being analyzed.\n• Not use this tool to discriminate against individuals or groups.\n• Obtain appropriate consent when required by law or platform terms.\n• Use the tool as an aid for human judgment, not as a replacement."
             },
             {
                 "title": "Research Context",
-                "content": "This application was developed as part of academic research. The labels and assessments it provides are designed to guide human reviewers, not to provide conclusive determinations about whether content constitutes cyberbullying or harmful speech."
+                "content": "This application was developed as part of academic research. The labels and assessments it provides are based on a machine learning model and are designed to guide human reviewers, not to provide conclusive determinations about whether content constitutes cyberbullying or harmful speech."
             }
         ]
         
         # Add each section to the layout with improved styling
         for section in sections:
-            # Create section container with background
+            # Create section container with background but NO BORDER
             section_container = QWidget()
             section_container.setStyleSheet(f"""
                 background-color: {COLORS['surface']};
                 border-radius: 8px;
-                border: 1px solid {COLORS['border']};
+                /* border: 1px solid {COLORS['border']}; */ /* Border removed */
                 padding: 10px;
             """)
             section_container_layout = QVBoxLayout(section_container)
