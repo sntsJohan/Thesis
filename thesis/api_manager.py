@@ -16,6 +16,9 @@ class APIManagerDialog(QDialog):
         self.setStyleSheet(DIALOG_STYLE)
         self.setMinimumWidth(700)
         
+        # Always use 'apify' as the key name
+        self.api_key_name = 'apify'
+        
         # Initialize api_table to None - this will be set later
         self.api_table = None
         self.table_container = None
@@ -75,36 +78,56 @@ class APIManagerDialog(QDialog):
             input_container.setStyleSheet(f"background-color: {COLORS['surface']}; border-radius: 8px; padding: 20px;")
             input_layout = QVBoxLayout(input_container)
 
-            # Key name layout
-            key_name_layout = QHBoxLayout()
-            key_name_label = QLabel("API Key Name:")
-            key_name_label.setFont(FONTS['body'])
-            key_name_label.setFixedWidth(100)
+            # API key title
+            api_label = QLabel("Apify API Key")
+            api_label.setFont(FONTS['subheader'])
+            input_layout.addWidget(api_label)
+
+            # API Key Description
+            description = QLabel("Enter your Apify API key below. This key will be used for all scraping operations.")
+            description.setFont(FONTS['body'])
+            description.setWordWrap(True)
+            input_layout.addWidget(description)
             
-            self.key_name_input = QLineEdit()
-            self.key_name_input.setStyleSheet(INPUT_STYLE)
-            self.key_name_input.setPlaceholderText("Enter API key name (e.g., apify, openai)...")
-            
-            key_name_layout.addWidget(key_name_label)
-            key_name_layout.addWidget(self.key_name_input)
-            input_layout.addLayout(key_name_layout)
+            # Add some spacing
+            input_layout.addSpacing(10)
 
             # API key layout
             api_key_layout = QHBoxLayout()
-            api_key_label = QLabel("API Key Value:")
+            api_key_label = QLabel("API Key:")
             api_key_label.setFont(FONTS['body'])
-            api_key_label.setFixedWidth(100)
+            api_key_label.setFixedWidth(80)
             
             self.api_key_input = QLineEdit()
             self.api_key_input.setStyleSheet(INPUT_STYLE)
-            self.api_key_input.setPlaceholderText("Enter API key value...")
+            self.api_key_input.setPlaceholderText("Enter your Apify API key...")
             
             api_key_layout.addWidget(api_key_label)
             api_key_layout.addWidget(self.api_key_input)
             input_layout.addLayout(api_key_layout)
 
+            # Current API key
+            current_key = get_api_key(self.api_key_name) if self.db_connected else None
+            if current_key:
+                current_key_layout = QHBoxLayout()
+                current_key_label = QLabel("Current Key:")
+                current_key_label.setFont(FONTS['body'])
+                current_key_label.setFixedWidth(80)
+                
+                masked_key = f"{current_key[:4]}...{current_key[-4:]}" if len(current_key) > 8 else "****"
+                current_key_value = QLabel(masked_key)
+                current_key_value.setFont(FONTS['body'])
+                current_key_value.setStyleSheet(f"color: {COLORS['text_secondary']};")
+                
+                current_key_layout.addWidget(current_key_label)
+                current_key_layout.addWidget(current_key_value)
+                input_layout.addLayout(current_key_layout)
+
+            # Add some spacing
+            input_layout.addSpacing(10)
+
             # Add or update button
-            save_button = QPushButton("Add/Update API Key")
+            save_button = QPushButton("Save API Key")
             save_button.setStyleSheet(BUTTON_STYLE)
             save_button.clicked.connect(self.save_api_key)
             # Disable the button if database is not connected
@@ -163,7 +186,7 @@ class APIManagerDialog(QDialog):
             table_layout = QVBoxLayout(self.table_container)
             
             # Table header
-            header_label = QLabel("Stored API Keys")
+            header_label = QLabel("API Key History")
             # Use body font instead of subheader if it's not defined
             if 'subheader' in FONTS:
                 header_label.setFont(FONTS['subheader'])
@@ -175,7 +198,7 @@ class APIManagerDialog(QDialog):
             
             # Create table
             self.api_table = QTableWidget(0, 3)
-            self.api_table.setHorizontalHeaderLabels(["Name", "API Key", "Actions"])
+            self.api_table.setHorizontalHeaderLabels(["Date Updated", "API Key", "Actions"])
             self.api_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
             self.api_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
             self.api_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
@@ -186,7 +209,7 @@ class APIManagerDialog(QDialog):
             table_layout.addWidget(self.api_table)
             
             # Refresh button
-            refresh_button = QPushButton("Refresh Table")
+            refresh_button = QPushButton("Refresh History")
             refresh_button.setStyleSheet(BUTTON_STYLE)
             refresh_button.clicked.connect(self.load_api_table)
             table_layout.addWidget(refresh_button)
@@ -215,14 +238,16 @@ class APIManagerDialog(QDialog):
             # Get all API keys
             api_keys = get_all_api_keys()
             
-            # Populate table
-            for i, key_data in enumerate(api_keys):
+            # Populate table with only 'apify' keys
+            apify_keys = [k for k in api_keys if k['key_name'] == self.api_key_name]
+            
+            for i, key_data in enumerate(apify_keys):
                 self.api_table.insertRow(i)
                 
-                # Key name
-                name_item = QTableWidgetItem(key_data['key_name'])
-                name_item.setFlags(name_item.flags() & ~Qt.ItemIsEditable)  # Make read-only
-                self.api_table.setItem(i, 0, name_item)
+                # Date (we'll use updated_at or a placeholder)
+                date_item = QTableWidgetItem(str(key_data.get('updated_at', 'Unknown')))
+                date_item.setFlags(date_item.flags() & ~Qt.ItemIsEditable)  # Make read-only
+                self.api_table.setItem(i, 0, date_item)
                 
                 # API key (masked)
                 api_key = key_data['api_key']
@@ -236,16 +261,11 @@ class APIManagerDialog(QDialog):
                 actions_layout = QHBoxLayout(actions_widget)
                 actions_layout.setContentsMargins(4, 4, 4, 4)
                 
-                edit_button = QPushButton("Edit")
+                edit_button = QPushButton("Use This Key")
                 edit_button.setStyleSheet(BUTTON_STYLE)
-                edit_button.clicked.connect(lambda checked, name=key_data['key_name']: self.edit_api_key(name))
-                
-                delete_button = QPushButton("Delete")
-                delete_button.setStyleSheet(BUTTON_STYLE)
-                delete_button.clicked.connect(lambda checked, name=key_data['key_name']: self.confirm_delete_api_key(name))
+                edit_button.clicked.connect(lambda checked, key=key_data['api_key']: self.edit_api_key(key))
                 
                 actions_layout.addWidget(edit_button)
-                actions_layout.addWidget(delete_button)
                 
                 self.api_table.setCellWidget(i, 2, actions_widget)
         except Exception as e:
@@ -259,69 +279,34 @@ class APIManagerDialog(QDialog):
                 self.api_table.setItem(0, 0, error_item)
                 self.api_table.setSpan(0, 0, 1, 3)  # Span all columns
     
-    def edit_api_key(self, key_name):
+    def edit_api_key(self, api_key):
         try:
-            # Get the API key value
-            api_key = get_api_key(key_name)
-            
-            # Set input fields
-            self.key_name_input.setText(key_name)
+            # Set input field with the selected API key
             self.api_key_input.setText(api_key)
-            
-            # Make key name field read-only for editing
-            self.key_name_input.setReadOnly(True)
         except Exception as e:
-            print(f"Error editing API key: {str(e)}")
-            display_message(self, "Error", f"Failed to load API key for editing: {str(e)}")
-    
-    def confirm_delete_api_key(self, key_name):
-        try:
-            confirm = QMessageBox.question(
-                self,
-                "Confirm Delete",
-                f"Are you sure you want to delete the API key '{key_name}'?",
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.No
-            )
-            
-            if confirm == QMessageBox.Yes:
-                success = delete_api_key(key_name)
-                if success:
-                    display_message(self, "Success", f"API key '{key_name}' deleted successfully")
-                    self.load_api_table()
-                else:
-                    display_message(self, "Error", f"Failed to delete API key '{key_name}'")
-        except Exception as e:
-            print(f"Error deleting API key: {str(e)}")
-            display_message(self, "Error", f"An error occurred: {str(e)}")
+            print(f"Error setting API key: {str(e)}")
+            display_message(self, "Error", f"Failed to set API key: {str(e)}")
 
     def save_api_key(self):
         try:
-            key_name = self.key_name_input.text().strip()
             api_key = self.api_key_input.text().strip()
             
-            if not key_name:
-                display_message(self, "Error", "Please enter an API key name")
-                return
-                
             if not api_key:
                 display_message(self, "Error", "Please enter an API key value")
                 return
             
-            # Save to database
-            success = set_api_key(key_name, api_key)
+            # Save to database - always use 'apify' as the key name
+            success = set_api_key(self.api_key_name, api_key)
             
             if success:
-                display_message(self, "Success", f"API key '{key_name}' saved successfully")
-                self.key_name_input.clear()
+                display_message(self, "Success", "API key saved successfully")
                 self.api_key_input.clear()
-                self.key_name_input.setReadOnly(False)
                 
                 # Reload the table if it exists
                 if hasattr(self, 'api_table') and self.api_table:
                     self.load_api_table()
             else:
-                display_message(self, "Error", f"Failed to save API key '{key_name}'")
+                display_message(self, "Error", "Failed to save API key")
         except Exception as e:
             print(f"Error saving API key: {str(e)}")
             print(traceback.format_exc())

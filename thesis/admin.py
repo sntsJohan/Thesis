@@ -125,14 +125,11 @@ class AdminWindow(QMainWindow):
         self.tabs = {}
         
         # Set window properties
-        self.setWindowTitle("Cyberbullying Detection System - Admin")
-        self.showFullScreen()
-        self.setStyleSheet(f"background-color: {COLORS['background']}; color: {COLORS['text']};")
-        
-        # Set window icon
-        base_path = os.path.dirname(os.path.abspath(__file__))
-        app_icon = QIcon(os.path.join(base_path, "assets", "applogo.png"))
-        self.setWindowIcon(app_icon)
+        self.setStyleSheet("background-color: #2b2b2b;")
+        self.app_icon = QIcon(os.path.join(base_path, "assets", "applogo.png"))
+        self.setWindowIcon(self.app_icon) 
+        self.setWindowTitle("Cyberbullying Content Guidance System - Admin")
+        self.showMaximized()
         
         # Initialize UI elements
         self.url_input = QLineEdit()
@@ -191,7 +188,7 @@ class AdminWindow(QMainWindow):
         menu_layout.setSpacing(0)
 
         # Add app name to the left
-        self.app_name_label = QLabel("Cyberbullying Detection System - Admin View")
+        self.app_name_label = QLabel("Cyberbullying Content Guidance System - Admin View")
         self.app_name_label.setStyleSheet(f"color: {COLORS['text']}; font-size: 14px; padding: 0 16px;")
         self.app_name_label.setFont(FONTS['button'])
         menu_layout.addWidget(self.app_name_label)
@@ -1683,10 +1680,12 @@ class AdminWindow(QMainWindow):
             # Set prediction cell
             prediction_item = QTableWidgetItem(prediction)
             prediction_item.setTextAlignment(Qt.AlignCenter)
-            if prediction == "Cyberbullying":
-                prediction_item.setForeground(QColor(COLORS['bullying']))
-            else:
-                prediction_item.setForeground(QColor(COLORS['normal']))
+            if prediction == "Potentially Harmful":
+                prediction_item.setForeground(QColor(COLORS['potentially_harmful']))
+            elif prediction == "Requires Attention":
+                prediction_item.setForeground(QColor(COLORS['requires_attention']))
+            elif prediction == "Likely Appropriate":
+                prediction_item.setForeground(QColor(COLORS['likely_appropriate']))
 
             # Display confidence (0-100) in the third column with %
             confidence_text = f"{confidence:.2f}%" # Format to 2 decimal places and add %
@@ -1963,15 +1962,16 @@ class AdminWindow(QMainWindow):
                 display_message(self, "Error", f"Failed to export data: {e}")
                 
     def show_summary(self):
-        """Show summary with counts, ratios, and a pie chart."""
+        """Show summary with counts, ratios, and a pie chart for the three-level guidance system."""
         table = self.get_current_table()
         if not table or table.rowCount() == 0:
             display_message(self, "Info", "No comments to summarize")
             return
 
         total_comments = table.rowCount()
-        cyberbullying_count = 0
-        normal_count = 0
+        potentially_harmful_count = 0
+        requires_attention_count = 0
+        likely_appropriate_count = 0
         confidences = [] # Collect confidences
 
         for row in range(total_comments):
@@ -1992,58 +1992,81 @@ class AdminWindow(QMainWindow):
             except ValueError:
                 pass # Ignore if not a valid float
 
-            if prediction == "Cyberbullying":
-                cyberbullying_count += 1
-            elif prediction == "Normal":
-                normal_count += 1
+            if prediction == "Potentially Harmful":
+                potentially_harmful_count += 1
+            elif prediction == "Requires Attention":
+                requires_attention_count += 1
+            elif prediction == "Likely Appropriate":
+                likely_appropriate_count += 1
 
         avg_confidence = np.mean(confidences) if confidences else 0
 
         # Calculate ratios
-        bully_ratio = (cyberbullying_count / total_comments) if total_comments > 0 else 0
-        normal_ratio = (normal_count / total_comments) if total_comments > 0 else 0
+        harmful_ratio = (potentially_harmful_count / total_comments) if total_comments > 0 else 0
+        attention_ratio = (requires_attention_count / total_comments) if total_comments > 0 else 0
+        appropriate_ratio = (likely_appropriate_count / total_comments) if total_comments > 0 else 0
 
         summary_text = (
-            f"<b>Summary of Current Tab</b><br><br>"
+            f"<b>Guidance Summary of Current Tab</b><br><br>"
             f"Total Comments: {total_comments}<br>"
-            f"Cyberbullying: {cyberbullying_count} ({bully_ratio:.1%})<br>"
-            f"Normal: {normal_count} ({normal_ratio:.1%})<br>"
-            f"Average Confidence: {avg_confidence:.2f}<br>" # Display avg confidence (0-100)
+            f"<span style='color:{COLORS['potentially_harmful']}'>Potentially Harmful: {potentially_harmful_count} ({harmful_ratio:.1%})</span><br>"
+            f"<span style='color:{COLORS['requires_attention']}'>Requires Attention: {requires_attention_count} ({attention_ratio:.1%})</span><br>"
+            f"<span style='color:{COLORS['likely_appropriate']}'>Likely Appropriate: {likely_appropriate_count} ({appropriate_ratio:.1%})</span><br>"
+            f"Average Confidence: {avg_confidence:.2f}%<br>" # Display avg confidence with % sign
+            f"<br><i>Note: This assessment is guidance-oriented and not a definitive judgment.</i>"
         )
 
         # --- Generate Pie Chart --- 
         chart_pixmap = None
-        # Only generate pie chart if both classes are present
-        if total_comments > 0 and cyberbullying_count > 0 and normal_count > 0:
-            labels = ['Cyberbullying', 'Normal']
-            sizes = [cyberbullying_count, normal_count]
-            colors = [COLORS.get('bullying', '#FF6347'), COLORS.get('normal', '#90EE90')] 
-            explode = (0.1, 0) if cyberbullying_count > 0 else (0, 0) 
+        # Only generate pie chart if there are comments to display
+        if total_comments > 0:
+            labels = ['Potentially Harmful', 'Requires Attention', 'Likely Appropriate']
+            sizes = [potentially_harmful_count, requires_attention_count, likely_appropriate_count]
+            colors = [
+                COLORS.get('potentially_harmful', '#EF5350'), 
+                COLORS.get('requires_attention', '#FF9800'), 
+                COLORS.get('likely_appropriate', '#66BB6A')
+            ]
+            
+            # Only add segments with non-zero values
+            non_zero_indices = [i for i, size in enumerate(sizes) if size > 0]
+            if non_zero_indices:
+                filtered_labels = [labels[i] for i in non_zero_indices]
+                filtered_sizes = [sizes[i] for i in non_zero_indices]
+                filtered_colors = [colors[i] for i in non_zero_indices]
+                
+                # Create explode tuple with slight emphasis on "Potentially Harmful" if it exists
+                explode = [0.1 if label == 'Potentially Harmful' else 0 for label in filtered_labels]
 
-            try:
-                fig, ax = plt.subplots(figsize=(5, 3.5))
-                ax.pie(sizes, explode=explode, labels=labels, colors=colors,
-                       autopct='%1.1f%%', shadow=False, startangle=90,
-                       textprops={'color': 'white'}) # Changed text color to white
-                ax.axis('equal')
-                fig.patch.set_alpha(0.0)
-                ax.patch.set_alpha(0.0)
-                
-                buf = BytesIO()
-                plt.savefig(buf, format='png', bbox_inches='tight', pad_inches=0.1, transparent=True)
-                plt.close(fig)
-                buf.seek(0)
-                
-                image = QImage.fromData(buf.getvalue())
-                chart_pixmap = QPixmap.fromImage(image)
-            except Exception as e:
-                print(f"Error generating pie chart: {e}")
-                chart_pixmap = None
+                try:
+                    fig, ax = plt.subplots(figsize=(5, 3.5))
+                    ax.pie(filtered_sizes, explode=explode, labels=filtered_labels, colors=filtered_colors,
+                           autopct='%1.1f%%', shadow=False, startangle=90,
+                           textprops={'color': 'white'}) # White text for better visibility
+                    ax.axis('equal')
+                    fig.patch.set_alpha(0.0)
+                    ax.patch.set_alpha(0.0)
+                    
+                    # Add a title noting this is guidance-oriented
+                    ax.set_title("Content Guidance Assessment", color='white', pad=20)
+                    
+                    buf = BytesIO()
+                    plt.savefig(buf, format='png', bbox_inches='tight', pad_inches=0.1, transparent=True)
+                    plt.close(fig)
+                    buf.seek(0)
+                    
+                    image = QImage.fromData(buf.getvalue())
+                    chart_pixmap = QPixmap.fromImage(image)
+                except Exception as e:
+                    print(f"Error generating pie chart: {e}")
+                    chart_pixmap = None
         # --- End Pie Chart --- 
 
         # Show custom dialog
         dialog = SummaryDialog(summary_text, chart_pixmap, self)
         dialog.exec_()
+        
+        log_user_action(self.current_user, "Viewed guidance summary")
     
     def show_word_cloud(self):
         """Generate and display word cloud visualization"""
@@ -2124,7 +2147,7 @@ class AdminWindow(QMainWindow):
     def set_current_user(self, username):
         """Set the current user and create or restore their session"""
         self.current_user = username
-        self.app_name_label.setText(f"Cyberbullying Detection System - Admin View - {username}")
+        self.app_name_label.setText(f"Cyberbullying Content Guidance System - Admin View - {username}")
         
         # First create/copy session data in database
         self.create_or_restore_session()

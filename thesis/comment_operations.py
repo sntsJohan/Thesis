@@ -14,6 +14,7 @@ import re
 import numpy as np
 from transformers import pipeline, AutoModelForSequenceClassification, AutoTokenizer
 from model import classify_comment
+from styles import COLORS
 
 def update_details_panel(window):
     selected_items = window.output_table.selectedItems()
@@ -42,22 +43,48 @@ def update_details_panel(window):
     else:
         window.add_remove_button.setText("➕ Add to List")
 
-    # Rules text
-    rules_broken = ["Harassment", "Hate Speech", "Threatening Language"] if prediction == "Cyberbullying" else []
+    # Guidance text based on classification
+    guidance_text = ""
+    concern_areas = []
+    
+    if prediction == "Potentially Harmful":
+        guidance_text = "This comment may contain harmful content. Review recommended."
+        concern_areas = ["Potential Harassment", "Possible Hate Speech", "Concerning Language"]
+    elif prediction == "Requires Attention":
+        guidance_text = "This comment has elements that may need review. Use discretion."
+        concern_areas = ["Ambiguous Intent", "Context Dependent"]
+    elif prediction == "Likely Appropriate":
+        guidance_text = "This comment appears appropriate based on analysis."
+        concern_areas = []
 
     # Set text contents
     window.details_text_edit.clear()
     window.details_text_edit.append(f"<b>Comment:</b>\n{comment}\n")
     window.details_text_edit.append(f"<b>Commenter:</b> {commenter}\n")
-    window.details_text_edit.append(f"<b>Classification:</b> {prediction}\n")
+    
+    # Color-coded assessment based on prediction level
+    assessment_color = COLORS['text']  # Default color
+    if prediction == "Potentially Harmful":
+        assessment_color = COLORS['potentially_harmful']
+    elif prediction == "Requires Attention":
+        assessment_color = COLORS['requires_attention']
+    elif prediction == "Likely Appropriate":
+        assessment_color = COLORS['likely_appropriate']
+        
+    window.details_text_edit.append(f'<b>Assessment:</b> <span style="color:{assessment_color}; font-weight:bold;">{prediction}</span>\n')
     window.details_text_edit.append(f"<b>Confidence:</b> {confidence}\n")
     window.details_text_edit.append(f"<b>Status:</b> {'In List' if comment in window.selected_comments else 'Not in List'}\n")
-    window.details_text_edit.append("<b>Rules Broken:</b>")
-
-    cursor = window.details_text_edit.textCursor()
-    for rule in rules_broken:
-        cursor.insertHtml(f'<span style="background-color: ["secondary"]; border-radius: 4px; padding: 2px 4px; margin: 2px; display: inline-block;">{rule}</span> ')
-    window.details_text_edit.setTextCursor(cursor)
+    window.details_text_edit.append(f"<b>Guidance:</b> {guidance_text}\n")
+    
+    if concern_areas:
+        window.details_text_edit.append("<b>Areas of Concern:</b>")
+        cursor = window.details_text_edit.textCursor()
+        for area in concern_areas:
+            cursor.insertHtml(f'<span style="background-color: ["secondary"]; border-radius: 4px; padding: 2px 4px; margin: 2px; display: inline-block;">{area}</span> ')
+        window.details_text_edit.setTextCursor(cursor)
+    
+    # Additional guidance disclaimer
+    window.details_text_edit.append("\n<i>Note: This is an AI-assisted assessment meant to guide human review, not to provide definitive judgments.</i>")
 
 def show_summary(window):
     total_comments = window.output_table.rowCount()
@@ -65,18 +92,21 @@ def show_summary(window):
         display_message(window, "Error", "No comments to summarize")
         return
 
-    cyberbullying_count = 0
-    normal_count = 0
+    potentially_harmful_count = 0
+    requires_attention_count = 0
+    likely_appropriate_count = 0
     high_confidence_count = 0  # Comments with confidence > 90%
 
     for row in range(total_comments):
         prediction = window.output_table.item(row, 1).text()
         confidence = float(window.output_table.item(row, 2).text().strip('%')) / 100
 
-        if prediction == "Cyberbullying":
-            cyberbullying_count += 1
-        else:
-            normal_count += 1
+        if prediction == "Potentially Harmful":
+            potentially_harmful_count += 1
+        elif prediction == "Requires Attention":
+            requires_attention_count += 1
+        elif prediction == "Likely Appropriate":
+            likely_appropriate_count += 1
 
         if confidence > 0.9:
             high_confidence_count += 1
@@ -84,8 +114,9 @@ def show_summary(window):
     summary_text = (
         f"Analysis Summary:\n\n"
         f"Total Comments Analyzed: {total_comments}\n"
-        f"Cyberbullying Comments: {cyberbullying_count} ({(cyberbullying_count/total_comments)*100:.1f}%)\n"
-        f"Normal Comments: {normal_count} ({(normal_count/total_comments)*100:.1f}%)\n"
+        f"<span style='color:{COLORS['potentially_harmful']}'>Potentially Harmful Comments: {potentially_harmful_count} ({(potentially_harmful_count/total_comments)*100:.1f}%)</span>\n"
+        f"<span style='color:{COLORS['requires_attention']}'>Comments Requiring Attention: {requires_attention_count} ({(requires_attention_count/total_comments)*100:.1f}%)</span>\n"
+        f"<span style='color:{COLORS['likely_appropriate']}'>Likely Appropriate Comments: {likely_appropriate_count} ({(likely_appropriate_count/total_comments)*100:.1f}%)</span>\n"
         f"High Confidence Predictions: {high_confidence_count} ({(high_confidence_count/total_comments)*100:.1f}%)\n"
         f"Comments in Selection List: {len(window.selected_comments)}"
     )
@@ -191,8 +222,9 @@ def generate_report(window):
         # Collect data for charts and table
         data = []
         total_rows = current_table.rowCount()
-        cyberbullying_count = 0
-        normal_count = 0
+        potentially_harmful_count = 0
+        requires_attention_count = 0
+        likely_appropriate_count = 0
         confidence_ranges = {'90-100%': 0, '80-89%': 0, '70-79%': 0, '<70%': 0}
         all_comments = []
 
@@ -219,10 +251,13 @@ def generate_report(window):
             data.append([comment_text, prediction, confidence])
             all_comments.append(comment_text)
             
-            if prediction == "Cyberbullying":
-                cyberbullying_count += 1
-            else:
-                normal_count += 1
+            # Count by prediction type
+            if prediction == "Potentially Harmful":
+                potentially_harmful_count += 1
+            elif prediction == "Requires Attention":
+                requires_attention_count += 1
+            elif prediction == "Likely Appropriate":
+                likely_appropriate_count += 1
                 
             # Categorize confidence
             if confidence_value >= 90:
@@ -339,10 +374,10 @@ def generate_report(window):
 
         # Create classification distribution pie chart
         plt.figure(figsize=(6, 4))
-        plt.pie([cyberbullying_count, normal_count], 
-                labels=['Cyberbullying', 'Normal'],
+        plt.pie([potentially_harmful_count, requires_attention_count, likely_appropriate_count], 
+                labels=['Potentially Harmful', 'Requires Attention', 'Likely Appropriate'],
                 autopct='%1.1f%%',
-                colors=['#ff9999', '#66b3ff'],
+                colors=[COLORS['potentially_harmful'], COLORS['requires_attention'], COLORS['likely_appropriate']],
                 textprops={'color': 'white'})
         plt.title('Comment Classification Distribution')
         
@@ -404,12 +439,14 @@ def generate_report(window):
                 text = ' '.join(text.split())
                 return text
 
-            # Create separate word clouds for normal and cyberbullying comments
-            normal_comments = [comment for comment, prediction, _ in data if prediction == "Normal"]
-            cb_comments = [comment for comment, prediction, _ in data if prediction == "Cyberbullying"]
+            # Create separate word clouds for normal and potentially harmful comments
+            normal_comments = [comment for comment, prediction, _ in data if prediction == "Likely Appropriate"]
+            requires_attention_comments = [comment for comment, prediction, _ in data if prediction == "Requires Attention"]
+            potentially_harmful_comments = [comment for comment, prediction, _ in data if prediction == "Potentially Harmful"]
             
             processed_normal = [preprocess_text(comment) for comment in normal_comments] if normal_comments else [""]
-            processed_cb = [preprocess_text(comment) for comment in cb_comments] if cb_comments else [""]
+            processed_ra = [preprocess_text(comment) for comment in requires_attention_comments] if requires_attention_comments else [""]
+            processed_cb = [preprocess_text(comment) for comment in potentially_harmful_comments] if potentially_harmful_comments else [""]
             processed_all = [preprocess_text(comment) for comment in all_comments]
             
             # Calculate word frequencies first - before creating the wordcloud
@@ -458,8 +495,8 @@ def generate_report(window):
             plt.close()
             wordcloud_data.seek(0)
             
-            # Generate cyberbullying word cloud if there are enough comments
-            if len(cb_comments) > 5:
+            # Generate potentially harmful content word cloud if there are enough comments
+            if len(processed_cb) > 5:
                 cb_wordcloud = WordCloud(
                     width=800, 
                     height=400,
@@ -473,9 +510,9 @@ def generate_report(window):
                 plt.figure(figsize=(10, 5))
                 plt.imshow(cb_wordcloud, interpolation='bilinear')
                 plt.axis('off')
-                plt.title('Common Words in Cyberbullying Comments')
+                plt.title('Common Words in Potentially Harmful Comments')
                 
-                # Save cyberbullying word cloud to memory
+                # Save potentially harmful content word cloud to memory
                 cb_wordcloud_data = io.BytesIO()
                 plt.savefig(cb_wordcloud_data, format='png', bbox_inches='tight', pad_inches=0.1)
                 plt.close()
@@ -608,8 +645,8 @@ def generate_report(window):
         elements.append(Spacer(1, 5))
         
         # Generate executive summary text based on analysis results
-        cb_percentage = (cyberbullying_count/total_rows)*100 if total_rows > 0 else 0
-        cyber_count = cyberbullying_count
+        cb_percentage = (potentially_harmful_count/total_rows)*100 if total_rows > 0 else 0
+        cyber_count = potentially_harmful_count
         
         # Use the pre-calculated common words from earlier
         if cb_percentage > 0:
@@ -648,16 +685,18 @@ def generate_report(window):
         elements.append(Paragraph("Analysis Summary", subtitle_style))
         
         # Calculate statistics and percentages
-        cb_percentage = (cyberbullying_count/total_rows)*100 if total_rows > 0 else 0
-        normal_percentage = (normal_count/total_rows)*100 if total_rows > 0 else 0
+        cb_percentage = (potentially_harmful_count/total_rows)*100 if total_rows > 0 else 0
+        ra_percentage = (requires_attention_count/total_rows)*100 if total_rows > 0 else 0
+        la_percentage = (likely_appropriate_count/total_rows)*100 if total_rows > 0 else 0
         high_confidence = confidence_ranges['90-100%']
         high_confidence_percentage = (high_confidence/total_rows)*100 if total_rows > 0 else 0
         
         # Prepare summary data
         summary_data = [
             ["Total Comments Analyzed:", str(total_rows)],
-            ["Cyberbullying Comments:", f"{cyberbullying_count} ({cb_percentage:.1f}%)"],
-            ["Normal Comments:", f"{normal_count} ({normal_percentage:.1f}%)"],
+            ["Potentially Harmful Comments:", f"{potentially_harmful_count} ({cb_percentage:.1f}%)"],
+            ["Requires Attention Comments:", f"{requires_attention_count} ({ra_percentage:.1f}%)"],
+            ["Likely Appropriate Comments:", f"{likely_appropriate_count} ({la_percentage:.1f}%)"],
             ["High Confidence Predictions (>90%):", f"{high_confidence} ({high_confidence_percentage:.1f}%)"]
         ]
         
@@ -787,7 +826,7 @@ def generate_report(window):
             elements.append(Spacer(1, 20))
             
             # Add cyberbullying-specific word cloud if available
-            if cb_wordcloud_data and cyberbullying_count > 5:
+            if cb_wordcloud_data and potentially_harmful_count > 5:
                 elements.append(PageBreak())
                 elements.append(Paragraph("Cyberbullying Word Frequency Analysis", subtitle_style))
                 elements.append(Spacer(1, 5))

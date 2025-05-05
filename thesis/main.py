@@ -4,6 +4,7 @@ from gui import MainWindow
 from model import initialize_models
 from setup_db import setup_database
 from db_config import test_connection
+from disclaimer import DisclaimerDialog
 import traceback
 
 def show_error_dialog(message, details=None):
@@ -41,6 +42,17 @@ def show_warning_dialog(message, details=None):
 def main():
     """Main application entry point"""
     print("Application starting...")
+    
+    # Create application instance
+    app = QApplication(sys.argv)
+    
+    # Show disclaimer dialog before proceeding
+    disclaimer = DisclaimerDialog()
+    if disclaimer.exec_() != DisclaimerDialog.Accepted:
+        print("User declined disclaimer. Exiting application.")
+        sys.exit(0)
+    
+    print("Disclaimer accepted. Proceeding with application startup.")
     
     # First, check database connectivity
     connected, error_message = test_connection()
@@ -88,7 +100,6 @@ def main():
 
     # Start the application
     try:
-        app = QApplication(sys.argv)
         window = MainWindow()
         window.show()
         sys.exit(app.exec_())

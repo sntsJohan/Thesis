@@ -18,6 +18,10 @@ COLORS = {
     'hover': '#26C6DA',        # Lighter shade of accent for hover
     'active': '#00BCD4',       # Primary color for active elements
     'disabled': '#555555',     # Desaturated, low-contrast for disabled states
+    # New color definitions for the three prediction levels
+    'potentially_harmful': '#EF5350',  # Red - same as error
+    'requires_attention': '#FF9800',   # Orange - slightly more vibrant than warning
+    'likely_appropriate': '#66BB6A',   # Green - same as success
 }
 
 # Enhanced Fonts with better readability
