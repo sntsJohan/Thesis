@@ -1906,37 +1906,59 @@ class AdminWindow(QMainWindow):
         
         # Update details text
         self.details_text_edit.clear()
+        # Define make_text without adding extra newlines internally
         def make_text(label, value):
-            return f'<span style="{DETAIL_TEXT_STYLE}"><b>{label}</b>{value}</span>'
+            # Ensure value is string and escape potential HTML issues if necessary (though QTextEdit usually handles basic text)
+            safe_value = str(value)
+            return f'<span style="{DETAIL_TEXT_SPAN_STYLE}"><b>{label}: </b>{safe_value}</span>'
 
         # Add comment details
-        self.details_text_edit.append(make_text("Comment:\n", f"{comment}\n"))
-        self.details_text_edit.append(make_text("Commenter: ", f"{metadata.get('profile_name', 'N/A')}\n"))
-        self.details_text_edit.append(make_text("Date: ", f"{metadata.get('date', 'N/A')}\n"))
-        self.details_text_edit.append(make_text("Likes: ", f"{metadata.get('likes_count', 'N/A')}\n"))
-        
+        # Replace actual newline characters \n with HTML <br> tags IN the comment content
+        formatted_comment = comment.replace('\n', '<br>')
+
+        # Append comment label and content. append() adds its own break.
+        self.details_text_edit.append(f'<span style="{DETAIL_TEXT_SPAN_STYLE}"><b>Comment:</b><br>{formatted_comment}</span>')
+
+        # Append other details using make_text. append() adds the break.
+        self.details_text_edit.append(make_text("Commenter", "[AUTHOR]")) # Redacted name
+        self.details_text_edit.append(make_text("Date", metadata.get('date', 'N/A')))
+        self.details_text_edit.append(make_text("Likes", metadata.get('likes_count', 'N/A')))
+
         # Add reply information if applicable
         if metadata.get('is_reply', False) and metadata.get('reply_to'):
-            for i in range(table.rowCount()):
-                parent_item = table.item(i, 0)
-                if parent_item:
-                    parent_text = parent_item.data(Qt.UserRole) or parent_item.text()
-                    if parent_text == metadata['reply_to']:
-                        parent_metadata = self.comment_metadata.get(metadata['reply_to'], {})
-                        self.details_text_edit.append("\n" + make_text("Reply Information:\n", ""))
-                        self.details_text_edit.append(make_text("Row #", f"{i+1}\n"))
-                        self.details_text_edit.append(make_text("Replying to: ", f"{parent_metadata.get('profile_name', 'Unknown')}\n"))
-                        self.details_text_edit.append(make_text("Original Comment: ", f"{metadata['reply_to']}\n"))
-                        self.details_text_edit.append(make_text("Date: ", f"{parent_metadata.get('date', 'N/A')}\n"))
-                        break
-            else:
-                self.details_text_edit.append("\n" + make_text("Reply Information:\n", ""))
-                self.details_text_edit.append(make_text("Replying to: ", f"{metadata['reply_to']}\n"))
+            parent_text = metadata['reply_to']
+             # Replace actual newline characters \n in parent comment with <br>
+            formatted_parent_comment = parent_text.replace('\n', '<br>') if parent_text else 'N/A'
+
+            self.details_text_edit.append("<br>" + f'<span style="{DETAIL_TEXT_SPAN_STYLE}"><b>Reply Information:</b></span>') # Add space before, append adds break after
+
+            # Find row number logic (remains the same)
+            row_num_str = "N/A"
+            current_table = self.get_current_table()
+            if current_table:
+                for i in range(current_table.rowCount()):
+                     parent_item = current_table.item(i, 0)
+                     # Use UserRole first for matching original text
+                     original_parent_text_from_item = parent_item.data(Qt.UserRole) if parent_item else None
+                     if original_parent_text_from_item == parent_text:
+                          row_num_str = str(i+1)
+                          break
+
+            self.details_text_edit.append(make_text("Row #", row_num_str))
+            self.details_text_edit.append(make_text("Replying to", "[AUTHOR]")) # Redacted name
+
+            # Append parent comment label and content
+            self.details_text_edit.append(f'<span style="{DETAIL_TEXT_SPAN_STYLE}"><b>Original Comment:</b><br>{formatted_parent_comment}</span>')
+
+            # Get parent date
+            parent_metadata = self.comment_metadata.get(parent_text, {})
+            self.details_text_edit.append(make_text("Date", parent_metadata.get('date', 'N/A')))
 
         # Add classification details
-        self.details_text_edit.append(make_text("Classification: ", f"{prediction}\n"))
-        self.details_text_edit.append(make_text("Confidence: ", f"{confidence}\n"))
-        self.details_text_edit.append(make_text("Status: ", f"{'In List' if in_selected_list else 'Not in List'}\n"))
+        self.details_text_edit.append("<br>" + make_text("Classification", prediction)) # Add space before, append adds break after
+        self.details_text_edit.append(make_text("Confidence", confidence))
+        status_text = 'In List' if in_selected_list else 'Not in List'
+        self.details_text_edit.append(make_text("Status", status_text))
 
     def toggle_list_status(self):
         selected_items = self.get_current_table().selectedItems()
@@ -2061,12 +2083,12 @@ class AdminWindow(QMainWindow):
                 comment_text,
                 prediction,
                 confidence, # Use the formatted string directly
-                metadata.get('profile_name', 'N/A'),
+                "[AUTHOR]", # Redacted name
                 metadata.get('date', 'N/A'),
                 metadata.get('likes_count', 'N/A'),
                 metadata.get('profile_id', 'N/A'),
                 "Yes" if metadata.get('is_reply') else "No",
-                metadata.get('reply_to', 'N/A')
+                "[AUTHOR]" if metadata.get('reply_to') else "N/A" # Redacted name
             ])
 
         # Show file dialog to save
@@ -2160,7 +2182,7 @@ class AdminWindow(QMainWindow):
                     fig, ax = plt.subplots(figsize=(5, 3.5))
                     ax.pie(filtered_sizes, explode=explode, labels=filtered_labels, colors=filtered_colors,
                            autopct='%1.1f%%', shadow=False, startangle=90,
-                           textprops={'color': 'white'}) # White text for better visibility
+                           textprops={'color': 'black'}) # White text for better visibility
                     ax.axis('equal')
                     fig.patch.set_alpha(0.0)
                     ax.patch.set_alpha(0.0)

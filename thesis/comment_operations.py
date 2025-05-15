@@ -15,6 +15,7 @@ import numpy as np
 from transformers import pipeline, AutoModelForSequenceClassification, AutoTokenizer
 from model import classify_comment
 from styles import COLORS
+from io import BytesIO
 
 def update_details_panel(window):
     selected_items = window.output_table.selectedItems()
@@ -374,12 +375,14 @@ def generate_report(window):
 
         # Create classification distribution pie chart
         plt.figure(figsize=(6, 4))
+        explode = [0.1 if label == 'Potentially Harmful' else 0 for label in ['Potentially Harmful', 'Requires Review', 'Likely Appropriate']]
         plt.pie([potentially_harmful_count, requires_review_count, likely_appropriate_count], 
                 labels=['Potentially Harmful', 'Requires Review', 'Likely Appropriate'],
                 autopct='%1.1f%%',
                 colors=[COLORS['potentially_harmful'], COLORS['requires_attention'], COLORS['likely_appropriate']],
-                textprops={'color': 'white'})
-        plt.title('Comment Classification Distribution')
+                explode=explode,
+                textprops={'color': 'black', 'fontsize': 10})
+        plt.title('Comment Distribution', color='black', pad=20, fontsize=14)
         
         # Save pie chart to memory
         pie_chart_data = io.BytesIO()
@@ -390,17 +393,18 @@ def generate_report(window):
         # Create confidence distribution bar chart
         plt.figure(figsize=(6, 4))
         bars = plt.bar(confidence_ranges.keys(), confidence_ranges.values())
-        plt.title('Confidence Level Distribution')
-        plt.xlabel('Confidence Range')
-        plt.ylabel('Number of Comments')
-        plt.xticks(rotation=45)
+        plt.title('Confidence Level Distribution', color='black', pad=20, fontsize=14)
+        plt.xlabel('Confidence Range', color='black', fontsize=10)
+        plt.ylabel('Number of Comments', color='black', fontsize=10)
+        plt.xticks(rotation=45, color='black', fontsize=8)
+        plt.yticks(color='black')
         
         # Add value labels on top of bars
         for bar in bars:
             height = bar.get_height()
             plt.text(bar.get_x() + bar.get_width()/2., height,
                     f'{int(height)}',
-                    ha='center', va='bottom')
+                    ha='center', va='bottom', color='black', fontsize=8)
         
         # Save bar chart to memory
         bar_chart_data = io.BytesIO()
@@ -416,12 +420,15 @@ def generate_report(window):
         
         # Create bar chart for sentiment distribution
         plt.bar(sentiment_labels, sentiment_counts, color=sentiment_colors)
-        plt.title('Sentiment Distribution')
-        plt.ylabel('Number of Comments')
+        plt.title('Sentiment Distribution', color='black', pad=20, fontsize=14)
+        plt.xlabel('Sentiment', color='black', fontsize=10)
+        plt.ylabel('Number of Comments', color='black', fontsize=10)
+        plt.xticks(color='black', fontsize=8)
+        plt.yticks(color='black')
         
         # Add value labels on bars
         for i, count in enumerate(sentiment_counts):
-            plt.text(i, count + 0.5, str(count), ha='center')
+            plt.text(i, count + 0.5, str(count), ha='center', color='black', fontsize=8)
             
         # Save sentiment chart to memory
         sentiment_chart_data = io.BytesIO()
@@ -487,7 +494,7 @@ def generate_report(window):
             plt.figure(figsize=(10, 5))
             plt.imshow(wordcloud, interpolation='bilinear')
             plt.axis('off')
-            plt.title('Most Common Words in All Comments')
+            plt.title('Most Common Words in All Comments', color='black', pad=20, fontsize=14)
             
             # Save combined word cloud to memory
             wordcloud_data = io.BytesIO()
@@ -510,7 +517,7 @@ def generate_report(window):
                 plt.figure(figsize=(10, 5))
                 plt.imshow(cb_wordcloud, interpolation='bilinear')
                 plt.axis('off')
-                plt.title('Common Words in Potentially Harmful Comments')
+                plt.title('Common Words in Potentially Harmful Comments', color='black', pad=20, fontsize=14)
                 
                 # Save potentially harmful content word cloud to memory
                 cb_wordcloud_data = io.BytesIO()
@@ -661,8 +668,8 @@ def generate_report(window):
             &bull; Most common terms in problematic comments: {cb_terms}<br/>
             &bull; Primary sentiment in flagged comments: {sentiment_result if sentiment_result else 'Neutral'}<br/>
             <br/>
-            Based on these findings, {'immediate attention is recommended' if cb_percentage >= 25 else 'continued monitoring is advised'}.
-            Detailed analysis and specific recommendations are provided in the following sections.
+            Based on these findings, it is suggested that {'attention may be beneficial' if cb_percentage >= 25 else 'continued monitoring could be valuable'}.
+            Detailed analysis and specific suggestions are provided in the following sections.
             """
         else:
             summary_text = f"""
@@ -672,7 +679,7 @@ def generate_report(window):
             &bull; All comments appear to contain appropriate language<br/>
             &bull; Primary sentiment in all comments: {sentiment_result if sentiment_result else 'Neutral'}<br/>
             <br/>
-            Continued monitoring is advised as a precautionary measure, though no immediate action is required.
+            Continued monitoring is suggested as a precautionary measure, though no immediate actions appear necessary at this time.
             """
             
         elements.append(Paragraph(summary_text, interpretation_style))
@@ -719,14 +726,18 @@ def generate_report(window):
         
         # Add interpretation of summary results
         interpretation_text = ""
+        # Reference the actual classification labels used in the application
+        ph_label = "Potentially Harmful" # Assuming this is the label
+        rr_label = "Requires Review"   # Assuming this is the label
+        
         if cb_percentage > 50:
-            interpretation_text = f"The analysis shows that a majority ({cb_percentage:.1f}%) of the comments are classified as cyberbullying. This indicates significant presence of harmful content that may require moderation or intervention."
+            interpretation_text = f"The analysis suggests that a majority ({cb_percentage:.1f}%) of the comments are classified as '{ph_label}'. This may indicate a significant presence of content that could warrant moderation or intervention."
         elif cb_percentage > 30:
-            interpretation_text = f"The analysis shows a considerable amount ({cb_percentage:.1f}%) of comments classified as cyberbullying, which suggests notable presence of potentially harmful content."
+            interpretation_text = f"The analysis suggests a considerable amount ({cb_percentage:.1f}%) of comments are classified as '{ph_label}', which may indicate a notable presence of content warranting review."
         elif cb_percentage > 10:
-            interpretation_text = f"The analysis detected some cyberbullying content ({cb_percentage:.1f}%), but the majority of comments appear to be normal."
+            interpretation_text = f"The analysis detected some content ({cb_percentage:.1f}%) classified as '{ph_label}', while the majority of comments appear to be classified differently."
         else:
-            interpretation_text = f"The analysis found minimal cyberbullying content ({cb_percentage:.1f}%). Most comments appear to be normal and non-harmful."
+            interpretation_text = f"The analysis found minimal content ({cb_percentage:.1f}%) classified as '{ph_label}'. Most comments appear to fall into other classifications."
             
         # Add confidence interpretation
         if high_confidence_percentage > 80:
@@ -753,13 +764,13 @@ def generate_report(window):
             # Add interpretation of pie chart
             pie_interpretation = ""
             if cb_percentage >= 50:
-                pie_interpretation = f"The chart shows a concerning distribution with {cb_percentage:.1f}% of comments classified as cyberbullying. This high percentage indicates a significant moderation challenge that requires immediate attention."
+                pie_interpretation = f"The chart depicts a distribution where {cb_percentage:.1f}% of comments are classified as '{ph_label}'. This proportion may suggest a significant volume of content that could benefit from review and potential moderation efforts."
             elif cb_percentage >= 25:
-                pie_interpretation = f"The chart shows a moderate level of concerning content with {cb_percentage:.1f}% of comments classified as cyberbullying. This indicates the need for enhanced monitoring and targeted interventions."
+                pie_interpretation = f"The chart shows {cb_percentage:.1f}% of comments classified as '{ph_label}'. This level of content may indicate a need for enhanced monitoring and targeted review."
             elif cb_percentage > 0:
-                pie_interpretation = f"The chart shows a relatively small portion ({cb_percentage:.1f}%) of comments classified as cyberbullying. While not alarming, this still indicates the presence of some problematic content that should be monitored."
+                pie_interpretation = f"The chart indicates a relatively small portion ({cb_percentage:.1f}%) of comments classified as '{ph_label}'. While not the largest category, this still suggests the presence of some content that could be monitored."
             else:
-                pie_interpretation = "The chart shows no cyberbullying content was detected in the analyzed comments, indicating a healthy communication environment."
+                pie_interpretation = f"The chart shows no comments classified as '{ph_label}' in this analysis, which may suggest a generally positive communication environment in terms of this specific classification."
                 
             elements.append(Paragraph(pie_interpretation, interpretation_style))
             elements.append(Spacer(1, 20))
@@ -794,15 +805,15 @@ def generate_report(window):
             
             # Add interpretation of sentiment chart
             if sentiment_result == "Negative" and cb_percentage > 25:
-                sentiment_interpretation = "The sentiment analysis reveals a predominantly negative tone in the comments, which correlates with the high level of cyberbullying content detected. This suggests a potentially toxic communication environment that requires intervention."
+                sentiment_interpretation = f"The sentiment analysis reveals a predominantly negative tone in the comments, which appears to correlate with the proportion of content classified as '{ph_label}'. This combination may suggest a communication environment that could benefit from intervention."
             elif sentiment_result == "Negative":
-                sentiment_interpretation = "Despite the relatively low level of cyberbullying content, the sentiment analysis shows a predominantly negative tone. This may indicate underlying tensions or dissatisfaction that could escalate if not addressed."
+                sentiment_interpretation = f"Despite a lower proportion of content classified as '{ph_label}', the sentiment analysis shows a predominantly negative tone. This might indicate underlying tensions or dissatisfaction that could escalate if not observed."
             elif sentiment_result == "Positive" and cb_percentage > 25:
-                sentiment_interpretation = "Interestingly, despite the significant presence of cyberbullying content, the overall positive sentiment suggests the harmful behavior may be concentrated among a smaller subset of users or discussions."
+                sentiment_interpretation = f"Interestingly, despite a significant presence of content classified as '{ph_label}', the overall positive sentiment could suggest the concerning content may be concentrated among a smaller subset of users or discussions."
             elif sentiment_result == "Positive":
-                sentiment_interpretation = "The sentiment analysis shows a predominantly positive tone, consistent with the low levels of cyberbullying content detected. This suggests a generally healthy communication environment."
+                sentiment_interpretation = f"The sentiment analysis shows a predominantly positive tone, which is consistent with lower levels of content classified as '{ph_label}'. This may suggest a generally healthy communication environment."
             else:
-                sentiment_interpretation = "The sentiment analysis shows a mixed or neutral distribution of sentiment across the comments, suggesting varied emotional content that requires careful monitoring."
+                sentiment_interpretation = "The sentiment analysis shows a mixed or neutral distribution of sentiment across the comments, suggesting varied emotional content that could benefit from careful monitoring."
                 
             elements.append(Paragraph(sentiment_interpretation, interpretation_style))
             elements.append(Spacer(1, 20))
@@ -834,17 +845,17 @@ def generate_report(window):
                 elements.append(Spacer(1, 10))
                 
                 # Add interpretation of cyberbullying word cloud
-                cb_interpretation = f"This word cloud specifically highlights the most common terms found in comments classified as cyberbullying. These terms may be useful indicators for developing more targeted content moderation filters and understanding the nature of problematic content in the dataset."
+                cb_interpretation = f"This word cloud specifically highlights the most common terms found in comments classified as '{ph_label}'. These terms may be useful indicators for developing more targeted content moderation filters and understanding the nature of such content in the dataset."
                 
                 # Add more specific interpretation based on cyberbullying percentage and common words
                 if common_cb_words and len(common_cb_words) >= 3:
                     cb_terms = ', '.join(common_cb_words[:3])
-                    cb_interpretation += f" The most frequent terms in cyberbullying comments were: {cb_terms}."
+                    cb_interpretation += f" The most frequent terms in comments classified as '{ph_label}' were: {cb_terms}."
                 
                 if cb_percentage > 30:
-                    cb_interpretation += f" The high frequency of these terms ({cb_percentage:.1f}% of all comments) suggests a persistent pattern of harmful language that should be addressed."
+                    cb_interpretation += f" The frequency of these terms in {cb_percentage:.1f}% of all comments may suggest a pattern of language that could benefit from being addressed."
                 elif cb_percentage > 10:
-                    cb_interpretation += f" With {cb_percentage:.1f}% of comments containing these terms, there is a moderate level of concerning content that warrants attention."
+                    cb_interpretation += f" With {cb_percentage:.1f}% of comments containing these terms, there appears to be a moderate level of such content that may warrant attention."
                 
                 elements.append(Paragraph(cb_interpretation, interpretation_style))
                 elements.append(Spacer(1, 20))
@@ -883,62 +894,62 @@ def generate_report(window):
         # Determine recommendations based on percentage and sentiment
         sentiment_factor = ""
         if sentiment_result == "Negative" and cb_percentage > 15:
-            sentiment_factor = "The predominantly negative sentiment coupled with cyberbullying content suggests an environment where negativity may be reinforcing harmful behavior."
+            sentiment_factor = "The predominantly negative sentiment, if coupled with cyberbullying content, may suggest an environment where negativity could reinforce harmful behavior."
         elif sentiment_result == "Negative":
-            sentiment_factor = "The predominantly negative sentiment, despite lower levels of cyberbullying, indicates potential underlying tensions that could escalate."
+            sentiment_factor = "The predominantly negative sentiment, even with lower levels of cyberbullying, might indicate potential underlying tensions that could escalate if not observed."
         elif sentiment_result == "Positive" and cb_percentage > 15:
-            sentiment_factor = "Despite the presence of cyberbullying content, the overall positive sentiment suggests the harmful behavior may be concentrated in specific user groups or discussions."
+            sentiment_factor = "Despite the presence of cyberbullying content, the overall positive sentiment could suggest that harmful behavior may be concentrated in specific user groups or discussions."
         
         if cb_percentage >= 50:
             recommendation_text = f"""
-            <b>High cyberbullying content detected ({cb_percentage:.1f}%)</b><br/><br/>
+            <b>Guidance for Scenarios with Higher Detected Cyberbullying ({cb_percentage:.1f}%)</b><br/><br/>
             
-            1. <b>Immediate Action Required:</b> The high percentage of cyberbullying content indicates a serious problem that requires prompt intervention.<br/><br/>
+            1. <b>Considerations for Action:</b> The higher percentage of detected cyberbullying suggests that this area may benefit from prompt attention and intervention.<br/><br/>
             
-            2. <b>Content Moderation:</b> Implement stricter comment moderation measures, including:<br/>
-               &bull; Pre-approval of comments before they appear publicly<br/>
-               &bull; Automatic filtering of harmful language<br/>
-               &bull; Temporary comment restrictions until the situation improves<br/><br/>
+            2. <b>Content Moderation Strategies:</b> Consider implementing or enhancing comment moderation measures, such as:<br/>
+               &bull; Reviewing comments before they appear publicly, where feasible<br/>
+               &bull; Exploring automated filtering for certain language patterns<br/>
+               &bull; Evaluating the need for temporary comment restrictions if the situation appears to escalate<br/><br/>
             
-            3. <b>Community Guidelines:</b> Establish or reinforce clear community guidelines that explicitly prohibit harassment, hate speech, and cyberbullying.<br/><br/>
+            3. <b>Community Guidelines:</b> It could be beneficial to establish or reinforce clear community guidelines that explicitly address harassment, hate speech, and cyberbullying.<br/><br/>
             
-            4. <b>Educational Outreach:</b> Consider educational initiatives to raise awareness about the impact of cyberbullying and promote positive online interaction.<br/><br/>
+            4. <b>Educational Outreach:</b> Educational initiatives could be considered to raise awareness about the impact of cyberbullying and promote positive online interaction.<br/><br/>
             
-            5. <b>Regular Monitoring:</b> Continue to monitor the comment section closely and conduct follow-up analyses to track improvement.<br/><br/>
+            5. <b>Ongoing Monitoring:</b> It is advisable to continue monitoring the comment section closely and conduct follow-up analyses to track changes and improvements.<br/><br/>
             
             {sentiment_factor}
             """
         elif cb_percentage >= 25:
             recommendation_text = f"""
-            <b>Moderate cyberbullying content detected ({cb_percentage:.1f}%)</b><br/><br/>
+            <b>Guidance for Scenarios with Moderate Detected Cyberbullying ({cb_percentage:.1f}%)</b><br/><br/>
             
-            1. <b>Enhanced Monitoring:</b> Increase the frequency of comment section review to identify and address problematic content quickly.<br/><br/>
+            1. <b>Enhanced Monitoring Approach:</b> Increasing the frequency of comment section review could help identify and address problematic content more quickly.<br/><br/>
             
-            2. <b>Targeted Moderation:</b> Focus moderation efforts on:<br/>
-               &bull; Comments containing the most frequent harmful terms identified in the word cloud<br/>
-               &bull; Threads or discussions that may be escalating in negativity<br/><br/>
+            2. <b>Targeted Moderation Focus:</b> Moderation efforts could be focused on:<br/>
+               &bull; Comments containing terms frequently identified in potentially harmful content (see word cloud)<br/>
+               &bull; Threads or discussions that show signs of escalating negativity<br/><br/>
             
-            3. <b>Community Engagement:</b> Actively engage with the community to promote positive interactions and discourage negative behavior.<br/><br/>
+            3. <b>Community Engagement Opportunities:</b> Actively engaging with the community might help promote positive interactions and discourage negative behavior.<br/><br/>
             
-            4. <b>Clear Guidelines:</b> Ensure your community guidelines are visible and clearly communicate expectations for respectful communication.<br/><br/>
+            4. <b>Clarity of Guidelines:</b> Ensuring community guidelines are visible and clearly communicate expectations for respectful communication can be helpful.<br/><br/>
             
-            5. <b>Follow-up Analysis:</b> Conduct a follow-up analysis within 2-4 weeks to monitor for improvement or deterioration.<br/><br/>
+            5. <b>Follow-up Analysis Suggestion:</b> Consider conducting a follow-up analysis, perhaps within 2-4 weeks, to monitor for improvement or changes.<br/><br/>
             """
         else:
             recommendation_text = f"""
-            <b>Low cyberbullying content detected ({cb_percentage:.1f}%)</b><br/><br/>
+            <b>Guidance for Scenarios with Lower Detected Cyberbullying ({cb_percentage:.1f}%)</b><br/><br/>
             
-            1. <b>Continued Monitoring:</b> While the current levels of problematic content are low, maintaining regular monitoring is recommended.<br/><br/>
+            1. <b>Value of Continued Monitoring:</b> While the current levels of detected problematic content are low, maintaining regular monitoring is generally recommended.<br/><br/>
             
-            2. <b>Preventive Measures:</b> Consider implementing subtle preventive measures such as:<br/>
-               &bull; Positive reinforcement for constructive comments<br/>
-               &bull; Occasional reminders about community guidelines<br/><br/>
+            2. <b>Potential Preventive Measures:</b> Consider exploring subtle preventive measures, such as:<br/>
+               &bull; Acknowledging or highlighting constructive comments<br/>
+               &bull; Providing occasional reminders about community guidelines in a general way<br/><br/>
             
-            3. <b>Community Building:</b> Focus on strengthening the positive aspects of your community to maintain the healthy environment.<br/><br/>
+            3. <b>Community Building Focus:</b> Focusing on strengthening the positive aspects of the community can help maintain a healthy environment.<br/><br/>
             
-            4. <b>Periodic Assessment:</b> Schedule periodic assessments (every 1-2 months) to ensure the comment section maintains its positive nature.<br/><br/>
+            4. <b>Periodic Assessment Idea:</b> Scheduling periodic assessments (e.g., every 1-2 months) can help ensure the comment section maintains its positive nature.<br/><br/>
             
-            5. <b>Educational Resources:</b> Make resources available for users to learn about digital citizenship and respectful online communication.<br/><br/>
+            5. <b>Availability of Educational Resources:</b> Making resources available for users to learn about digital citizenship and respectful online communication could be beneficial.<br/><br/>
             """
 
         elements.append(Paragraph(recommendation_text, recommendation_style))

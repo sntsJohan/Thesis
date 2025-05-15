@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton, QApplication, QHBoxLayout
+from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton, QApplication, QHBoxLayout, QMessageBox
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 from styles import COLORS, FONTS, BUTTON_STYLE, INPUT_STYLE
@@ -147,8 +147,26 @@ class LoginWindow(QDialog):
 
     def open_forgot_password(self):
         from forgot_password import ForgotPasswordDialog
-        forgot_password_dialog = ForgotPasswordDialog(self)
-        forgot_password_dialog.exec_()
+        from reset_password import ResetPasswordDialog
+        from PyQt5.QtWidgets import QMessageBox # Ensure QMessageBox is imported if not already
+
+        # Step 1: Show Forgot Password Dialog to get username/email and send code
+        forgot_dialog = ForgotPasswordDialog(self)
+        if forgot_dialog.exec_() == QDialog.Accepted:
+            username_for_reset = forgot_dialog.get_username_for_reset()
+
+            if username_for_reset:
+                # Step 2: Show Reset Password Dialog
+                # Parent should be self (LoginWindow) for ResetPasswordDialog as well
+                reset_dialog = ResetPasswordDialog(username=username_for_reset, parent=self) 
+                if reset_dialog.exec_() == QDialog.Accepted:
+                    # Password reset was successful
+                    QMessageBox.information(self, "Password Reset Complete", 
+                                            "Your password has been successfully reset. Please log in with your new credentials.")
+                # else: ResetPasswordDialog was cancelled by the user, LoginWindow just continues its operation.
+            # else: This case (username_for_reset is None) should ideally not be reached if ForgotPasswordDialog.accept() was called.
+            # However, if it does, the LoginWindow continues without opening ResetPasswordDialog.
+        # else: ForgotPasswordDialog was cancelled by the user, LoginWindow just continues its operation.
 
     def get_role(self):
         return self.role

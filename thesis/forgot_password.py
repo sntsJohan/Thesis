@@ -129,10 +129,9 @@ class ForgotPasswordDialog(QDialog):
                     "A verification code has been sent to your email address.\n"
                     "Please check your inbox (and spam/junk folder) and enter the code in the next step."
                 )
-                # Open the ResetPasswordDialog, passing the username
-                self.accept() # Close the current dialog first
-                reset_dialog = ResetPasswordDialog(username=username, parent=self.parent()) # Pass username
-                reset_dialog.exec_() # Show the reset dialog modally
+                # Store username for the parent window to pick up
+                self.confirmed_username_for_reset = username 
+                self.accept() # Signal success (code sent)
 
             except SMTPException as smtp_e:
                  self.error_label.setText("Failed to send email. Check configuration.")
@@ -147,4 +146,7 @@ class ForgotPasswordDialog(QDialog):
             print(f"Password reset DB error: {str(e)}")
         finally:
             if 'conn' in locals() and conn: # Check if conn exists and is not None
-                conn.close() 
+                conn.close()
+
+    def get_username_for_reset(self):
+        return getattr(self, 'confirmed_username_for_reset', None) 
