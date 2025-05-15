@@ -13,8 +13,8 @@ def get_db_connection():
             'DRIVER={ODBC Driver 17 for SQL Server};'
             'SERVER=cbdstipqc.database.windows.net;'  # From Azure
             'DATABASE=Thesis_db;'                     # Your DB name
-            'UID=sntsyohan;'                          # Your admin username
-            'PWD=09499894635Johan!;'                  # Your password
+            'UID=;'                          # Your admin username
+            'PWD=;'                  # Your password
             'Connection Timeout=30;'                  # Add timeout
         )
         return conn
